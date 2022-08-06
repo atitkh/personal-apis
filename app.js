@@ -1,21 +1,29 @@
 const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
+require('dotenv/config');
 
-//Routes
+//Import Routes
+const postsRoute = require('./routes/posts');
+const coursesRoute = require('./routes/courses');
+
+//Middleware
+app.use(express.json());
+app.use('/posts', postsRoute);
+app.use('/courses', coursesRoute);
+
+//main route
 app.get('/', (req, res) => {
     res.send('Hello World!!');
 });
 
-app.get('/posts', (req, res) => {
-    res.send('Posts');
+//Connect to DB
+mongoose.connect(process.env.DB_CONNECTION, { userNewUrlParser: true }, () => {
+    console.log('Connected to DB');
 });
 
-//Connect to DB
-mongoose.connect('mongodb+srv://admin:<password>@rest.loxeqmk.mongodb.net/?retryWrites=true&w=majority');
-
-
 //listen
-app.listen(3000, () => {
-    console.log('Listening on port 3000');
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+    console.log(`Listening on port ${port}`);
 });
