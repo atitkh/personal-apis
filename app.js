@@ -14,7 +14,7 @@ app.use('/courses', coursesRoute);
 
 //main route
 app.get('/', (req, res) => {
-    res.send('Hello World!!');
+    res.send('Welcome to the API');
 });
 
 //Connect to DB
