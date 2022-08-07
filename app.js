@@ -8,6 +8,7 @@ require('dotenv/config');
 const authRoute = require('./routes/auth/auth');
 const ewelinkRoute = require('./routes/smarthome/ewelink');
 const magichomeRoute = require('./routes/smarthome/magichome');
+const nftlisterRoute = require('./routes/nft/nftlister');
 
 //Middleware
 app.use(cors());
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use('/auth', authRoute);
 app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/smarthome/magichome', magichomeRoute);
+app.use('/nft', nftlisterRoute);
 
 //main route
 app.get('/', (req, res) => {
@@ -26,6 +28,7 @@ app.get('/', (req, res) => {
         <li>/auth/login</li>
         <li>/smarthome/ewelink</li>
         <li>/smarthome/magichome</li>
+        <li>/nft</li>
         </ul>`);
 });
 
