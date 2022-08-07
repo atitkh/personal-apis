@@ -121,7 +121,7 @@ router.get('/ethereum', verify, async (req, res) => {
             address = req.query.address;
 
             //ethereum chain 
-            let url = `https://api.nftport.xyz/v0/accounts/${address}?chain=ethereum`;
+            let url = `https://api.nftport.xyz/v0/accounts/${address}?chain=ethereum&include=metadata`;
             let options = {
                 method: 'GET',
                 headers: {
