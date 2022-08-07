@@ -31,17 +31,26 @@ router.get('/:deviceId/info', verify, async (req, res) => {
     }
 });
 
-//tubelight toggle or give state query
-router.get('/tubelight', verify, async (req, res) => {
+router.get('/:deviceId', verify, async (req, res) => {
     try {
+        // check if tubelight 
+        if (req.params.deviceId === 'tubelight') {
+            var device = process.env.TUBELIGHT_ID;
+        }
+        else  {
+            var device = req.params.deviceId;
+        }
+
+        // check if device state is given
         if (req.query.state) {
-            const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, req.query.state);
-            res.json({ message: 'State Changed' });
+            const action = await ewelinkApi.setDevicePowerState(device, req.query.state);
+            res.json(action);
         }
         else { 
-            const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, "toggle");
-            res.json(action.status);
+            const action = await ewelinkApi.setDevicePowerState(device, "toggle");
+            res.json(action);
         }
+
     } catch (err) {
         res.json({ message: err });
     }
