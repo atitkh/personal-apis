@@ -8,7 +8,7 @@ require('dotenv/config');
 const authRoute = require('./routes/auth/auth');
 const ewelinkRoute = require('./routes/smarthome/ewelink');
 const magichomeRoute = require('./routes/smarthome/magichome');
-const nftlisterRoute = require('./routes/nft/nftlister');
+const nftlisterRoute = require('./routes/nft/nftsearch');
 
 //Middleware
 app.use(cors());
