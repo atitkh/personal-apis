@@ -18,19 +18,19 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);    
 
-
-    const user = new userModel({
-        name: req.body.name,
-        email: req.body.email,
-        password: hashedPassword
-    });
-    try {
-        const savedUser = await user.save();
-        res.send({ user: user._id });
-    }
-    catch (err) {
-        res.status(400).send(err);
-    }
+    res.status(400).send('User registration is disabled at the moment.');
+    // const user = new userModel({
+    //     name: req.body.name,
+    //     email: req.body.email,
+    //     password: hashedPassword
+    // });
+    // try {
+    //     const savedUser = await user.save();
+    //     res.send({ user: user._id });
+    // }
+    // catch (err) {
+    //     res.status(400).send(err);
+    // }
 });
 
 //login
