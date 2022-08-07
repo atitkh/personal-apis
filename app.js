@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
+const cors = require('cors');
 require('dotenv/config');
 
 //Import Routes
@@ -8,6 +9,7 @@ const postsRoute = require('./routes/posts');
 const coursesRoute = require('./routes/courses');
 
 //Middleware
+app.use(cors());
 app.use(express.json());
 app.use('/posts', postsRoute);
 app.use('/courses', coursesRoute);
@@ -18,7 +20,7 @@ app.get('/', (req, res) => {
 });
 
 //Connect to DB
-mongoose.connect(process.env.DB_CONNECTION, { userNewUrlParser: true }, () => {
+mongoose.connect(process.env.DB_CONNECTION, { }, () => {
     console.log('Connected to DB');
 });
 
