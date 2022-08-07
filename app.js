@@ -29,6 +29,11 @@ app.get('/', (req, res) => {
         <li>/smarthome/ewelink</li>
         <li>/smarthome/magichome</li>
         <li>/nft</li>
+            <ul>
+                <li>/nft/all</li>
+                <li>/nft/polygon</li>
+                <li>/nft/ethereum</li>
+            </ul>
         </ul>`);
 });
 
