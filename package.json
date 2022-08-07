@@ -9,6 +9,6 @@
     "joi": "^17.6.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.5.1",
-    "node-fetch": "^3.2.10"
+    "node-fetch": "^2.6.7"
   }
 }
