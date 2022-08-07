@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Post = require('../models/Post');
-const verify = require('../routes/verifyToken');
+const verify = require('./auth/verifyToken');
 
 //get all posts
 router.get('/', verify, async (req, res) => {
