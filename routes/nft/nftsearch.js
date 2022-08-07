@@ -24,7 +24,7 @@ router.get('/all', verify, async (req, res) => {
             };
 
             //ethereum chain 
-            let url2 = `https://api.nftport.xyz/v0/accounts/${address}?chain=ethereum`;
+            let url2 = `https://api.nftport.xyz/v0/accounts/${address}?chain=ethereum&include=metadata`;
             let options2 = {
                 method: 'GET',
                 headers: {
