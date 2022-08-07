@@ -158,7 +158,6 @@ router.get('/ethereum', verify, async (req, res) => {
 function ipfsChecker(url) {
     if (url.includes('ipfs://')) {
         let newUrl = url.replace(/^ipfs:\/\//g, 'https://ipfs.io/ipfs/');
-        console.log(newUrl);
         return newUrl;
     } else {
         console.log('No IPFS link found');
