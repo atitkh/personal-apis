@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv/config');
 
+
+
 //Import Routes
 const authRoute = require('./routes/auth');
 const postsRoute = require('./routes/posts');
@@ -15,6 +17,8 @@ app.use(express.json());
 app.use('/auth', authRoute);
 app.use('/posts', postsRoute);
 app.use('/courses', coursesRoute);
+
+
 
 //main route
 app.get('/', (req, res) => {
