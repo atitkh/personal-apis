@@ -16,11 +16,17 @@ app.use('/auth', authRoute);
 app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/smarthome/magichome', magichomeRoute);
 
-
-
 //main route
 app.get('/', (req, res) => {
-    res.send('Welcome to AK API');
+    res.setHeader('Content-type','text/html')
+    res.send(`<h1> Welcome to AK API </h1>
+    <p>Following endpoints are currently available:</p>
+    <ul>
+        <li>/auth/register</li>
+        <li>/auth/login</li>
+        <li>/smarthome/ewelink</li>
+        <li>/smarthome/magichome</li>
+        </ul>`);
 });
 
 //Connect to DB
