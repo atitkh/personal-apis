@@ -160,7 +160,6 @@ function ipfsChecker(url) {
         let newUrl = url.replace(/^ipfs:\/\//g, 'https://ipfs.io/ipfs/');
         return newUrl;
     } else {
-        console.log('No IPFS link found');
         return url;
     }
 }
