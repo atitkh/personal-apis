@@ -6,8 +6,6 @@ require('dotenv/config');
 
 //Import Routes
 const authRoute = require('./routes/auth/auth');
-const postsRoute = require('./routes/posts');
-const coursesRoute = require('./routes/courses');
 const ewelinkRoute = require('./routes/smarthome/ewelink');
 const magichomeRoute = require('./routes/smarthome/magichome');
 
@@ -15,8 +13,6 @@ const magichomeRoute = require('./routes/smarthome/magichome');
 app.use(cors());
 app.use(express.json());
 app.use('/auth', authRoute);
-app.use('/posts', postsRoute);
-app.use('/courses', coursesRoute);
 app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/smarthome/magichome', magichomeRoute);
 
