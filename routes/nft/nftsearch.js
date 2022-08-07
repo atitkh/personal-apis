@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const { func } = require('joi');
 const fetch = require('node-fetch');
 const verify = require('../auth/verifyToken');
 
