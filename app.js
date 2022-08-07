@@ -18,7 +18,7 @@ app.use('/courses', coursesRoute);
 
 //main route
 app.get('/', (req, res) => {
-    res.send('Welcome to the API');
+    res.send('Welcome to AK API');
 });
 
 //Connect to DB
