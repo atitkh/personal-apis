@@ -20,7 +20,9 @@ router.get('/devices', verify, async (req, res) => {
     } catch (err) {
         res.json({ message: err });
     }
-}).get('/:deviceId/info', verify, async (req, res) => {
+});
+
+router.get('/:deviceId/info', verify, async (req, res) => {
     try {
         const device = await ewelinkApi.getDevice(req.params.deviceId);
         res.json(device);
@@ -29,20 +31,17 @@ router.get('/devices', verify, async (req, res) => {
     }
 });
 
-//tubelight
+//tubelight toggle or give state query
 router.get('/tubelight', verify, async (req, res) => {
     try {
-        const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, "toggle");
-        res.json(action.status);
-    } catch (err) {
-        res.json({ message: err });
-    }
-});
-
-router.get('/tubelight/:action', verify, async (req, res) => {
-    try {
-        const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, req.params.action);
-        res.json(action.status);
+        if (req.query.state) {
+            const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, req.query.state);
+            res.json({ message: 'State Changed' });
+        }
+        else { 
+            const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, "toggle");
+            res.json(action.status);
+        }
     } catch (err) {
         res.json({ message: err });
     }
