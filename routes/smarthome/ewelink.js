@@ -20,10 +20,29 @@ router.get('/devices', verify, async (req, res) => {
     } catch (err) {
         res.json({ message: err });
     }
-}).get('/:deviceId', verify, async (req, res) => {
+}).get('/:deviceId/info', verify, async (req, res) => {
     try {
         const device = await ewelinkApi.getDevice(req.params.deviceId);
         res.json(device);
+    } catch (err) {
+        res.json({ message: err });
+    }
+});
+
+//tubelight
+router.get('/tubelight', verify, async (req, res) => {
+    try {
+        const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, "toggle");
+        res.json(action.status);
+    } catch (err) {
+        res.json({ message: err });
+    }
+});
+
+router.get('/tubelight/:action', verify, async (req, res) => {
+    try {
+        const action = await ewelinkApi.setDevicePowerState(process.env.TUBELIGHT_ID, req.params.action);
+        res.json(action.status);
     } catch (err) {
         res.json({ message: err });
     }
