@@ -7,7 +7,7 @@ router.get('/', (req, res) => {
 });
 
 // all nft listings
-router.get('/all', verify, async (req, res) => {
+router.get('/all', async (req, res) => {
     assets = [];
     if (req.query.address) {
         try {
@@ -72,7 +72,7 @@ router.get('/all', verify, async (req, res) => {
 });
 
 // polygon chain only
-router.get('/polygon', verify, async (req, res) => {
+router.get('/polygon', async (req, res) => {
     assets = [];
     if (req.query.address) {
         try {
@@ -114,7 +114,7 @@ router.get('/polygon', verify, async (req, res) => {
 });
 
 //etherum chain only
-router.get('/ethereum', verify, async (req, res) => {
+router.get('/ethereum', async (req, res) => {
     assets = [];
     if (req.query.address) {
         try {
