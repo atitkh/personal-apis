@@ -36,6 +36,7 @@ app.get('/', (req, res) => {
                 <li>/nft/polygon</li>
                 <li>/nft/ethereum</li>
             </ul>
+        <li>/phonecall</li>
         </ul>`);
 });
 
