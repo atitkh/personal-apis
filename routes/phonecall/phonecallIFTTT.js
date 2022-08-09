@@ -9,20 +9,25 @@ router.get('/', (req, res) => {
 // call us number through IFTTT
 router.post('/us', verify, async (req, res) => {
     if (req.body.message) {
-        message = req.body.message;
-        let url = `https://maker.ifttt.com/trigger/phoneCallUS/json/with/key/${process.env.IFTTT_PHONE_KEY}`;
-        let options = {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                "Hello": message
-            })
-        };
-        let response = await fetch(url, options);
-        let data = await response;
-        res.send(data);
+        try {
+            message = req.body.message;
+            let url = `https://maker.ifttt.com/trigger/phoneCallUS/json/with/key/${process.env.IFTTT_PHONE_KEY}`;
+            let options = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    "Hello": message
+                })
+            };
+            let response = await fetch(url, options);
+            let data = await response.json();
+            res.send(data);
+        }
+        catch (err) {
+            res.send(err);
+        }
     } else {
         res.send('No phone number provided');
     }
