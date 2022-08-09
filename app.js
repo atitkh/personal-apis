@@ -9,6 +9,7 @@ const authRoute = require('./routes/auth/auth');
 const ewelinkRoute = require('./routes/smarthome/ewelink');
 const magichomeRoute = require('./routes/smarthome/magichome');
 const nftlisterRoute = require('./routes/nft/nftsearch');
+const phonecallRoute = require('./routes/phonecall/phonecallIFTTT');
 
 //Middleware
 app.use(cors());
@@ -17,6 +18,7 @@ app.use('/auth', authRoute);
 app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/smarthome/magichome', magichomeRoute);
 app.use('/nft', nftlisterRoute);
+app.use('/phonecall', phonecallRoute);
 
 //main route
 app.get('/', (req, res) => {
