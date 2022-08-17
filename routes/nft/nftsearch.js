@@ -237,11 +237,9 @@ async function refineBase64(myResolve, array) {
         var file_url = nft.file_url;
 
         if (file_url) {
-            if (!file_url.includes('mp4')) {
-                var base64 = await sharpImg(file_url);
-                // refined.push(JSON.stringify({ "name" : name, "base64" : base64 }));
-                nft["base64"] = base64;
-            }
+            var base64 = await sharpImg(file_url);
+            // refined.push(JSON.stringify({ "name" : name, "base64" : base64 }));
+            nft["base64"] = base64;
         }
     }
     refined.push(array);
