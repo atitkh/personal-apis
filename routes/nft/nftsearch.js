@@ -255,27 +255,33 @@ function ipfsChecker(url) {
 }
 
 async function sharpImg(url) {
-    let res = await axios({ url, responseType: "arraybuffer" });
-    var buffer = Buffer.from(res.data, 'binary');
+    try {
+        let res = await axios({ url, responseType: "arraybuffer" });
+        var buffer = Buffer.from(res.data, 'binary');
 
-    var data = await sharp(buffer)
-        .resize(200)
-        .toFormat('jpeg')
-        .jpeg({
-        quality: 100,
-        chromaSubsampling: '4:4:4',
-        force: true,
-        })
-        .toBuffer()
-        .then(resizedImageBuffer => {
-            let resizedImageData = resizedImageBuffer.toString('base64');
-            return resizedImageData;
-        })
-        .catch(error => {
-            // error handeling
-            return error;
-        })
-    return data;
+        var data = await sharp(buffer)
+            .resize(200)
+            .toFormat('jpeg')
+            .jpeg({
+            quality: 100,
+            chromaSubsampling: '4:4:4',
+            force: true,
+            })
+            .toBuffer()
+            .then(resizedImageBuffer => {
+                let resizedImageData = resizedImageBuffer.toString('base64');
+                return resizedImageData;
+            })
+            .catch(error => {
+                // error handeling
+                return error;
+            })
+        return data;
+    }
+    catch (error) {
+        console.log(error);
+        return 'error';
+    }    
 }
 
 module.exports = router;
