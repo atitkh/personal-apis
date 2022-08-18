@@ -249,7 +249,7 @@ async function refineBase64(myResolve, array) {
 
 function ipfsChecker(url) {
     if (url.includes('ipfs://')) {
-        let newUrl = url.replace(/^ipfs:\/\//g, 'https://ipfs.io/ipfs/');
+        let newUrl = url.replace(/^ipfs:\/\//g, 'https://cloudflare-ipfs.com/ipfs/');
         return newUrl;
     } else {
         return url;
