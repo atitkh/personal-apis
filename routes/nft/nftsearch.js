@@ -231,15 +231,17 @@ router.get('/base64', async (req, res) => {
 });
 
 async function refineBase64(myResolve, array) {
+    var count = 0;
     for(const nft of array) {
         var name = nft.name;
         var file_url = nft.file_url;
 
-        if (file_url) {
+        if (file_url && count < 15) {
             var base64 = await sharpImg(file_url);
             // refined.push(JSON.stringify({ "name" : name, "base64" : base64 }));
             nft["base64"] = base64;
         }
+        count++;
     }
     console.log('done refining');
     myResolve(array);
