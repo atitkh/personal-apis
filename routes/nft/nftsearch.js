@@ -231,7 +231,6 @@ router.get('/base64', async (req, res) => {
 });
 
 async function refineBase64(myResolve, array) {
-    var refined = [];
     for(const nft of array) {
         var name = nft.name;
         var file_url = nft.file_url;
@@ -242,9 +241,8 @@ async function refineBase64(myResolve, array) {
             nft["base64"] = base64;
         }
     }
-    refined.push(array);
     console.log('done refining');
-    myResolve(refined);
+    myResolve(array);
 }
 
 function ipfsChecker(url) {
@@ -261,7 +259,7 @@ async function sharpImg(url) {
     var buffer = Buffer.from(res.data, 'binary');
 
     var data = await sharp(buffer)
-        .resize(100)
+        .resize(200)
         .toFormat('jpeg')
         .jpeg({
         quality: 100,
