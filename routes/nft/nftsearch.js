@@ -3,8 +3,6 @@ const fetch = require('node-fetch');
 const sharp = require('sharp');
 const axios = require('axios');
 const verify = require('../auth/verifyToken');
-const { func, ref } = require('joi');
-const { syncBuiltinESMExports } = require('module');
 
 router.get('/', (req, res) => {
     res.send('Welcome to NFT Search API');
