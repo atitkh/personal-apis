@@ -234,7 +234,7 @@ async function refineBase64(myResolve, array) {
         var name = nft.name;
         var file_url = nft.file_url;
 
-        if (file_url && count < 15) {
+        if (file_url && count < 10) {
             var base64 = await sharpImg(file_url);
             // refined.push(JSON.stringify({ "name" : name, "base64" : base64 }));
             nft["base64"] = base64;
@@ -260,7 +260,11 @@ async function sharpImg(url) {
         var buffer = Buffer.from(res.data, 'binary');
 
         var data = await sharp(buffer)
-            .resize(200)
+            .resize({
+                width: 200,
+                height: 200,
+                fit: 'contain',
+            })
             .toFormat('jpeg')
             .jpeg({
             quality: 100,
