@@ -10,6 +10,7 @@ const ewelinkRoute = require('./routes/smarthome/ewelink');
 const magichomeRoute = require('./routes/smarthome/magichome');
 const nftlisterRoute = require('./routes/nft/nftsearch');
 const phonecallRoute = require('./routes/phonecall/phonecallIFTTT');
+const ipoResult = require('./routes/iporesult/iporesult');
 
 //Middleware
 app.use(cors());
@@ -19,6 +20,7 @@ app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/smarthome/magichome', magichomeRoute);
 app.use('/nft', nftlisterRoute);
 app.use('/phonecall', phonecallRoute);
+app.use('/ipo', ipoResult);
 
 //main route
 app.get('/', (req, res) => {
@@ -37,6 +39,12 @@ app.get('/', (req, res) => {
                 <li>/nft/ethereum</li>
             </ul>
         <li>/phonecall</li>
+        <li>/ipo</li>
+            <ul>
+                <li>/ipo/result</li>
+                <li>/ipo/newcaptcha</li>
+                <li>/ipo/companylist</li>
+            </ul>
         </ul>`);
 });
 
