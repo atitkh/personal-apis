@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
 
 // ipo result
 router.post('/result', async (req, res) => {
-    if (req.query.companyShareId && req.query.boid && req.query.userCaptcha && req.query.captchaIdentifier) {
+    if (req.body.companyShareId && req.body.boid && req.body.userCaptcha && req.body.captchaIdentifier) {
         try {
             let url = `https://iporesult.cdsc.com.np/result/result/check`;
             let options = {
@@ -18,10 +18,10 @@ router.post('/result', async (req, res) => {
                     'Accept': 'application/json',
                 },
                 body: JSON.stringify({
-                    "companyShareId": req.query.companyShareId,
-                    "boid": req.query.boid,
-                    "userCaptcha": req.query.userCaptcha,
-                    "captchaIdentifier": req.query.captchaIdentifier
+                    "companyShareId": req.body.companyShareId,
+                    "boid": req.body.boid,
+                    "userCaptcha": req.body.userCaptcha,
+                    "captchaIdentifier": req.body.captchaIdentifier
                 })
             };
 
