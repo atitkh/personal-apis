@@ -9,23 +9,24 @@ router.get('/', (req, res) => {
 
 // get cookie
 router.get('/getCookie', async (req, res) => {
-    try {
-        const response = await axios.get('https://auth.riotgames.com/api/v1/authorization', {
+    const postData = {
+        client_id: "play-valorant-web-prod",
+        nonce: "1",
+        redirect_uri: "https://playvalorant.com/opt_in",
+        response_type: "token id_token"
+    }
+    const cookie = await axios.post('https://auth.riotgames.com/api/v1/authorization', postData, {
             headers: {
                 'Content-Type': 'application/json',
-            },
-            params: {
-                client_id: 'play-valorant-web-prod',
-                nonce: '1',
-                redirect_uri: 'https://playvalorant.com/opt_in',
-                response_type: 'token id_token',
-                }
-                });
-        const cookie = response.headers['set-cookie'];
-        res.send(cookie);
-    } catch (error) {
-        res.send(error);
-    }
+                'User-Agent': 'RiotClient/43.0.1.4195386.4190634 rso-auth (Windows;10;;Professional, x64)',
+                "Access-Control-Allow-Origin": "*"
+            }
+        }
+    ).then(response => {
+        res.send(response.data.response.parameters.cookie);
+    }).catch(err => {
+        res.send(err);
+    });
 });
 
 module.exports = router;
