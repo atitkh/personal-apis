@@ -22,7 +22,7 @@ router.post('/auth', async (req, res) => {
             "access_token": valorantApi.access_token,
             "entitlements_token": valorantApi.entitlements_token,
             "user_id": valorantApi.user_id,
-            "username": valorantApi.username,
+            "username": username,
             "region": valorantApi.region
         }
 
