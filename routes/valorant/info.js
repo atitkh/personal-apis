@@ -36,4 +36,22 @@ router.post('/auth', async (req, res) => {
     });
 });
 
+router.get('/getHeader', async (req, res) => {
+    const valorantApi = new Valorant.API(Valorant.Regions.AsiaPacific);
+    const { access_token, entitlements_token, user_id, username, region } = req.body;
+    
+    if (!access_token || !entitlements_token || !user_id || !username || !region) {
+        return res.status(400).send('Please enter all the required fields');
+    }
+
+    valorantApi.access_token = access_token;
+    valorantApi.entitlements_token = entitlements_token;
+    valorantApi.user_id = user_id;
+    valorantApi.username = username;
+    valorantApi.region = region;
+
+    const header = valorantApi.generateRequestHeaders()
+    res.send(header);
+});
+
 module.exports = router;
