@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
 });
 
 // authenticate user
-router.get('/auth', async (req, res) => {
+router.post('/auth', async (req, res) => {
     const valorantApi = new Valorant.API(Valorant.Regions.AsiaPacific);
     const { username, password } = req.body;
 
