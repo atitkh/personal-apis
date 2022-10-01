@@ -17,7 +17,7 @@ router.post('/auth', async (req, res) => {
         return res.status(400).send('Please enter username and password');
     }
 
-    valorantApi.authorize(username, password).then(() => {
+    valorantApi.authorize(username, password).then(async () => {
         var data = {
             "access_token": valorantApi.access_token,
             "entitlements_token": valorantApi.entitlements_token,
@@ -54,7 +54,7 @@ router.post('/getHeader', async (req, res) => {
 });
 
 // get store front of user 
-router.get('/storefront', async (req, res) => {
+router.post('/storefront', async (req, res) => {
     const { access_token, entitlements_token, user_id, username, region } = req.body;
     const valorantApi = new Valorant.API(region);
 
@@ -65,17 +65,18 @@ router.get('/storefront', async (req, res) => {
     valorantApi.access_token = access_token;
     valorantApi.entitlements_token = entitlements_token;
     valorantApi.user_id = user_id;
-    valorantApi.username = username;
 
-    valorantApi.getPlayerStoreFront(user_id).then((data) => {
-        res.send(data);
-    }).catch((error) => {
-        var data = {
-            "message": "Error Occured. Please try again."
-        }
-        console.log(error)
-        res.status(403).send(data);
-    });
+    await fetch(valorantApi.getPlayerDataServiceUrl(region) + `/store/v2/storefront/${user_id}`, {
+        method: 'GET',
+        headers: valorantApi.generateRequestHeaders()
+    }).then(response => response.json())
+        .then(data => {
+            res.send(data);
+        }).catch((error) => {
+            console.log(error)
+            res.status(403).send(error);
+        });
+
 });
 
 module.exports = router;
