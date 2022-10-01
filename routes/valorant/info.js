@@ -28,7 +28,11 @@ router.post('/auth', async (req, res) => {
 
         res.send(data);
     }).catch((error) => {
-        res.status(403).send("Error Occured. Please try again.");
+        var data = {
+            "message": "Error Occured. Please try again."
+        }
+        console.log(error)
+        res.status(403).send(data);
     });
 });
 
