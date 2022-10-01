@@ -29,7 +29,7 @@ router.post('/auth', async (req, res) => {
         res.send(data);
     }).catch((error) => {
         var data = {
-            "message": "Error Occured. Please try again."
+            "message": error
         }
         console.log(error)
         res.status(403).send(data);
@@ -50,7 +50,6 @@ router.post('/getHeader', async (req, res) => {
     valorantApi.username = username;
 
     const header = valorantApi.generateRequestHeaders()
-    header = JSON.stringify(header)
     res.header(header).send("check header");
 });
 
