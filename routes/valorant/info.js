@@ -36,9 +36,9 @@ router.post('/auth', async (req, res) => {
     });
 });
 
-router.get('/getHeader', async (req, res) => {
-    const valorantApi = new Valorant.API(Valorant.Regions.AsiaPacific);
+router.post('/getHeader', async (req, res) => {
     const { access_token, entitlements_token, user_id, username, region } = req.body;
+    const valorantApi = new Valorant.API(region);
     
     if (!access_token || !entitlements_token || !user_id || !username || !region) {
         return res.status(400).send('Please enter all the required fields');
@@ -48,10 +48,35 @@ router.get('/getHeader', async (req, res) => {
     valorantApi.entitlements_token = entitlements_token;
     valorantApi.user_id = user_id;
     valorantApi.username = username;
-    valorantApi.region = region;
 
     const header = valorantApi.generateRequestHeaders()
-    res.send(header);
+    header = JSON.stringify(header)
+    res.header(header).send("check header");
+});
+
+// get store front of user 
+router.get('/storefront', async (req, res) => {
+    const { access_token, entitlements_token, user_id, username, region } = req.body;
+    const valorantApi = new Valorant.API(region);
+
+    if (!access_token || !entitlements_token || !user_id || !username || !region) {
+        return res.status(400).send('Please enter all the required fields');
+    }
+
+    valorantApi.access_token = access_token;
+    valorantApi.entitlements_token = entitlements_token;
+    valorantApi.user_id = user_id;
+    valorantApi.username = username;
+
+    valorantApi.getPlayerStoreFront(user_id).then((data) => {
+        res.send(data);
+    }).catch((error) => {
+        var data = {
+            "message": "Error Occured. Please try again."
+        }
+        console.log(error)
+        res.status(403).send(data);
+    });
 });
 
 module.exports = router;
