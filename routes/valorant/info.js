@@ -29,7 +29,7 @@ router.post('/auth', async (req, res) => {
         res.send(data);
     }).catch((error) => {
         var data = {
-            "message": error
+            "message": "Error Occured. Please try again."
         }
         console.log(error)
         res.status(403).send(data);
