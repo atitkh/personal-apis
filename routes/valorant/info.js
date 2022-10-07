@@ -39,7 +39,7 @@ router.post('/auth', async (req, res) => {
 router.post('/getHeader', async (req, res) => {
     const { access_token, entitlements_token, user_id, username, region } = req.body;
     const valorantApi = new Valorant.API(region);
-    
+
     if (!access_token || !entitlements_token || !user_id || !username || !region) {
         return res.status(400).send('Please enter all the required fields');
     }
@@ -67,6 +67,32 @@ router.post('/storefront', async (req, res) => {
     valorantApi.user_id = user_id;
 
     await fetch(valorantApi.getPlayerDataServiceUrl(region) + `/store/v2/storefront/${user_id}`, {
+        method: 'GET',
+        headers: valorantApi.generateRequestHeaders()
+    }).then(response => response.json())
+        .then(data => {
+            res.send(data);
+        }).catch((error) => {
+            console.log(error)
+            res.status(403).send(error);
+        });
+
+});
+
+//get wallet info 
+router.post('/wallet', async (req, res) => {
+    const { access_token, entitlements_token, user_id, username, region } = req.body;
+    const valorantApi = new Valorant.API(region);
+
+    if (!access_token || !entitlements_token || !user_id || !username || !region) {
+        return res.status(400).send('Please enter all the required fields');
+    }
+
+    valorantApi.access_token = access_token;
+    valorantApi.entitlements_token = entitlements_token;
+    valorantApi.user_id = user_id;
+
+    await fetch(valorantApi.getPlayerDataServiceUrl(region) + `/store/v1/wallet/${user_id}`, {
         method: 'GET',
         headers: valorantApi.generateRequestHeaders()
     }).then(response => response.json())
