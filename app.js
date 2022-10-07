@@ -49,7 +49,10 @@ app.get('/', (req, res) => {
             </ul>
         <li>/valorant</li>
             <ul>
-                <li>/valorant/getCookie</li>
+                <li>/valorant/auth</li>
+                <li>/valorant/getHeader</li>
+                <li>/valorant/storefront</li>
+                <li>/valorant/wallet</li>
             </ul>
         </ul>`);
 });
