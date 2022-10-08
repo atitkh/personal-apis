@@ -247,11 +247,21 @@ async function refineBase64(myResolve, array) {
 
 function ipfsChecker(url) {
     if (url.includes('ipfs://')) {
-        let newUrl = url.replace(/^ipfs:\/\//g, 'https://ipfs.io/ipfs/');
+        // let newUrl = url.replace(/^ipfs:\/\//g, 'https://gateway.ipfs.io/ipfs/');
+        let noIpfs = url.replace(/^ipfs:\/\//g, '');
+        let { cid, path } = ipfsPath(noIpfs);
+        let newUrl = `https://ipfs-gateway.cloud/ipfs/${cid}/${path}`;
         return newUrl;
     } else {
         return url;
     }
+}
+
+function ipfsPath(path) {
+    let parts = path.split('/');
+    let cid = parts.shift();
+    let ipfsPath = parts.join('/');
+    return { cid, path: ipfsPath };
 }
 
 async function sharpImg(url) {
