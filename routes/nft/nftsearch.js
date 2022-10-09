@@ -238,8 +238,8 @@ async function refineBase64(myResolve, array) {
             var base64 = await sharpImg(file_url);
             // refined.push(JSON.stringify({ "name" : name, "base64" : base64 }));
             nft["base64"] = base64;
+            count++;
         }
-        count++;
     }
     console.log('done refining');
     myResolve(array);
@@ -261,6 +261,9 @@ function ipfsPath(path) {
     let parts = path.split('/');
     let cid = parts.shift();
     let ipfsPath = parts.join('/');
+    if (cid.startsWith('ipfs')) {
+        cid = cid.substring(5);
+    }
     return { cid, path: ipfsPath };
 }
 
