@@ -85,6 +85,10 @@ router.get('/polygon', async (req, res) => {
         try {
             address = req.query.address;
 
+            if (address.includes('.eth')) {
+                address = await resolveENS(address);
+            }
+
             //polygon chain 
             let url = `https://api.nftport.xyz/v0/accounts/${address}?chain=polygon`;
             let options = {
@@ -127,6 +131,10 @@ router.get('/ethereum', async (req, res) => {
         try {
             address = req.query.address;
 
+            if (address.includes('.eth')) {
+                address = await resolveENS(address);
+            }
+
             //ethereum chain 
             let url = `https://api.nftport.xyz/v0/accounts/${address}?chain=ethereum&include=metadata`;
             let options = {
@@ -167,6 +175,10 @@ router.get('/base64', async (req, res) => {
     if (req.query.address) {
         try {
             address = req.query.address;
+
+            if (address.includes('.eth')) {
+                address = await resolveENS(address);
+            }
 
             //polygon chain 
             let url = `https://api.nftport.xyz/v0/accounts/${address}?chain=polygon`;
