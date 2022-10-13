@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const sharp = require('sharp');
 const axios = require('axios');
 const verify = require('../auth/verifyToken');
+const ethers = require('ethers');
 
 router.get('/', (req, res) => {
     res.send('Welcome to NFT Search API');
@@ -13,7 +14,11 @@ router.get('/all', async (req, res) => {
     var assets = [];
     if (req.query.address) {
         try {
-            address = req.query.address;
+            var address = req.query.address;
+
+            if (address.includes('.eth')) {
+                address = await resolveENS(address);
+            }
 
             //polygon chain 
             let url = `https://api.nftport.xyz/v0/accounts/${address}?chain=polygon`;
@@ -61,7 +66,7 @@ router.get('/all', async (req, res) => {
             }
 
             total_nfts = assets.length;
-            assets.push({ "total_nfts" : total_nfts });
+            assets.push({ "total_nfts": total_nfts });
 
             res.send(assets);
         } catch (error) {
@@ -103,7 +108,7 @@ router.get('/polygon', async (req, res) => {
             }
 
             total_nfts = assets.length;
-            assets.push({ "total_nfts" : total_nfts });
+            assets.push({ "total_nfts": total_nfts });
 
             res.send(assets);
         } catch (error) {
@@ -145,7 +150,7 @@ router.get('/ethereum', async (req, res) => {
             }
 
             total_nfts = assets.length;
-            assets.push({ "total_nfts" : total_nfts });
+            assets.push({ "total_nfts": total_nfts });
 
             res.send(assets);
         } catch (error) {
@@ -209,11 +214,11 @@ router.get('/base64', async (req, res) => {
             }
 
             total_nfts = assets.length;
-            assets.push({ "total_nfts" : total_nfts });
+            assets.push({ "total_nfts": total_nfts });
 
 
             console.log('asset ready')
-            var refined = await new Promise(function(myResolve, myReject) {
+            var refined = await new Promise(function (myResolve, myReject) {
                 refineBase64(myResolve, assets);
             });
 
@@ -230,7 +235,7 @@ router.get('/base64', async (req, res) => {
 
 async function refineBase64(myResolve, array) {
     var count = 0;
-    for(const nft of array) {
+    for (const nft of array) {
         var name = nft.name;
         var file_url = nft.file_url;
 
@@ -280,9 +285,9 @@ async function sharpImg(url) {
             })
             .toFormat('jpeg')
             .jpeg({
-            quality: 100,
-            chromaSubsampling: '4:4:4',
-            force: true,
+                quality: 100,
+                chromaSubsampling: '4:4:4',
+                force: true,
             })
             .toBuffer()
             .then(resizedImageBuffer => {
@@ -290,7 +295,6 @@ async function sharpImg(url) {
                 return resizedImageData;
             })
             .catch(error => {
-                // error handeling
                 return error;
             })
         return data;
@@ -298,7 +302,13 @@ async function sharpImg(url) {
     catch (error) {
         console.log(error);
         return 'error';
-    }    
+    }
+}
+
+async function resolveENS(address) {
+    var provider = new ethers.providers.JsonRpcProvider(process.env.JSONRPCPROVIDER_ETH);
+    let resolvedName = await provider.resolveName(address);
+    return resolvedName;
 }
 
 module.exports = router;
