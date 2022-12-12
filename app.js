@@ -12,6 +12,7 @@ const nftlisterRoute = require('./routes/nft/nftsearch');
 const phonecallRoute = require('./routes/phonecall/phonecallIFTTT');
 const ipoResult = require('./routes/iporesult/iporesult');
 const valorantRoute = require('./routes/valorant/info');
+const karunRoute = require('./routes/karun')
 
 //Middleware
 app.use(cors());
@@ -23,6 +24,7 @@ app.use('/nft', nftlisterRoute);
 app.use('/phonecall', phonecallRoute);
 app.use('/ipo', ipoResult);
 app.use('/valorant', valorantRoute);
+app.use('/karun', karunRoute);
 
 //main route
 app.get('/', (req, res) => {
