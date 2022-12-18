@@ -267,7 +267,8 @@ function ipfsChecker(url) {
         // let newUrl = url.replace(/^ipfs:\/\//g, 'https://gateway.ipfs.io/ipfs/');
         let noIpfs = url.replace(/^ipfs:\/\//g, '');
         let { cid, path } = ipfsPath(noIpfs);
-        let newUrl = `https://ipfs-gateway.cloud/ipfs/${cid}/${path}`;
+        // let newUrl = `https://ipfs-gateway.cloud/ipfs/${cid}/${path}`;
+        let newUrl = `https://ipfs.io/ipfs/${cid}/${path}`;
         return newUrl;
     } else {
         return url;
