@@ -287,7 +287,7 @@ function ipfsPath(path) {
 
 async function sharpImg(url) {
     try {
-        let res = await axios({ url, responseType: "arraybuffer", keepAlive: true, timeout: 4000 });
+        let res = await axios({ url, responseType: "arraybuffer", keepAlive: true, timeout: 7000 });
         var buffer = Buffer.from(res.data, 'binary');
 
         var data = await sharp(buffer)
