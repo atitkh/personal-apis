@@ -58,6 +58,12 @@ app.get('/', (req, res) => {
                 <li>/valorant/storefront</li>
                 <li>/valorant/wallet</li>
             </ul>
+        <li>/karun</li>
+        <li>/portfolio</li>
+            <ul>
+                <li>/portfolio/atit</li>
+                <li>/portfolio/ashlesha</li>
+            </ul>
         </ul>`);
 });
 
