@@ -6,8 +6,8 @@ router.get('/', (req, res) => {
 });
 
 // get json data from atit.json file to variable
-router.get('/atit', verify, (req, res) => {
-    const atitPortfolio = require('../../data/atit.json');
+router.get('/atit', (req, res) => {
+    const atitPortfolio = require('./atit.json');
     res.json(atitPortfolio);
 });
 
