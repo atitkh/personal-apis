@@ -11,7 +11,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://atit.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Lenses"
@@ -21,7 +21,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://atitkharel.com.np/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Apps"
@@ -31,7 +31,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Apps"
@@ -41,7 +41,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Apps"
@@ -51,7 +51,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Apps"
@@ -61,7 +61,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Apps"
@@ -71,7 +71,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Lenses"
@@ -81,7 +81,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Lenses"
@@ -91,7 +91,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Lenses"
@@ -101,7 +101,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Lenses"
@@ -111,7 +111,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Lenses"
@@ -121,7 +121,7 @@
         "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
         "title": "Test Title",
         "description": "Test Description",
-        "projectLink": "https://github.com/atitkh",
+        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": "Lenses"
