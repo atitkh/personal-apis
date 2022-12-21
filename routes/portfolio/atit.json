@@ -1,19 +1,116 @@
-[{
-    "id": 1,
-    "image": "https://lh3.googleusercontent.com/u/0/drive-viewer/AFDK6gP-UOBMePfP4UA-k-GIZBEDUBbXguEXJDYVr0GOAFqCTEAXZ1pMG3zzO6v35AAS91mRCbMF6HOV7EZVL4vRLuDthunT=w1920-h932",
-    "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-    "title": "Test Title",
-    "description": "Test Description",
-    "gitLink": "https://github.com/atitkh",
-    "categories": ["React", "Javascript", "HTML", "CSS"],
-    "date": "2021-07-19"
-}, {
-    "id": 2,
-    "image": "https://lh3.googleusercontent.com/u/0/drive-viewer/AFDK6gOm3aY8Ppj2h56GAloWjJOvsGcJBmhhAgQWFCSoziGxsillGzpuhuKXAIWCKDOL7KPh_gzUccqUQbfXQjtr992LXRrLxg=w1920-h932",
-    "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-    "title": "Test Title",
-    "description": "Test Description",
-    "gitLink": "https://github.com/atitkh",
-    "categories": ["React", "Javascript", "HTML", "CSS"],
-    "date": "2021-07-19"
-}]
+{
+    "social_links" : {
+        "github" : "https://github.com/atitkh",
+        "linkedin" : "https://www.linkedin.com/in/atitkharel/"
+    },
+    "main_categories" : ["Lenses", "Design", "Apps"],
+    "portfolio": [{
+        "id": 1,
+        "image": "https://i.imgur.com/zb2VQat.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 2,
+        "image": "https://i.imgur.com/7MokckT.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 1,
+        "image": "https://i.imgur.com/zb2VQat.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 2,
+        "image": "https://i.imgur.com/7MokckT.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 1,
+        "image": "https://i.imgur.com/zb2VQat.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 2,
+        "image": "https://i.imgur.com/7MokckT.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 1,
+        "image": "https://i.imgur.com/zb2VQat.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 2,
+        "image": "https://i.imgur.com/7MokckT.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 1,
+        "image": "https://i.imgur.com/zb2VQat.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 2,
+        "image": "https://i.imgur.com/7MokckT.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 1,
+        "image": "https://i.imgur.com/zb2VQat.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }, {
+        "id": 2,
+        "image": "https://i.imgur.com/7MokckT.png",
+        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
+        "title": "Test Title",
+        "description": "Test Description",
+        "gitLink": "https://github.com/atitkh",
+        "categories": ["React", "Javascript", "HTML", "CSS"],
+        "date": "2021-07-19"
+    }]
+}
