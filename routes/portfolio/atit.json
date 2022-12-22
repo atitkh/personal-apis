@@ -43,7 +43,7 @@
             "image": "https://i.imgur.com/DxdWSoT.jpg",
             "video": "https://www.youtube.com/",
             "title": "VSnake Bot",
-            "description": "A discord bot to custom tasks like kick, react role assign, external API data, etc.",
+            "description": "A discord bot for custom tasks like kick, react role assign, external API data, etc. to manage discord servers.",
             "projectLink": ["https://vsbot.atitkharel.com.np", "https://github.com/atitkh/VS-Discord-Bot"],
             "categories": ["discord.js", "Node.js"],
             "date": "2021",
@@ -73,6 +73,17 @@
         },
         {
             "id": 7,
+            "image": "https://media2.giphy.com/media/2NOe6cOkCbote0JVqN/giphy.gif?cid=790b76113bd251a580beb71e418a19614c4f0791a56de416&rid=giphy.gif&ct=g",
+            "video": "https://www.youtube.com/",
+            "title": "Learn Languages",
+            "description": "An augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
+            "projectLink": ["https://lens.snapchat.com/3d32ee16732642519634841a3d373657"],
+            "categories": ["JavScript", "Lens Studio"],
+            "date": "2020",
+            "mainCategory": ["AR/VR", "ML"]
+        },
+        {
+            "id": 8,
             "image": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
             "video": "https://www.youtube.com/",
             "title": "Bull Hand",
@@ -83,7 +94,7 @@
             "mainCategory": ["AR/VR"]
         },
         {
-            "id": 8,
+            "id": 9,
             "image": "https://media0.giphy.com/media/ubp4XZ67kfLuz48Dwg/giphy.gif",
             "video": "https://www.youtube.com/",
             "title": "Fly The Copter",
@@ -94,7 +105,7 @@
             "mainCategory": ["AR/VR", "Game"]
         },
         {
-            "id": 9,
+            "id": 10,
             "image": "https://i.imgur.com/ky78KvV.png",
             "video": "https://www.youtube.com/",
             "title": "Personal API",
@@ -105,7 +116,7 @@
             "mainCategory": ["Website"]
         },
         {
-            "id": 10,
+            "id": 11,
             "image": "https://i.imgur.com/VRNk9vz.png",
             "video": "https://www.youtube.com/",
             "title": "Distracted Driver Detection",
