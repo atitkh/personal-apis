@@ -15,55 +15,5 @@
         "categories": ["React", "Javascript", "HTML", "CSS"],
         "date": "2021-07-19",
         "mainCategory": ["Lenses"]
-    }, {
-        "id": 2,
-        "image": "https://i.imgur.com/7MokckT.png",
-        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-        "title": "Test Title",
-        "description": "Test Description",
-        "projectLink": [ "https://atitkharel.com.np/atitkh", "https://github.com/atitkh" ],
-        "categories": ["React", "Javascript", "HTML", "CSS"],
-        "date": "2021-07-19",
-        "mainCategory": ["Apps"]
-    }, {
-        "id": 1,
-        "image": "https://i.imgur.com/zb2VQat.png",
-        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-        "title": "Test Title",
-        "description": "Test Description",
-        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
-        "categories": ["React", "Javascript", "HTML", "CSS"],
-        "date": "2021-07-19",
-        "mainCategory": ["Apps"]
-    }, {
-        "id": 2,
-        "image": "https://i.imgur.com/7MokckT.png",
-        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-        "title": "Test Title",
-        "description": "Test Description",
-        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
-        "categories": ["React", "Javascript", "HTML", "CSS"],
-        "date": "2021-07-19",
-        "mainCategory": ["Apps"]
-    }, {
-        "id": 1,
-        "image": "https://i.imgur.com/zb2VQat.png",
-        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-        "title": "Test Title",
-        "description": "Test Description",
-        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
-        "categories": ["React", "Javascript", "HTML", "CSS"],
-        "date": "2021-07-19",
-        "mainCategory": ["Apps"]
-    }, {
-        "id": 2,
-        "image": "https://i.imgur.com/7MokckT.png",
-        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-        "title": "Test Title",
-        "description": "Test Description",
-        "projectLink": [ "https://github.com/atitkh", "https://github.com/atitkh" ],
-        "categories": ["React", "Javascript", "HTML", "CSS"],
-        "date": "2021-07-19",
-        "mainCategory": ["Apps"]
     }]
 }
