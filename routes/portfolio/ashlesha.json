@@ -1,19 +1,192 @@
 {
-    "title" : "Ashlesha Malla",
-    "social_links" : {
-        "github" : "https://github.com/ashleshamalla",
-        "linkedin" : "https://www.linkedin.com/in/ashleshamalla/"
+    "title": "Ashlesha Malla",
+    "social_links": {
+      "github": "https://github.com/ashleshamalla",
+      "linkedin": "https://www.linkedin.com/in/ashleshamalla/"
     },
-    "main_categories" : ["All", "Lenses", "Design", "Apps"],
-    "portfolio": [{
+    "main_categories": [
+      "All",
+      "AR",
+      "Game"
+    ],
+    "portfolio": [
+      {
         "id": 1,
-        "image": "https://i.imgur.com/zb2VQat.png",
-        "video": "https://www.youtube.com/watch?v=1Q8fG0TtVAY",
-        "title": "Test Title",
-        "description": "Test DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest DescriptionTest Description",
-        "projectLink": [ "https://github.com/atitkh", "https://atit.com/atitkh" ],
-        "categories": ["React", "Javascript", "HTML", "CSS"],
-        "date": "2021-07-19",
-        "mainCategory": ["Lenses"]
-    }]
-}
+        "image": "https://media1.giphy.com/media/B5cTq3XFZPFlTxMXP0/giphy.gif?cid=790b7611d62d394100fb30c661fee585172e0798e06958b5&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Cute Rollerskates",
+        "description": "An AR try-on experience using foot tracking and ML where the user can try rollerskates on their own feet. ",
+        "projectLink": [
+          "https://lens.snapchat.com/4546f1443ad04cb0b22503fee9d64250"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Blender"
+        ],
+        "date": 2020,
+        "mainCategory": [
+          "AR"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media3.giphy.com/media/LXmK8km3k3yMdNGHwM/giphy.gif?cid=790b76117c44f127675784de529d34fc4fcce0197a01e576&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Space Face",
+        "description": "A fun AR experience that transforms the users face into a portal showcasing animated planets from the solar system.",
+        "projectLink": [
+          "https://lens.snapchat.com/85b27309e02b4d3985beaf17c86888a6"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Blender"
+        ],
+        "date": 2020,
+        "mainCategory": [
+          "AR"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media0.giphy.com/media/uTYRzDqUzMPxT6A3y5/giphy.gif?cid=790b761102c358c0366784f37966c2133f02caddd6889498&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Decades of Fashion",
+        "description": "An immersive AR try-on experience that lets users try on different fashion styles for each decade from the 20s to 90s. Hand tracking detects clap gesture to switch between styles.",
+        "projectLink": [
+          "https://lens.snapchat.com/58e9c62a230749ad8ed632420236c90e"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Adobe PS"
+        ],
+        "date": 2020,
+        "mainCategory": [
+          "AR",
+          "Game"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media2.giphy.com/media/NeyIrMNgrXkpggtvl6/giphy.gif?cid=790b76114f92ebe3eb35c6f32d6dd9e60d70b02bcac06eaa&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Canada Day",
+        "description": "An AR experience that celebrates Canada Day using cloth simulation for the scarf and changes the user's face to avatar style.",
+        "projectLink": [
+          "https://lens.snapchat.com/ebdc7d30d60b4baa99377aed4d0dbfac"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Blender",
+          "Adobe Substance Painter"
+        ],
+        "date": 2022,
+        "mainCategory": [
+          "AR"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media3.giphy.com/media/77kI3p1pvVhhAoTEZ7/giphy.gif?cid=790b7611e54c09c979064a7adf364b492132ef5e8f7f11f2&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Bastille Day",
+        "description": "An AR experience that celebrates Bastille Day using physics simulation for the flag and balloons over the user's head.",
+        "projectLink": [
+          "https://lens.snapchat.com/89a697ee78624031a1037dbc88872568"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Blender",
+          "Adobe Substance Painter"
+        ],
+        "date": 2022,
+        "mainCategory": [
+          "AR"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media2.giphy.com/media/NAW0nGGy2JmvhgDHIu/giphy.gif?cid=790b76115d487d8fea2d339da8dab2997b07e6c2ae2fe844&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Save Our Planet",
+        "description": "An interactive AR game experience where the users has to complete different tasks to help keep the planet clean and conserve energy. ",
+        "projectLink": [
+          "https://lens.snapchat.com/0a6e2eaeb2c747c99a96005b2c0ac8e4"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Blender",
+          "Adobe Substance Painter"
+        ],
+        "date": 2020,
+        "mainCategory": [
+          "AR",
+          "Game"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media0.giphy.com/media/R1MKVBmCLCA2hYz7JA/giphy.gif?cid=790b761103a0cac4a96f4a6ff2614bc0ae6c1f915817c967&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Happy Pride Month",
+        "description": "An interactive AR experience that uses garment segmentation to show animated designs on the user's shirt for each pride flag created for the pride month.",
+        "projectLink": [
+          "https://lens.snapchat.com/1271b819f6f44c05b896584e363cf173"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Adobe PS"
+        ],
+        "date": 2022,
+        "mainCategory": [
+          "AR"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media4.giphy.com/media/AmMv4IEH2sCm8dsF3T/giphy.gif?cid=790b7611f61d341737f17de67ef355b66281a3820d5b5a93&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Kindness Game",
+        "description": "A bingo-like game lens where the users can track their kindness acts by completing the given tasks.",
+        "projectLink": [
+          "https://lens.snapchat.com/80a4281cf072488b8133ccbf10bc251c"
+        ],
+        "categories": [
+          "Lens Studio",
+          "Javascript",
+          "Adobe PS"
+        ],
+        "date": 2021,
+        "mainCategory": [
+          "Game"
+        ]
+      },
+      {
+        "id": 1,
+        "image": "https://media0.giphy.com/media/lKsmQ8QflspEENbItL/giphy.gif?cid=790b7611b39bedb174378eeedc48baea4cafc23127f658b1&rid=giphy.gif&ct=g",
+        "video": "https://www.youtube.com/",
+        "title": "Apple Picking",
+        "description": "An interactive AR game lens where a forest-like environment is spawned and the users need to search for apples and collect it.",
+        "projectLink": [
+          "https://www.instagram.com/ar/439433394306143/"
+        ],
+        "categories": [
+          "Meta Creator Studio",
+          "Javascript",
+          "Blender",
+          "Adobe Substance Painter"
+        ],
+        "date": 2022,
+        "mainCategory": [
+          "Game",
+          "AR"
+        ]
+      }
+    ]
+  }
