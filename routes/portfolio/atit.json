@@ -309,6 +309,25 @@
     },
     {
       "id": 3,
+      "image": "https://i.imgur.com/6eyuXF4.png",
+      "video": "https://www.youtube.com/",
+      "title": "Covid19 Updates - Nepal",
+      "description": "A Twitter bot that tweets Nepal's COVID-19 cases updates on Twitter every day using data from the Nepal's Ministry of Health and Population.",
+      "projectLink": [
+        "https://twitter.com/covid19_nepal",
+        "https://github.com/atitkh/covid19-twitter-bot/"
+      ],
+      "categories": [
+        "Python",
+        "Tweepy"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Bot"
+      ]
+    },
+    {
+      "id": 3,
       "image": "https://i.imgur.com/FqdXMvQ.png",
       "video": "https://www.youtube.com/",
       "title": "Pidit DJ",
