@@ -1,542 +1,584 @@
 {
-    "title": "Atit Kharel",
-    "social_links": {
-      "github": "https://github.com/atitkh",
-      "linkedin": "https://www.linkedin.com/in/atitkharel/",
-      "website": "https://atitkharel.com.np/"
+  "title": "Atit Kharel",
+  "social_links": {
+    "github": "https://github.com/atitkh",
+    "linkedin": "https://www.linkedin.com/in/atitkharel/",
+    "website": "https://atitkharel.com.np/"
+  },
+  "main_categories": [
+    "All",
+    "AR/VR",
+    "ML",
+    "Game",
+    "Website",
+    "Bot",
+    "Design"
+  ],
+  "portfolio": [{
+      "id": 1,
+      "image": "https://i.imgur.com/tt8k8Il.png",
+      "video": "https://www.youtube.com/",
+      "title": "NFT Viewer - VR",
+      "description": "An NFT Viewing website in VR which gives owned NFTs of connected wallet or provided address on Ethereum and Polygon Chain.",
+      "projectLink": [
+        "https://nftviewervr.atitkharel.com.np/",
+        "https://github.com/atitkh/WebXR---NFT-Viewer"
+      ],
+      "categories": [
+        "HTML",
+        "CSS",
+        "JavScript",
+        "A-Frame",
+        "Web3.js"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "AR/VR"
+      ]
     },
-    "main_categories": [
-      "All",
-      "AR/VR",
-      "ML",
-      "Game",
-      "Website",
-      "Bot",
-      "Design"
-    ],
-    "portfolio": [
-      {
-        "id": 1,
-        "image": "https://i.imgur.com/tt8k8Il.png",
-        "video": "https://www.youtube.com/",
-        "title": "NFT Viewer - VR",
-        "description": "An NFT Viewing website in VR which gives owned NFTs of connected wallet or provided address on Ethereum and Polygon Chain.",
-        "projectLink": [
-          "https://nftviewervr.atitkharel.com.np/",
-          "https://github.com/atitkh/WebXR---NFT-Viewer"
-        ],
-        "categories": [
-          "HTML",
-          "CSS",
-          "JavScript",
-          "A-Frame",
-          "Web3.js"
-        ],
-        "date": "2022",
-        "mainCategory": [
-          "AR/VR"
-        ]
-      },
-      {
-        "id": 2,
-        "image": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "AR Business Card",
-        "description": "WebXR project that uses image tracking in a web browser to track and animate business cards in AR.",
-        "projectLink": [
-          "https://bcard.kerkarcreations.com/atit/",
-          "https://github.com/atitkh/WebAR-Business-Card/tree/master/atit"
-        ],
-        "categories": [
-          "HTML",
-          "CSS",
-          "JavaScript",
-          "A-Frame"
-        ],
-        "date": "2022",
-        "mainCategory": [
-          "AR/VR"
-        ]
-      },
-      {
-        "id": 5,
-        "image": "https://media1.giphy.com/media/OJPPkGKXbH3Q0YXmvs/giphy.gif?cid=790b76112d2874212823f347fc4fb250a85b34c29e923e0b&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "Pokédex Kanto",
-        "description": "AR Experience to recognize and give info about all Pokemons in Kanto Region using Machine Learning.",
-        "projectLink": [
-          "https://lens.snapchat.com/3cff8cef4cc94839863f7f7dd90bdae6"
-        ],
-        "categories": [
-          "JavScript",
-          "Python",
-          "Lens Studio"
-        ],
-        "date": "2021",
-        "mainCategory": [
-          "AR/VR",
-          "ML"
-        ]
-      },
-      {
-        "id": 6,
-        "image": "https://media3.giphy.com/media/PTb1liSXPYPya2DTkS/giphy.gif?cid=790b7611fc4da349ca9310a888247ab9c8de472335e873c0&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "Sign Language",
-        "description": "AR Experience that uses hand tracking for recognition of American Sign Language hand gestures for english alphabets.",
-        "projectLink": [
-          "https://lens.snapchat.com/17e9115780384a2288fe14f54d7e1b54"
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2021",
-        "mainCategory": [
-          "AR/VR"
-        ]
-      },
-      {
-        "id": 7,
-        "image": "https://media2.giphy.com/media/2NOe6cOkCbote0JVqN/giphy.gif?cid=790b76113bd251a580beb71e418a19614c4f0791a56de416&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "Learn Languages",
-        "description": "An augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
-        "projectLink": [
-          "https://lens.snapchat.com/3d32ee16732642519634841a3d373657"
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "AR/VR",
-          "ML"
-        ]
-      },
-      {
-        "id": 7,
-        "image": "https://media3.giphy.com/media/tlD3bvU32GXF91C3vP/giphy.gif?cid=790b7611747de3b612bb568d0a65e7d96787af76aef01103&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "KEC Daily Routine",
-        "description": "AR Poster created for KEC Daily Routine App. It uses image tracking to track and animate app's poster.",
-        "projectLink": [
-          "https://lens.snapchat.com/d178df411b68449aae4a07bc7d35bc96"
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2019",
-        "mainCategory": [
-          "AR/VR"
-        ]
-      },
-      {
-        "id": 8,
-        "image": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "Bull Hand",
-        "description": "AR Experience to track hand gesture and place a hand shaped bull developed for San Fermin.",
-        "projectLink": [
-          "https://lens.snapchat.com/559b571b3d9147fdba3349156e9b9156"
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2022",
-        "mainCategory": [
-          "AR/VR"
-        ]
-      },
-      {
-        "id": 9,
-        "image": "https://media2.giphy.com/media/q3Fh8T6D2RLfBklMky/giphy.webp",
-        "video": "https://www.youtube.com/",
-        "title": "Car Refuel",
-        "description": "Snapchat AR game lens compatible with Snap's AR Glasses to control and refuel a car by collecting fuel cans.",
-        "projectLink": [
-          "https://lens.snapchat.com/7613f5d7acca430fa08860f5264eaab8"
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2022",
-        "mainCategory": [
-          "AR/VR",
-          "Game"
-        ]
-      },
-      {
-        "id": 9,
-        "image": "https://media0.giphy.com/media/GLfNQzzlmkdKfY4TLq/giphy.gif?cid=790b761190975cbf2568ed22051693d572f60d12b5692d13&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "Bakrid Mubarak",
-        "description": "Snapchat AR game created for Eid (Bakrid) to feed the sheep by tracking user's hand.",
-        "projectLink": [
-          "https://lens.snapchat.com/781b73c1edf34873859f4f12fddfebaa"
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2022",
-        "mainCategory": [
-          "AR/VR",
-          "Game"
-        ]
-      },
-      {
-        "id": 9,
-        "image": "https://i.giphy.com/media/4TEgyBJF8lVltQuORq/giphy.gif",
-        "video": "https://www.youtube.com/",
-        "title": "Dino Run",
-        "description": "Replica game of Google Chrome's T-Rex Run playable in No Internet Connection page of the browser, published as AR Filter in Instagram and Snapchat.",
-        "projectLink": [
-  
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "AR/VR",
-          "Game"
-        ]
-      },
-      {
-        "id": 10,
-        "image": "https://media0.giphy.com/media/ubp4XZ67kfLuz48Dwg/giphy.gif",
-        "video": "https://www.youtube.com/",
-        "title": "Fly The Copter",
-        "description": "Snapchat game lens to fly a copter by tapping on the screen. Users can create high score and share it with friends.",
-        "projectLink": [
-          "https://lens.snapchat.com/dc904775ab8942808e42c52f244aa581"
-        ],
-        "categories": [
-          "JavScript",
-          "Lens Studio"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "AR/VR",
-          "Game"
-        ]
-      },
-      {
-        "id": 24,
-        "image": "https://media0.giphy.com/media/FQzZ3KxizYyA9l81pw/giphy.gif?cid=790b76113a8fbe17e13c4748b5a6ae54bd5781f1e3b46265&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "Coin Collect Game",
-        "description": "Snapchat game lens to collect gold coins falling by tracking user's head. Users can create high score and share it with friends.",
-        "projectLink": [
-          "https://lens.snapchat.com/647086801f4e4bc4abd68e03a2377aae"
-        ],
-        "categories": [
-          "JavaScript",
-          "Lens Studio"
-        ],
-        "date": 2021,
-        "mainCategory": [
-          "AR/VR",
-          "Game"
-        ]
-      },
-      {
-        "id": 24,
-        "image": "https://media4.giphy.com/media/vWBqzsln4FdZYAg8Ny/giphy.gif?cid=790b76115790bd86908d8747ec5065ed93afeb452ef77dc3&rid=giphy.gif&ct=g",
-        "video": "https://www.youtube.com/",
-        "title": "Easter Egg Catch",
-        "description": "Snapchat game lens to collect Easter Eggs by tracking user's head. Users can create high score and share it with friends.",
-        "projectLink": [
-          "https://lens.snapchat.com/e30bbf2f572e4737b9a762f62c5f1d9b"
-        ],
-        "categories": [
-          "JavaScript",
-          "Lens Studio"
-        ],
-        "date": 2020,
-        "mainCategory": [
-          "AR/VR",
-          "Game"
-        ]
-      },
-      {
-        "id": 3,
-        "image": "https://i.imgur.com/FqdXMvQ.png",
-        "video": "https://www.youtube.com/",
-        "title": "Pidit DJ",
-        "description": "A discord bot that plays music from multiple sources in Discord channels for users who want to enhance their Discord experience.",
-        "projectLink": [
-          "https://piditdj.atitkharel.com.np",
-          "https://github.com/atitkh/PiditDJ"
-        ],
-        "categories": [
-          "discord.js",
-          "Node.js"
-        ],
-        "date": "2021",
-        "mainCategory": [
-          "Bot"
-        ]
-      },
-      {
-        "id": 4,
-        "image": "https://i.imgur.com/DxdWSoT.jpg",
-        "video": "https://www.youtube.com/",
-        "title": "VSnake Bot",
-        "description": "A discord bot for custom tasks like kick, react role assign, external API data, etc. to manage discord servers.",
-        "projectLink": [
-          "https://vsbot.atitkharel.com.np",
-          "https://github.com/atitkh/VS-Discord-Bot"
-        ],
-        "categories": [
-          "discord.js",
-          "Node.js"
-        ],
-        "date": "2021",
-        "mainCategory": [
-          "Bot"
-        ]
-      },
-      {
-        "id": 11,
-        "image": "https://i.imgur.com/x53E3Rx.png",
-        "video": "https://www.youtube.com/",
-        "title": "TIA Airport",
-        "description": "Illustration uasble as geofilter in Snapchat for TIA Airport in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/x53E3Rx.png"
-        ],
-        "categories": [
-          "Adobe Illustrator"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 12,
-        "image": "https://i.imgur.com/v0Ydfsm.png",
-        "video": "https://www.youtube.com/",
-        "title": "TIA Airport",
-        "description": "Illustration uasble as geofilter in Snapchat for TIA Airport in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/v0Ydfsm.png"
-        ],
-        "categories": [
-          "Adobe Illustrator"
-        ],
-        "date": "2017",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 13,
-        "image": "https://i.imgur.com/kty3Zhd.gif",
-        "video": "https://www.youtube.com/",
-        "title": "Boudhanath Stupa",
-        "description": "Illustration uasble as geofilter in Snapchat for Boudhanath Stupa in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/kty3Zhd.gif"
-        ],
-        "categories": [
-          "Adobe Illustrator",
-          "Adobe Photoshop"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 14,
-        "image": "https://i.imgur.com/ogoJRTo.png",
-        "video": "https://www.youtube.com/",
-        "title": "Chabahil",
-        "description": "Illustration uasble as geofilter in Snapchat for Chabahil in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/ogoJRTo.png"
-        ],
-        "categories": [
-          "Adobe Illustrator",
-          "Adobe Photoshop"
-        ],
-        "date": "2019",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 15,
-        "image": "https://i.imgur.com/Pjd8NmO.png",
-        "video": "https://www.youtube.com/",
-        "title": "Chabahil",
-        "description": "Illustration uasble as geofilter in Snapchat for Chabahil in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/Pjd8NmO.png"
-        ],
-        "categories": [
-          "Adobe Illustrator",
-          "Adobe Photoshop"
-        ],
-        "date": "2019",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 16,
-        "image": "https://i.imgur.com/vTaaYgH.png",
-        "video": "https://www.youtube.com/",
-        "title": "Dhumbarahi",
-        "description": "Illustration uasble as geofilter in Snapchat for Dhumbarahi in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/vTaaYgH.png"
-        ],
-        "categories": [
-          "Adobe Illustrator",
-          "Adobe Photoshop"
-        ],
-        "date": "2019",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 17,
-        "image": "https://i.imgur.com/3slMU77.png",
-        "video": "https://www.youtube.com/",
-        "title": "Durbarmargh",
-        "description": "Illustration uasble as geofilter in Snapchat for Durbarmargh in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/3slMU77.png"
-        ],
-        "categories": [
-          "Adobe Illustrator",
-          "Adobe Photoshop"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 18,
-        "image": "https://i.imgur.com/duaruGH.png",
-        "video": "https://www.youtube.com/",
-        "title": "Kathmandu",
-        "description": "Illustration uasble as geofilter in Snapchat for Kathmandu in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/duaruGH.png"
-        ],
-        "categories": [
-          "Adobe Photoshop"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 19,
-        "image": "https://i.imgur.com/N9ONnHo.png",
-        "video": "https://www.youtube.com/",
-        "title": "Dharahara",
-        "description": "Illustration uasble as geofilter in Snapchat for Dharahara in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/N9ONnHo.png"
-        ],
-        "categories": [
-          "Adobe Illustrator",
-          "Adobe Photoshop"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 20,
-        "image": "https://i.imgur.com/SDxXxLl.png",
-        "video": "https://www.youtube.com/",
-        "title": "KUSOM",
-        "description": "Illustration uasble as geofilter in Snapchat for Kathmandu University School of Management in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/SDxXxLl.png"
-        ],
-        "categories": [
-          "Adobe Illustrator",
-          "Adobe Photoshop"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 21,
-        "image": "https://i.imgur.com/SntU5yD.gif",
-        "video": "https://www.youtube.com/",
-        "title": "Maharajgunj",
-        "description": "Illustration uasble as geofilter in Snapchat for Maharajgunj in Kathmandu, Nepal.",
-        "projectLink": [
-          "https://i.imgur.com/SntU5yD.gif"
-        ],
-        "categories": [
-          "Adobe Illustrator"
-        ],
-        "date": "2020",
-        "mainCategory": [
-          "Design"
-        ]
-      },
-      {
-        "id": 22,
-        "image": "https://i.imgur.com/ky78KvV.png",
-        "video": "https://www.youtube.com/",
-        "title": "Personal API",
-        "description": "A REST API with collection of endpoints for personal uses.",
-        "projectLink": [
-          "https://api.atitkharel.com.np/",
-          "https://github.com/atitkh/personal-apis"
-        ],
-        "categories": [
-          "JavScript",
-          "Express",
-          "MongoDB"
-        ],
-        "date": "2022",
-        "mainCategory": [
-          "Website"
-        ]
-      },
-      {
-        "id": 23,
-        "image": "https://i.imgur.com/VRNk9vz.png",
-        "video": "https://www.youtube.com/",
-        "title": "Distracted Driver Detection",
-        "description": "This project aims to detect and alert distracted drivers in real-time using computer vision and machine learning.",
-        "projectLink": [
-          "https://atitkh-distracted-driver-detection-and-a-streamlit-video-5ntfvk.streamlit.app/",
-          "https://github.com/atitkh/Distracted-Driver-Detection-and-Alerter"
-        ],
-        "categories": [
-          "Python",
-          "TensorFlow",
-          "Streamlit",
-          "Twilio"
-        ],
-        "date": "2022",
-        "mainCategory": [
-          "ML"
-        ]
-      }
-    ]
-  }
+    {
+      "id": 2,
+      "image": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "AR Business Card",
+      "description": "WebXR project that uses image tracking in a web browser to track and animate business cards in AR.",
+      "projectLink": [
+        "https://bcard.kerkarcreations.com/atit/",
+        "https://github.com/atitkh/WebAR-Business-Card/tree/master/atit"
+      ],
+      "categories": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "A-Frame"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 5,
+      "image": "https://media1.giphy.com/media/OJPPkGKXbH3Q0YXmvs/giphy.gif?cid=790b76112d2874212823f347fc4fb250a85b34c29e923e0b&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Pokédex Kanto",
+      "description": "AR Experience to recognize and give info about all Pokemons in Kanto Region using Machine Learning.",
+      "projectLink": [
+        "https://lens.snapchat.com/3cff8cef4cc94839863f7f7dd90bdae6"
+      ],
+      "categories": [
+        "JavScript",
+        "Python",
+        "Lens Studio"
+      ],
+      "date": "2021",
+      "mainCategory": [
+        "AR/VR",
+        "ML"
+      ]
+    },
+    {
+      "id": 6,
+      "image": "https://media3.giphy.com/media/PTb1liSXPYPya2DTkS/giphy.gif?cid=790b7611fc4da349ca9310a888247ab9c8de472335e873c0&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Sign Language",
+      "description": "AR Experience that uses hand tracking for recognition of American Sign Language hand gestures for english alphabets.",
+      "projectLink": [
+        "https://lens.snapchat.com/17e9115780384a2288fe14f54d7e1b54"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio"
+      ],
+      "date": "2021",
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 7,
+      "image": "https://media2.giphy.com/media/2NOe6cOkCbote0JVqN/giphy.gif?cid=790b76113bd251a580beb71e418a19614c4f0791a56de416&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Learn Languages",
+      "description": "An augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
+      "projectLink": [
+        "https://lens.snapchat.com/3d32ee16732642519634841a3d373657"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "AR/VR",
+        "ML"
+      ]
+    },
+    {
+      "id": 9,
+      "image": "https://media2.giphy.com/media/q3Fh8T6D2RLfBklMky/giphy.webp",
+      "video": "https://www.youtube.com/",
+      "title": "Car Refuel",
+      "description": "Snapchat AR game lens compatible with Snap's AR Glasses to control and refuel a car by collecting fuel cans.",
+      "projectLink": [
+        "https://lens.snapchat.com/7613f5d7acca430fa08860f5264eaab8"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 9,
+      "image": "https://media0.giphy.com/media/BUlQT9fBHGq8Crfwtb/giphy.gif?cid=790b7611d47b5b7f66886075866da6abff235da61031626f&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "AR Snooker",
+      "description": "An AR game for Snapchat, compatible with Snap's AR Glasses, where a snooker table is spawned on the floor, allowing users to play the game in a realistic and interactive way.",
+      "projectLink": [
+        "https://lens.snapchat.com/23a2ec67050841c6beaa078e20c0d463"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio",
+        "Blender"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 9,
+      "image": "https://media3.giphy.com/media/fFGandES0njBDdFTmN/giphy.gif?cid=790b76118e8d6f55fae542104ce861290acd5fba0cda4720&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Mask Cleanup",
+      "description": "An interactive AR world experience to clean up masks that have been carelessly discarded on the ground and properly dispose of them in a virtual bin.",
+      "projectLink": [
+        "https://lens.snapchat.com/09092c26da13440d9c88744fb32fb026"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio",
+        "Blender",
+        "Adobe Photoshop"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 7,
+      "image": "https://media3.giphy.com/media/tlD3bvU32GXF91C3vP/giphy.gif?cid=790b7611747de3b612bb568d0a65e7d96787af76aef01103&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "KEC Daily Routine",
+      "description": "AR Poster created for KEC Daily Routine App. It uses image tracking to track and animate app's poster.",
+      "projectLink": [
+        "https://lens.snapchat.com/d178df411b68449aae4a07bc7d35bc96"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio"
+      ],
+      "date": "2019",
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 8,
+      "image": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Bull Hand",
+      "description": "AR Experience to track hand gesture and place a hand shaped bull developed for San Fermin.",
+      "projectLink": [
+        "https://lens.snapchat.com/559b571b3d9147fdba3349156e9b9156"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio",
+        "Substance 3D Painter"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 9,
+      "image": "https://media0.giphy.com/media/GLfNQzzlmkdKfY4TLq/giphy.gif?cid=790b761190975cbf2568ed22051693d572f60d12b5692d13&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Bakrid Mubarak",
+      "description": "Snapchat AR game created for Eid (Bakrid) to feed the sheep by tracking user's hand.",
+      "projectLink": [
+        "https://lens.snapchat.com/781b73c1edf34873859f4f12fddfebaa"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio",
+        "Substance 3D Painter "
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 9,
+      "image": "https://i.giphy.com/media/4TEgyBJF8lVltQuORq/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Dino Run",
+      "description": "Replica game of Google Chrome's T-Rex Run playable in No Internet Connection page of the browser, published as AR Filter in Instagram and Snapchat.",
+      "projectLink": [
+
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 10,
+      "image": "https://media0.giphy.com/media/ubp4XZ67kfLuz48Dwg/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Fly The Copter",
+      "description": "Snapchat game lens to fly a copter by tapping on the screen. Users can create high score and share it with friends.",
+      "projectLink": [
+        "https://lens.snapchat.com/dc904775ab8942808e42c52f244aa581"
+      ],
+      "categories": [
+        "JavScript",
+        "Lens Studio"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 24,
+      "image": "https://media0.giphy.com/media/FQzZ3KxizYyA9l81pw/giphy.gif?cid=790b76113a8fbe17e13c4748b5a6ae54bd5781f1e3b46265&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Coin Collect Game",
+      "description": "Snapchat game lens to collect gold coins falling by tracking user's head. Users can create high score and share it with friends.",
+      "projectLink": [
+        "https://lens.snapchat.com/647086801f4e4bc4abd68e03a2377aae"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio"
+      ],
+      "date": 2021,
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 24,
+      "image": "https://media4.giphy.com/media/vWBqzsln4FdZYAg8Ny/giphy.gif?cid=790b76115790bd86908d8747ec5065ed93afeb452ef77dc3&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "Easter Egg Catch",
+      "description": "Snapchat game lens to collect Easter Eggs by tracking user's head. Users can create high score and share it with friends.",
+      "projectLink": [
+        "https://lens.snapchat.com/e30bbf2f572e4737b9a762f62c5f1d9b"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio"
+      ],
+      "date": 2020,
+      "mainCategory": [
+        "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 3,
+      "image": "https://i.imgur.com/FqdXMvQ.png",
+      "video": "https://www.youtube.com/",
+      "title": "Pidit DJ",
+      "description": "A discord bot that plays music from multiple sources in Discord channels for users who want to enhance their Discord experience.",
+      "projectLink": [
+        "https://piditdj.atitkharel.com.np",
+        "https://github.com/atitkh/PiditDJ"
+      ],
+      "categories": [
+        "discord.js",
+        "Node.js"
+      ],
+      "date": "2021",
+      "mainCategory": [
+        "Bot"
+      ]
+    },
+    {
+      "id": 4,
+      "image": "https://i.imgur.com/DxdWSoT.jpg",
+      "video": "https://www.youtube.com/",
+      "title": "VSnake Bot",
+      "description": "A discord bot for custom tasks like kick, react role assign, external API data, etc. to manage discord servers.",
+      "projectLink": [
+        "https://vsbot.atitkharel.com.np",
+        "https://github.com/atitkh/VS-Discord-Bot"
+      ],
+      "categories": [
+        "discord.js",
+        "Node.js"
+      ],
+      "date": "2021",
+      "mainCategory": [
+        "Bot"
+      ]
+    },
+    {
+      "id": 11,
+      "image": "https://i.imgur.com/x53E3Rx.png",
+      "video": "https://www.youtube.com/",
+      "title": "TIA Airport",
+      "description": "Illustration usable as geofilter in Snapchat for TIA Airport in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/x53E3Rx.png"
+      ],
+      "categories": [
+        "Adobe Illustrator"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 12,
+      "image": "https://i.imgur.com/v0Ydfsm.png",
+      "video": "https://www.youtube.com/",
+      "title": "TIA Airport",
+      "description": "Illustration usable as geofilter in Snapchat for TIA Airport in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/v0Ydfsm.png"
+      ],
+      "categories": [
+        "Adobe Illustrator"
+      ],
+      "date": "2017",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 13,
+      "image": "https://i.imgur.com/kty3Zhd.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Boudhanath Stupa",
+      "description": "Illustration usable as geofilter in Snapchat for Boudhanath Stupa in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/kty3Zhd.gif"
+      ],
+      "categories": [
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 14,
+      "image": "https://i.imgur.com/ogoJRTo.png",
+      "video": "https://www.youtube.com/",
+      "title": "Chabahil",
+      "description": "Illustration usable as geofilter in Snapchat for Chabahil in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/ogoJRTo.png"
+      ],
+      "categories": [
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "date": "2019",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 15,
+      "image": "https://i.imgur.com/Pjd8NmO.png",
+      "video": "https://www.youtube.com/",
+      "title": "Chabahil",
+      "description": "Illustration usable as geofilter in Snapchat for Chabahil in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/Pjd8NmO.png"
+      ],
+      "categories": [
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "date": "2019",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 16,
+      "image": "https://i.imgur.com/vTaaYgH.png",
+      "video": "https://www.youtube.com/",
+      "title": "Dhumbarahi",
+      "description": "Illustration usable as geofilter in Snapchat for Dhumbarahi in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/vTaaYgH.png"
+      ],
+      "categories": [
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "date": "2019",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 17,
+      "image": "https://i.imgur.com/3slMU77.png",
+      "video": "https://www.youtube.com/",
+      "title": "Durbarmargh",
+      "description": "Illustration usable as geofilter in Snapchat for Durbarmargh in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/3slMU77.png"
+      ],
+      "categories": [
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 18,
+      "image": "https://i.imgur.com/duaruGH.png",
+      "video": "https://www.youtube.com/",
+      "title": "Kathmandu",
+      "description": "Illustration usable as geofilter in Snapchat for Kathmandu in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/duaruGH.png"
+      ],
+      "categories": [
+        "Adobe Photoshop"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 19,
+      "image": "https://i.imgur.com/N9ONnHo.png",
+      "video": "https://www.youtube.com/",
+      "title": "Dharahara",
+      "description": "Illustration usable as geofilter in Snapchat for Dharahara in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/N9ONnHo.png"
+      ],
+      "categories": [
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 20,
+      "image": "https://i.imgur.com/SDxXxLl.png",
+      "video": "https://www.youtube.com/",
+      "title": "KUSOM",
+      "description": "Illustration usable as geofilter in Snapchat for Kathmandu University School of Management in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/SDxXxLl.png"
+      ],
+      "categories": [
+        "Adobe Illustrator",
+        "Adobe Photoshop"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 21,
+      "image": "https://i.imgur.com/SntU5yD.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Maharajgunj",
+      "description": "Illustration usable as geofilter in Snapchat for Maharajgunj in Kathmandu, Nepal.",
+      "projectLink": [
+        "https://i.imgur.com/SntU5yD.gif"
+      ],
+      "categories": [
+        "Adobe Illustrator"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Design"
+      ]
+    },
+    {
+      "id": 22,
+      "image": "https://i.imgur.com/ky78KvV.png",
+      "video": "https://www.youtube.com/",
+      "title": "Personal API",
+      "description": "A REST API with collection of endpoints for personal uses.",
+      "projectLink": [
+        "https://api.atitkharel.com.np/",
+        "https://github.com/atitkh/personal-apis"
+      ],
+      "categories": [
+        "JavScript",
+        "Express",
+        "MongoDB"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "Website"
+      ]
+    },
+    {
+      "id": 23,
+      "image": "https://i.imgur.com/VRNk9vz.png",
+      "video": "https://www.youtube.com/",
+      "title": "Distracted Driver Detection",
+      "description": "This project aims to detect and alert distracted drivers in real-time using computer vision and machine learning.",
+      "projectLink": [
+        "https://atitkh-distracted-driver-detection-and-a-streamlit-video-5ntfvk.streamlit.app/",
+        "https://github.com/atitkh/Distracted-Driver-Detection-and-Alerter"
+      ],
+      "categories": [
+        "Python",
+        "TensorFlow",
+        "Streamlit",
+        "Twilio"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "ML"
+      ]
+    }
+  ]
+}
