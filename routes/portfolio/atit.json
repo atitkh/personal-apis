@@ -14,7 +14,8 @@
     "Bot",
     "Design"
   ],
-  "portfolio": [{
+  "portfolio": [
+    {
       "id": 1,
       "image": "https://i.imgur.com/tt8k8Il.png",
       "video": "https://www.youtube.com/",
@@ -322,6 +323,24 @@
       "date": 2020,
       "mainCategory": [
         "AR/VR",
+        "Game"
+      ]
+    },
+    {
+      "id": 24,
+      "image": "https://i.imgur.com/ZQxstFM.jpg",
+      "video": "https://www.youtube.com/",
+      "title": "Falful Ninja",
+      "description": "A game developed in Unity3D, inspired by the beloved classic Fruit Ninja.",
+      "projectLink": [
+        "https://github.com/atitkh/Falful-Ninja"
+      ],
+      "categories": [
+        "C#",
+        "Unity3D"
+      ],
+      "date": 2021,
+      "mainCategory": [
         "Game"
       ]
     },
