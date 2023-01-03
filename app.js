@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv/config');
 
 //Import Routes
@@ -31,40 +32,7 @@ app.use('/portfolio', portfolioRoute);
 //main route
 app.get('/', (req, res) => {
     res.setHeader('Content-type','text/html')
-    res.send(`<h1> Welcome to AK API </h1>
-    <p>Following endpoints are currently available:</p>
-    <ul>
-        <li>/auth/register</li>
-        <li>/auth/login</li>
-        <li>/smarthome/ewelink</li>
-        <li>/smarthome/magichome</li>
-        <li>/nft</li>
-            <ul>
-                <li>/nft/all</li>
-                <li>/nft/polygon</li>
-                <li>/nft/ethereum</li>
-            </ul>
-        <li>/phonecall</li>
-        <li>/ipo</li>
-            <ul>
-                <li>/ipo/result</li>
-                <li>/ipo/newcaptcha</li>
-                <li>/ipo/companylist</li>
-            </ul>
-        <li>/valorant</li>
-            <ul>
-                <li>/valorant/auth</li>
-                <li>/valorant/getHeader</li>
-                <li>/valorant/storefront</li>
-                <li>/valorant/wallet</li>
-            </ul>
-        <li>/karun</li>
-        <li>/portfolio</li>
-            <ul>
-                <li>/portfolio/atit</li>
-                <li>/portfolio/ashlesha</li>
-            </ul>
-        </ul>`);
+    res.sendFile(path.join(__dirname, '/html/index.html'));
 });
 
 //Connect to DB
