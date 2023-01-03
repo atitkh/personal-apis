@@ -765,7 +765,7 @@
     },
     {
       "id": 22,
-      "image": "https://i.imgur.com/ky78KvV.png",
+      "image": "https://i.giphy.com/media/WOXfrzbrvCoUEIqDVk/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Personal API",
       "description": "A REST API with collection of endpoints for personal uses.",
@@ -774,6 +774,7 @@
         "https://github.com/atitkh/personal-apis"
       ],
       "categories": [
+        "HTML/CSS",
         "JavScript",
         "Express",
         "MongoDB"
