@@ -460,6 +460,24 @@
       ]
     },
     {
+      "id": 4,
+      "image": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "NNZFSC Website",
+      "description": "A website for the Nepal New Zealand Friendship Society, developed using ReactJS and Django.",
+      "projectLink": [
+        "https://nnzfsc.co.nz"
+      ],
+      "categories": [
+        "React.js",
+        "Django"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "Website"
+      ]
+    },
+    {
       "id": 11,
       "image": "https://i.imgur.com/x53E3Rx.png",
       "video": "https://www.youtube.com/",
