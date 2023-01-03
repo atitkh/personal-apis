@@ -7,6 +7,22 @@ body {
     color: #ffffff;
 }
 
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #ffffff;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgb(145, 145, 145);
+}
+
 .info_container {
     display: flex;
     flex-direction: column;
