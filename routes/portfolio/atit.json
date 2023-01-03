@@ -495,6 +495,27 @@
       ]
     },
     {
+      "id": 22,
+      "image": "https://i.giphy.com/media/WOXfrzbrvCoUEIqDVk/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Personal API",
+      "description": "A REST API with collection of endpoints for personal uses.",
+      "projectLink": [
+        "https://api.atitkharel.com.np/",
+        "https://github.com/atitkh/personal-apis"
+      ],
+      "categories": [
+        "HTML/CSS",
+        "JavScript",
+        "Express",
+        "MongoDB"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "Website"
+      ]
+    },
+    {
       "id": 3,
       "image": "https://i.imgur.com/6eyuXF4.png",
       "video": "https://www.youtube.com/",
@@ -761,27 +782,6 @@
       "date": "2020",
       "mainCategory": [
         "Design"
-      ]
-    },
-    {
-      "id": 22,
-      "image": "https://i.giphy.com/media/WOXfrzbrvCoUEIqDVk/giphy.gif",
-      "video": "https://www.youtube.com/",
-      "title": "Personal API",
-      "description": "A REST API with collection of endpoints for personal uses.",
-      "projectLink": [
-        "https://api.atitkharel.com.np/",
-        "https://github.com/atitkh/personal-apis"
-      ],
-      "categories": [
-        "HTML/CSS",
-        "JavScript",
-        "Express",
-        "MongoDB"
-      ],
-      "date": "2022",
-      "mainCategory": [
-        "Website"
       ]
     },
     {
