@@ -19,6 +19,7 @@ const portfolioRoute = require('./routes/portfolio/portfolio');
 //Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static("html"));
 app.use('/auth', authRoute);
 app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/smarthome/magichome', magichomeRoute);
@@ -30,10 +31,10 @@ app.use('/karun', karunRoute);
 app.use('/portfolio', portfolioRoute);
 
 //main route
-app.get('/', (req, res) => {
-    res.setHeader('Content-type','text/html')
-    res.sendFile(path.join(__dirname, '/html/index.html'));
-});
+// app.get('/', (req, res) => {
+//     res.setHeader('Content-type','text/html')
+//     res.sendFile(path.join(__dirname, '/html/index.html'));
+// });
 
 //Connect to DB
 mongoose.connect(process.env.DB_CONNECTION, { }, () => {
