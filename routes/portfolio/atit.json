@@ -328,6 +328,98 @@
     },
     {
       "id": 24,
+      "image": "https://i.giphy.com/media/Mev87Dib4DOaaoFQ51/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Dashain Lens",
+      "description": "A Viber AR lens to mark the occasion of Dashain Festival, that allows users to celebrate and wish their loved ones a joyful and blessed celebration.",
+      "projectLink": [
+        "https://lens.snapchat.com/ad254cead68c423382fd55e21b797383"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio"
+      ],
+      "date": 2021,
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 24,
+      "image": "https://i.giphy.com/media/c2MAn3sRaQVjD6z6fC/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Coca-Cola Dashain Lens",
+      "description": "A Viber AR lens for Coca-Cola Nepal to mark the occasion of Dashain Festival with flying kite.",
+      "projectLink": [
+        "https://lens.snapchat.com/005fcbc8490044ad9333cbb8861aba68"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio"
+      ],
+      "date": 2021,
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 24,
+      "image": "https://i.giphy.com/media/L3pc7pf1a1tCVCT0Dp/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "SL Lion",
+      "description": "An AR lens for Viber that allows the user to transform their head into that of a lion, created to celebrate the Sri Lankan's participation in the T20 Cricket World Cup.",
+      "projectLink": [
+        "https://lens.snapchat.com/4c1f04fad14e4c3fb2168f5ebb20f1d4"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio",
+        "Blender"
+      ],
+      "date": 2021,
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 24,
+      "image": "https://i.giphy.com/media/FsGyagQuZ8Dsgw3K2c/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "BD Tiger",
+      "description": "An AR lens for Viber that allows the user to transform their head into that of a tiger, created to celebrate the Bangladesh's participation in the T20 Cricket World Cup.",
+      "projectLink": [
+        "https://www.snapchat.com/unlock/?type=SNAPCODE&uuid=c4c672b1897041cb95fe73d6de75eb75&metadata=01"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio",
+        "Blender"
+      ],
+      "date": 2021,
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 24,
+      "image": "https://i.giphy.com/media/UL63PiRQvS7FfusOsr/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Me Malinga",
+      "description": "An AR lens for Sri Lankan former cricketer Malinga.",
+      "projectLink": [
+        "https://lens.snapchat.com/cb15682849da4bdc8dc8e9f38361d013"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio"
+      ],
+      "date": 2021,
+      "mainCategory": [
+        "AR/VR"
+      ]
+    },
+    {
+      "id": 24,
       "image": "https://i.imgur.com/ZQxstFM.jpg",
       "video": "https://www.youtube.com/",
       "title": "Falful Ninja",
