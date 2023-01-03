@@ -9,7 +9,8 @@
     "All",
     "AR",
     "Game",
-    "Design"
+    "Design",
+    "Bot"
   ],
   "portfolio": [
     {
@@ -324,6 +325,43 @@
       "date": 2021,
       "mainCategory": [
         "Design"
+      ]
+    },
+    {
+      "id": 9,
+      "image": "https://i.giphy.com/media/HBaTKINicgnrk1jliw/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "Obstacle Avoiding Robot",
+      "description": "An obstacle-avoiding robot that uses ultrasonic sensors and an Arduino microcontroller to detect and navigate around objects in its environment.",
+      "projectLink": [
+        "https://github.com/AshleshaMalla/Manual-and-auto-robotcar"
+      ],
+      "categories": [
+        "Arduino",
+        "C/C++"
+      ],
+      "date": "2019",
+      "mainCategory": [
+        "Bot"
+      ]
+    },
+    {
+      "id": 3,
+      "image": "https://i.imgur.com/6eyuXF4.png",
+      "video": "https://www.youtube.com/",
+      "title": "Covid19 Updates Nepal",
+      "description": "A Twitter bot that tweets Nepal's COVID-19 cases updates on Twitter every day using data from the Nepal's Ministry of Health and Population.",
+      "projectLink": [
+        "https://twitter.com/covid19_nepal",
+        "https://github.com/AshleshaMalla/covid19-twitter-bot"
+      ],
+      "categories": [
+        "Python",
+        "Tweepy"
+      ],
+      "date": "2020",
+      "mainCategory": [
+        "Bot"
       ]
     }
   ]
