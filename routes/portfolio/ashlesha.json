@@ -328,24 +328,6 @@
       ]
     },
     {
-      "id": 4,
-      "image": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
-      "video": "https://www.youtube.com/",
-      "title": "NNZFSC Website",
-      "description": "A website for the Nepal New Zealand Friendship Society, developed using ReactJS and Django.",
-      "projectLink": [
-        "https://nnzfsc.co.nz"
-      ],
-      "categories": [
-        "React.js",
-        "Django"
-      ],
-      "date": "2022",
-      "mainCategory": [
-        "Website"
-      ]
-    },
-    {
       "id": 9,
       "image": "https://i.giphy.com/media/HBaTKINicgnrk1jliw/giphy.gif",
       "video": "https://www.youtube.com/",
@@ -380,6 +362,24 @@
       "date": "2020",
       "mainCategory": [
         "Bot"
+      ]
+    },
+    {
+      "id": 4,
+      "image": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "NNZFSC Website",
+      "description": "A website for the Nepal New Zealand Friendship Society, developed using ReactJS and Django.",
+      "projectLink": [
+        "https://nnzfsc.co.nz"
+      ],
+      "categories": [
+        "React.js",
+        "Django"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "Website"
       ]
     }
   ]
