@@ -15,6 +15,7 @@ const ipoResult = require('./routes/iporesult/iporesult');
 const valorantRoute = require('./routes/valorant/info');
 const karunRoute = require('./routes/karun/karun');
 const portfolioRoute = require('./routes/portfolio/portfolio');
+const attendanceRoute = require('./routes/kerkarcreations/attendance');
 
 //Middleware
 app.use(cors());
@@ -29,6 +30,7 @@ app.use('/ipo', ipoResult);
 app.use('/valorant', valorantRoute);
 app.use('/karun', karunRoute);
 app.use('/portfolio', portfolioRoute);
+app.use('/kerkarcreations/attendance', attendanceRoute);
 
 //main route
 // app.get('/', (req, res) => {
