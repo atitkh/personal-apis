@@ -37,12 +37,14 @@ router.get('/get', verify, (req, res) => {
         let dataArray = data.data.values;
         let jsonData = [];
 
-        for (let i = 0; i < dataArray.length; i++) {
-            jsonData.push({
-                'Name': dataArray[i][0],
-                'Date': dataArray[i][1],
-                'Time': dataArray[i][2]
-            });
+        if(dataArray){
+            for (let i = 0; i < dataArray.length; i++) {
+                jsonData.push({
+                    'Name': dataArray[i][0],
+                    'Date': dataArray[i][1],
+                    'Time': dataArray[i][2]
+                });
+            }
         }
 
         res.json(jsonData);
@@ -74,13 +76,15 @@ router.get('/get/:name', verify, (req, res) => {
         let dataArray = data.data.values;
         let jsonData = [];
 
-        for (let i = 0; i < dataArray.length; i++) {
-            if (dataArray[i][0] == req.params.name) {
-                jsonData.push({
-                    'Name': dataArray[i][0],
-                    'Date': dataArray[i][1],
-                    'Time': dataArray[i][2]
-                });
+        if (dataArray) {
+            for (let i = 0; i < dataArray.length; i++) {
+                if (dataArray[i][0] == req.params.name) {
+                    jsonData.push({
+                        'Name': dataArray[i][0],
+                        'Date': dataArray[i][1],
+                        'Time': dataArray[i][2]
+                    });
+                }
             }
         }
 
@@ -111,6 +115,8 @@ router.post('/add', verify, (req, res) => {
                 ]
             ]
         }
+        
+        let isPresent = false;
 
         const gsapi = google.sheets({ version: 'v4', auth: cl });
 
@@ -130,15 +136,15 @@ router.post('/add', verify, (req, res) => {
         let dataArray = getData.data.values;
         let jsonData = [];
 
-        for (let i = 0; i < dataArray.length; i++) {
-            jsonData.push({
-                'Name': dataArray[i][0],
-                'Date': dataArray[i][1],
-                'Time': dataArray[i][2]
-            });
+        if(dataArray){
+            for (let i = 0; i < dataArray.length; i++) {
+                jsonData.push({
+                    'Name': dataArray[i][0],
+                    'Date': dataArray[i][1],
+                    'Time': dataArray[i][2]
+                });
+            }
         }
-
-        let isPresent = false;
 
         for (let i = 0; i < jsonData.length; i++) {
             if (jsonData[i].Name == req.query.name && jsonData[i].Date == new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kathmandu' })) {
