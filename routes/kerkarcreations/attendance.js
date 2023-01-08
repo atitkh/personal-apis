@@ -10,7 +10,7 @@ const client = new google.auth.JWT(
 );
 
 router.get('/', (req, res) => {
-    res.send('Welcome to Attendance API');
+    res.send("Welcome to Kerkar Creations' Attendance API");
 });
 
 router.get('/get', verify, (req, res) => {
