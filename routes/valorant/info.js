@@ -3,6 +3,8 @@ const fetch = require('node-fetch');
 const axios = require('axios');
 const verify = require('../auth/verifyToken');
 const Valorant = require('./valorant');
+const HenrikDevValorantAPI = require('unofficial-valorant-api');
+const VAPI = new HenrikDevValorantAPI();
 
 router.get('/', (req, res) => {
     res.send('Welcome to Valorant API');
@@ -106,12 +108,14 @@ router.post('/wallet', async (req, res) => {
 });
 
 // get user's active game data
-router.post('/activegame', async (req, res) => {
+router.post('/activegame/:type', async (req, res) => {
+    const type = req.params.type;
     const { access_token, entitlements_token, user_id, username, region } = req.body;
     const valorantApi = new Valorant.API(region);
     players = [];
     matchID = "";
     matchData = {};
+    var eloData = {};
 
     if (!access_token || !entitlements_token || !user_id || !username || !region) {
         return res.status(400).send('Please enter all the required fields');
@@ -148,26 +152,62 @@ router.post('/activegame', async (req, res) => {
         });
 
     // get each player data
-    if(players){
+    if (players) {
         for (var i = 0; i < players.length; i++) {
-            await fetch(`https://api.henrikdev.xyz/valorant/v1/by-puuid/mmr/ap/${players[i].Subject}`, {
-                method: 'GET',
-                headers: valorantApi.generateRequestHeaders()
-            }).then(response => response.json())
-                .then(data => {
-                    // filter highest rank of player
-                    players[i].PlayerData = data;
-                }).catch((error) => {
-                    console.log(error)
-                    res.status(403).send(error);
-                });
+            // data = await valorantApi.getPlayerMMR(players[i].Subject)
+            // data = (data.data);
+            // console.log(mmr_data);
+            // if (data.LatestCompetitiveUpdate) {
+            //     const update = data.LatestCompetitiveUpdate;
+            //     var elo = calculateElo(update.TierAfterUpdate, update.RankedRatingAfterUpdate);
+            //     eloData = {
+            //         "Movement": update.CompetitiveMovement,
+            //         "CurrentTierID": update.TierAfterUpdate,
+            //         "CurrentTierName": (Valorant.Tiers[update.TierAfterUpdate]),
+            //         "CurrentTierProgress": update.RankedRatingAfterUpdate,
+            //         "TotalElo": elo
+            //     }
+            // } else {
+            //     console.log("No competitive update available. Have you played a competitive match yet?");
+            // }
+            mmr_data = await VAPI.getMMRByPUUID({
+                version: 'v1',
+                region: 'ap',
+                puuid: players[i].Subject
+            });
+            mmr_data = mmr_data.data;
+            if (mmr_data) {
+                players[i].Elo = mmr_data;
+            }
+            else {
+                players[i].Elo = {
+                    "Movement": "None",
+                    "CurrentTierID": 0,
+                    "CurrentTierName": "Unranked",
+                    "CurrentTierProgress": 0,
+                    "TotalElo": 0
+                }
+            }
         }
-        res.send(players);
+
+        if (type == "match") {
+            res.send(matchData);
+        }
+        else if (type == "players") {
+            res.send(players);
+        }
     }
-    else{
+    else {
         res.send(matchData);
     }
 });
 
+function calculateElo(tier, progress) {
+    if (tier >= 24) {
+        return 2100 + progress
+    } else {
+        return ((tier * 100) - 300) + progress;
+    }
+}
 
 module.exports = router;
