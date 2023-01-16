@@ -132,7 +132,6 @@ router.post('/activegame/:type', async (req, res) => {
     }).then(response => response.json())
         .then(data => {
             matchID = data.MatchID;
-            matchData = data;
         }).catch((error) => {
             console.log(error)
             res.status(403).send(error);
@@ -145,6 +144,7 @@ router.post('/activegame/:type', async (req, res) => {
     }).then(response => response.json())
         .then(data => {
             players = data.Players;
+            matchData = data;
         }
         ).catch((error) => {
             console.log(error)
@@ -177,16 +177,31 @@ router.post('/activegame/:type', async (req, res) => {
             });
             mmr_data = mmr_data.data;
             if (mmr_data) {
-                players[i].Elo = mmr_data;
+                players[i] = {
+                    ...players[i],
+                    Elo: mmr_data
+                }
             }
             else {
-                players[i].Elo = {
-                    "Movement": "None",
-                    "CurrentTierID": 0,
-                    "CurrentTierName": "Unranked",
-                    "CurrentTierProgress": 0,
-                    "TotalElo": 0
+                // add new key to player object
+                players[i] = {
+                    ...players[i],
+                    Elo: {
+                        "Movement": "NONE",
+                        "CurrentTierID": 0,
+                        "CurrentTierName": "Unrated",
+                        "CurrentTierProgress": 0,
+                        "TotalElo": 0,
+                        "images" : {
+                            "large" : "https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/0/largeicon.png"
+                        }
+                    }
                 }
+            }
+
+            matchData = {
+                ...matchData,
+                Players: players
             }
         }
 
