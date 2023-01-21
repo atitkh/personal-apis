@@ -420,7 +420,7 @@
     },
     {
       "id": 24,
-      "image": "https://i.imgur.com/ZQxstFM.jpg",
+      "image": "https://i.giphy.com/media/rbBr8OsXEOWLsSGqZv/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Falful Ninja",
       "description": "A game developed in Unity3D, inspired by the beloved classic Fruit Ninja.",
@@ -439,7 +439,7 @@
     },
     {
       "id": 24,
-      "image": "https://i.imgur.com/OJemPYD.png",
+      "image": "https://i.giphy.com/media/RKesXquUQbPIke0vQ5/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Hangman Game",
       "description": "The classic word-guessing hangman game made in Unity3D.",
@@ -458,7 +458,7 @@
     },
     {
       "id": 24,
-      "image": "https://i.imgur.com/NQhSoQc.png",
+      "image": "https://i.giphy.com/media/AbHehbxmhM5O1qp9j2/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Space Invaders",
       "description": "A classic arcade game reimagined in Unity3D, where players must defend against waves of enemy spacecraft.",
@@ -477,7 +477,7 @@
     },
     {
       "id": 24,
-      "image": "https://i.imgur.com/X5lbubO.png",
+      "image": "https://i.giphy.com/media/uSeXREed0RSfcTseo0/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Guess the Number",
       "description": "A simple Unity3D game where players must correctly guess a randomly chosen number from 1 to 5 in order to win.",
