@@ -217,6 +217,32 @@ router.post('/activegame/:type', async (req, res) => {
     }
 });
 
+router.post('/test', async (req, res) => {
+    const type = req.params.type;
+    const { access_token, entitlements_token, user_id, username, region } = req.body;
+    const valorantApi = new Valorant.API(region);
+
+    if (!access_token || !entitlements_token || !user_id || !username || !region) {
+        return res.status(400).send('Please enter all the required fields');
+    }
+
+    valorantApi.access_token = access_token;
+    valorantApi.entitlements_token = entitlements_token;
+    valorantApi.user_id = user_id;
+
+    await fetch(`https://pd.ap.a.pvp.net/personalization/v2/players/${user_id}/playerloadout`, {
+        method: 'GET',
+        headers: valorantApi.generateRequestHeaders(),
+        // body: JSON.stringify(require('./loadout/ruin.json'))
+    }).then(response => response.json())
+        .then(data => {
+            res.send(data);
+        }).catch((error) => {
+            console.log(error)
+            res.status(403).send(error);
+        });
+});
+
 function calculateElo(tier, progress) {
     if (tier >= 24) {
         return 2100 + progress
