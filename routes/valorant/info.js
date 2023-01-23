@@ -174,13 +174,18 @@ router.post('/activegame/:type', async (req, res) => {
             var weaponSkinID = item.Sockets["bcef87d6-209b-46c6-8b19-fbe40bd95abc"].Item.ID;
             var weaponChroma = item.Sockets["3ad1b2b2-acdb-4524-852f-954a76ddae0a"].Item.ID;
 
-            // // get skin details
+            // get skin details
             var skinDetails = await fetch("https://valorant-api.com/v1/weapons/skins/" + weaponSkinID);
             skinDetails = await skinDetails.json();
             skinDetails = skinDetails.data;
             var skinName = skinDetails.displayName;
 
-            // // filter weaponChroma from skinDetails.data.chromas array
+            // get weapon details
+            var weaponDetails = await fetch("https://valorant-api.com/v1/weapons/" + weaponID);
+            weaponDetails = await weaponDetails.json();
+            weaponDetails = weaponDetails.data;
+            var weaponImage = weaponDetails.displayIcon;
+
             var chromaImg = skinDetails.chromas.filter((chroma) => {
                 return chroma.uuid === weaponChroma;
             })[0].displayIcon;
@@ -188,6 +193,13 @@ router.post('/activegame/:type', async (req, res) => {
             if (chromaImg === null) {
                 chromaImg = skinDetails.displayIcon;
             }
+
+            if (skinName.includes("Standard")) {
+                skinName = skinDetails.displayName.replace(" Standard", "");
+                chromaImg = weaponImage;
+            }
+            // // filter weaponChroma from skinDetails.data.chromas array
+            
 
             var itemsData = {
                 weaponName: skinName,
