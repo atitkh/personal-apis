@@ -115,6 +115,7 @@ router.post('/activegame/:type', async (req, res) => {
     players = [];
     matchID = "";
     matchData = {};
+    matchLoadout = [];
     var eloData = {};
 
     if (!access_token || !entitlements_token || !user_id || !username || !region) {
@@ -150,6 +151,57 @@ router.post('/activegame/:type', async (req, res) => {
             console.log(error)
             res.status(403).send(error);
         });
+
+    // get match loadout
+    if(matchID != ""){
+        await fetch(`https://glz-ap-1.ap.a.pvp.net/core-game/v1/matches/${matchID}/loadouts`, {
+            method: 'GET',
+            headers: valorantApi.generateRequestHeaders(),
+        }).then(response => response.json())
+            .then(data => {
+                matchLoadout = data.Loadouts;
+            }).catch((error) => {
+                console.log(error);
+            });
+        }
+
+    // clean loadout data
+    for (var i = 0; i < matchLoadout.length; i++) {
+        var playerLoadout = [];
+        for (var j = 0; j < Object.keys( matchLoadout[i].Loadout.Items ).length; j++) {
+            var item = matchLoadout[i].Loadout.Items[Object.keys( matchLoadout[i].Loadout.Items )[j]];
+            var weaponID = item.ID;
+            var weaponSkinID = item.Sockets["bcef87d6-209b-46c6-8b19-fbe40bd95abc"].Item.ID;
+            var weaponChroma = item.Sockets["3ad1b2b2-acdb-4524-852f-954a76ddae0a"].Item.ID;
+
+            // // get skin details
+            var skinDetails = await fetch("https://valorant-api.com/v1/weapons/skins/" + weaponSkinID);
+            skinDetails = await skinDetails.json();
+            skinDetails = skinDetails.data;
+            var skinName = skinDetails.displayName;
+
+            // // filter weaponChroma from skinDetails.data.chromas array
+            var chromaImg = skinDetails.chromas.filter((chroma) => {
+                return chroma.uuid === weaponChroma;
+            })[0].displayIcon;
+
+            if (chromaImg === null) {
+                chromaImg = skinDetails.displayIcon;
+            }
+
+            var itemsData = {
+                weaponName: skinName,
+                weaponImg: chromaImg
+            }
+
+            playerLoadout.push(itemsData);
+        }
+        players[i].Loadout = playerLoadout;
+    }
+
+    for (var i = 0; i < players.length; i++) {
+            players[i].LoadoutIDs = matchLoadout[i].Loadout;
+    }
 
     // get each player data
     if (players) {
@@ -198,11 +250,11 @@ router.post('/activegame/:type', async (req, res) => {
                     }
                 }
             }
+        }
 
-            matchData = {
-                ...matchData,
-                Players: players
-            }
+        matchData = {
+            ...matchData,
+            Players: players
         }
 
         if (type == "match") {
@@ -230,7 +282,7 @@ router.post('/test', async (req, res) => {
     valorantApi.entitlements_token = entitlements_token;
     valorantApi.user_id = user_id;
 
-    await fetch(`https://pd.ap.a.pvp.net/personalization/v2/players/${user_id}/playerloadout`, {
+    await fetch(`https://glz-ap-1.ap.a.pvp.net/core-game/v1/matches/fb336a4b-e0ec-40c1-ad8a-72fbaa2c8db6/loadouts`, {
         method: 'GET',
         headers: valorantApi.generateRequestHeaders(),
         // body: JSON.stringify(require('./loadout/ruin.json'))
