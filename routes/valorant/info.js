@@ -195,7 +195,7 @@ router.post('/activegame/:type', async (req, res) => {
             }
 
             if (skinName.includes("Standard")) {
-                skinName = skinDetails.displayName.replace(" Standard", "");
+                skinName = skinDetails.displayName.replace("Standard", "");
                 chromaImg = weaponImage;
             }
             // // filter weaponChroma from skinDetails.data.chromas array
