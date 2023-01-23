@@ -224,12 +224,17 @@ router.post('/activegame/:type', async (req, res) => {
             // }
 
             // get playercard img url
-            var playerCard = await fetch(`https://valorant-api.com/v1/playercards/${players[i].PlayerIdentity.PlayerCardID}`);
-            playerCard = await playerCard.json();
-            playerCard = playerCard.data;
-            players[i].PlayerIdentity = {
-                ...players[i].PlayerIdentity,
-                PlayerCard: playerCard
+            try{
+                var playerCard = await fetch(`https://valorant-api.com/v1/playercards/${players[i].PlayerIdentity.PlayerCardID}`);
+                playerCard = await playerCard.json();
+                playerCard = playerCard.data;
+                players[i].PlayerIdentity = {
+                    ...players[i].PlayerIdentity,
+                    PlayerCard: playerCard
+                }
+            }
+            catch(err){
+                console.log(err);
             }
 
             // get mmr data
