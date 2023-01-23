@@ -222,6 +222,17 @@ router.post('/activegame/:type', async (req, res) => {
             // } else {
             //     console.log("No competitive update available. Have you played a competitive match yet?");
             // }
+
+            // get playercard img url
+            var playerCard = await fetch(`https://valorant-api.com/v1/playercards/${players[i].PlayerIdentity.PlayerCardID}`);
+            playerCard = await playerCard.json();
+            playerCard = playerCard.data;
+            players[i].PlayerIdentity = {
+                ...players[i].PlayerIdentity,
+                PlayerCard: playerCard
+            }
+
+            // get mmr data
             mmr_data = await VAPI.getMMRByPUUID({
                 version: 'v1',
                 region: 'ap',
