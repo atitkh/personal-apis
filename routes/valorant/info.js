@@ -166,7 +166,7 @@ router.post('/activegame/:type', async (req, res) => {
         }
 
     // clean loadout data
-    if (matchLoadout.length > 0) {
+    if (matchLoadout) {
         for (var i = 0; i < matchLoadout.length; i++) {
             var playerLoadout = [];
             for (var j = 0; j < Object.keys( matchLoadout[i].Loadout.Items ).length; j++) {
