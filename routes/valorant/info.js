@@ -219,13 +219,10 @@ router.post('/activegame/:type', async (req, res) => {
     }
     
 
-    for (var i = 0; i < players.length; i++) {
+        // get each player data
+        if (players) {
+            for (var i = 0; i < players.length; i++) {
             players[i].LoadoutIDs = matchLoadout[i].Loadout;
-    }
-
-    // get each player data
-    if (players) {
-        for (var i = 0; i < players.length; i++) {
             // data = await valorantApi.getPlayerMMR(players[i].Subject)
             // data = (data.data);
             // console.log(mmr_data);
