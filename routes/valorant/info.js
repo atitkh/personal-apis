@@ -153,7 +153,7 @@ router.post('/activegame/:type', async (req, res) => {
         });
 
     // get match loadout
-    if(matchID != ""){
+    if (matchID != "") {
         await fetch(`https://glz-ap-1.ap.a.pvp.net/core-game/v1/matches/${matchID}/loadouts`, {
             method: 'GET',
             headers: valorantApi.generateRequestHeaders(),
@@ -163,134 +163,134 @@ router.post('/activegame/:type', async (req, res) => {
             }).catch((error) => {
                 console.log(error);
             });
-        }
-
-    // clean loadout data
-    if (matchLoadout) {
-        for (var i = 0; i < matchLoadout.length; i++) {
-            var playerLoadout = [];
-            for (var j = 0; j < Object.keys( matchLoadout[i].Loadout.Items ).length; j++) {
-                var item = matchLoadout[i].Loadout.Items[Object.keys( matchLoadout[i].Loadout.Items )[j]];
-                var weaponID = item.ID;
-                var weaponSkinID = item.Sockets["bcef87d6-209b-46c6-8b19-fbe40bd95abc"].Item.ID;
-                var weaponChroma = item.Sockets["3ad1b2b2-acdb-4524-852f-954a76ddae0a"].Item.ID;
-    
-                // get skin details
-                var skinDetails = await fetch("https://valorant-api.com/v1/weapons/skins/" + weaponSkinID);
-                skinDetails = await skinDetails.json();
-                skinDetails = skinDetails.data;
-                var skinName = skinDetails.displayName;
-    
-                // get weapon details
-                var weaponDetails = await fetch("https://valorant-api.com/v1/weapons/" + weaponID);
-                weaponDetails = await weaponDetails.json();
-                weaponDetails = weaponDetails.data;
-                var weaponImage = weaponDetails.displayIcon;
-    
-                try {
-                    var chromaImg = skinDetails.chromas.filter((chroma) => {
-                        return chroma.uuid === weaponChroma;
-                    })[0].displayIcon;
-                }
-                catch (error) {
-                    console.log(error);
-                }
-    
-                if (chromaImg === null) {
-                    chromaImg = skinDetails.displayIcon;
-                }
-    
-                if (skinName.includes("Standard")) {
-                    skinName = skinDetails.displayName.replace("Standard", "");
-                    chromaImg = weaponImage;
-                }
-                // // filter weaponChroma from skinDetails.data.chromas array
-                
-    
-                var itemsData = {
-                    weaponName: skinName,
-                    weaponImg: chromaImg
-                }
-    
-                playerLoadout.push(itemsData);
-            }
-            players[i].Loadout = playerLoadout;
-        }
     }
-    
 
-        // get each player data
-        if (players) {
-            for (var i = 0; i < players.length; i++) {
-            players[i].LoadoutIDs = matchLoadout[i].Loadout;
-            // data = await valorantApi.getPlayerMMR(players[i].Subject)
-            // data = (data.data);
-            // console.log(mmr_data);
-            // if (data.LatestCompetitiveUpdate) {
-            //     const update = data.LatestCompetitiveUpdate;
-            //     var elo = calculateElo(update.TierAfterUpdate, update.RankedRatingAfterUpdate);
-            //     eloData = {
-            //         "Movement": update.CompetitiveMovement,
-            //         "CurrentTierID": update.TierAfterUpdate,
-            //         "CurrentTierName": (Valorant.Tiers[update.TierAfterUpdate]),
-            //         "CurrentTierProgress": update.RankedRatingAfterUpdate,
-            //         "TotalElo": elo
-            //     }
-            // } else {
-            //     console.log("No competitive update available. Have you played a competitive match yet?");
-            // }
 
-            // get playercard img url
-            try{
+    // get each player mmr
+    if (players) {
+        for (var i = 0; i < players.length; i++) {
+            try {
+                // get playercard img url
                 var playerCard = await fetch(`https://valorant-api.com/v1/playercards/${players[i].PlayerIdentity.PlayerCardID}`);
                 playerCard = await playerCard.json();
                 playerCard = playerCard.data;
+
                 players[i].PlayerIdentity = {
                     ...players[i].PlayerIdentity,
                     PlayerCard: playerCard
                 }
-            }
-            catch(err){
-                console.log(err);
-            }
 
-            // get mmr data
-            mmr_data = await VAPI.getMMRByPUUID({
-                version: 'v1',
-                region: 'ap',
-                puuid: players[i].Subject
-            });
-            mmr_data = mmr_data.data;
-            if (mmr_data) {
-                players[i] = {
-                    ...players[i],
-                    Elo: mmr_data
+                let playerCharacter = await fetch(`https://valorant-api.com/v1/agents/${players[i].CharacterID}`);
+                playerCharacter = await playerCharacter.json();
+                playerCharacter = playerCharacter.data;
+
+                let characterData = {
+                    characterName: playerCharacter.displayName,
+                    characterCode: playerCharacter.developerName,
+                    characterImg: playerCharacter.displayIcon,
+                    largeArt: playerCharacter.fullPortrait,
                 }
-            }
-            else {
-                // add new key to player object
+        
                 players[i] = {
                     ...players[i],
-                    Elo: {
-                        "Movement": "NONE",
-                        "CurrentTierID": 0,
-                        "CurrentTierName": "Unrated",
-                        "CurrentTierProgress": 0,
-                        "TotalElo": 0,
-                        "images" : {
-                            "large" : "https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/0/largeicon.png"
+                    Character: characterData
+                }
+
+                // get mmr data
+                mmr_data = await VAPI.getMMRByPUUID({
+                    version: 'v1',
+                    region: 'ap',
+                    puuid: players[i].Subject
+                });
+
+                mmr_data = mmr_data.data;
+                
+                if (mmr_data) {
+                    players[i] = {
+                        ...players[i],
+                        Elo: mmr_data
+                    }
+                }
+                else {
+                    // add new key to player object
+                    players[i] = {
+                        ...players[i],
+                        Elo: {
+                            "Movement": "NONE",
+                            "CurrentTierID": 0,
+                            "CurrentTierName": "Unrated",
+                            "CurrentTierProgress": 0,
+                            "TotalElo": 0,
+                            "images": {
+                                "large": "https://media.valorant-api.com/competitivetiers/564d8e28-c226-3180-6285-e48a390db8b1/0/largeicon.png"
+                            }
                         }
                     }
                 }
+
+                // set clean player loadout
+                if (matchLoadout) {
+                    players[i].LoadoutIDs = matchLoadout[i].Loadout;
+
+                    var playerLoadout = [];
+                    for (var j = 0; j < Object.keys( matchLoadout[i].Loadout.Items ).length; j++) {
+                        var item = matchLoadout[i].Loadout.Items[Object.keys( matchLoadout[i].Loadout.Items )[j]];
+                        var weaponID = item.ID;
+                        var weaponSkinID = item.Sockets["bcef87d6-209b-46c6-8b19-fbe40bd95abc"].Item.ID;
+                        var weaponChroma = item.Sockets["3ad1b2b2-acdb-4524-852f-954a76ddae0a"].Item.ID;
+            
+                        // get skin details
+                        var skinDetails = await fetch("https://valorant-api.com/v1/weapons/skins/" + weaponSkinID);
+                        skinDetails = await skinDetails.json();
+                        skinDetails = skinDetails.data;
+                        var skinName = skinDetails.displayName;
+            
+                        // get weapon details
+                        var weaponDetails = await fetch("https://valorant-api.com/v1/weapons/" + weaponID);
+                        weaponDetails = await weaponDetails.json();
+                        weaponDetails = weaponDetails.data;
+                        var weaponImage = weaponDetails.displayIcon;
+            
+                        try {
+                            var chromaImg = skinDetails.chromas.filter((chroma) => {
+                                return chroma.uuid === weaponChroma;
+                            })[0].displayIcon;
+                        }
+                        catch (error) {
+                            console.log(error);
+                        }
+            
+                        if (chromaImg === null) {
+                            chromaImg = skinDetails.displayIcon;
+                        }
+            
+                        if (skinName.includes("Standard")) {
+                            skinName = skinDetails.displayName.replace("Standard", "");
+                            chromaImg = weaponImage;
+                        }
+                        // // filter weaponChroma from skinDetails.data.chromas array
+                        
+            
+                        var itemsData = {
+                            weaponName: skinName,
+                            weaponImg: chromaImg
+                        }
+            
+                        playerLoadout.push(itemsData);
+                    }
+                players[i].Loadout = playerLoadout;
+                }
+            }
+            catch (err) {
+                console.log(err);
             }
         }
 
-        matchData = {
-            ...matchData,
-            Players: players
-        }
-
         if (type == "match") {
+            matchData = {
+                ...matchData,
+                Players: players
+            }
             res.send(matchData);
         }
         else if (type == "players") {
