@@ -230,7 +230,7 @@ router.post('/activegame/:type', async (req, res) => {
 
                 // set clean player loadout
                 if (matchLoadout) {
-                    players[i].LoadoutIDs = matchLoadout[i].Loadout;
+                    // players[i].LoadoutIDs = matchLoadout[i].Loadout;
 
                     var playerLoadout = [];
                     for (var j = 0; j < Object.keys( matchLoadout[i].Loadout.Items ).length; j++) {
