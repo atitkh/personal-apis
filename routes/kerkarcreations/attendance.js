@@ -157,7 +157,7 @@ router.post('/add', verify, (req, res) => {
         }
         else {
             let addData = await gsapi.spreadsheets.values.append(optAdd);
-            res.json({ 'message': 'Added New Data' });
+            res.json({ 'message': 'Attendance added.' });
         }
     }
 });
