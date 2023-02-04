@@ -34,6 +34,26 @@
       ]
     },
     {
+      "id": 3,
+      "image": "https://i.giphy.com/media/MeEjmsSSikKUqCNmws/giphy.gif",
+      "video": "https://www.youtube.com/",
+      "title": "AR Guitar Tutor",
+      "description": "AR Experience that helps you learn guitar chords in AR using image tracking.",
+      "projectLink": [
+        "https://lens.snapchat.com/cf4164005bc4479d95a0c81da1124ad0",
+        "https://devpost.com/software/guitar-tutor"
+      ],
+      "categories": [
+        "JavaScript",
+        "Lens Studio",
+        "Adobe Photoshop"
+      ],
+      "date": "2023",
+      "mainCategory": [
+        "AR"
+      ]
+    },
+    {
       "id": 1,
       "image": "https://media0.giphy.com/media/lKsmQ8QflspEENbItL/giphy.gif?cid=790b7611b39bedb174378eeedc48baea4cafc23127f658b1&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
