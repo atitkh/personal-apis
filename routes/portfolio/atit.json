@@ -12,10 +12,10 @@
     "Game",
     "Website",
     "Bot",
-    "Design"
+    "Design",
+    "In the Media"
   ],
-  "portfolio": [
-    {
+  "portfolio": [{
       "id": 1,
       "image": "https://i.imgur.com/tt8k8Il.png",
       "video": "https://www.youtube.com/",
@@ -612,6 +612,27 @@
       ]
     },
     {
+      "id": 23,
+      "image": "https://i.imgur.com/VRNk9vz.png",
+      "video": "https://www.youtube.com/",
+      "title": "Distracted Driver Detection",
+      "description": "This project aims to detect and alert distracted drivers in real-time using computer vision and machine learning.",
+      "projectLink": [
+        "https://atitkh-distracted-driver-detection-and-a-streamlit-video-5ntfvk.streamlit.app/",
+        "https://github.com/atitkh/Distracted-Driver-Detection-and-Alerter"
+      ],
+      "categories": [
+        "Python",
+        "TensorFlow",
+        "Streamlit",
+        "Twilio"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "ML"
+      ]
+    },
+    {
       "id": 11,
       "image": "https://i.imgur.com/x53E3Rx.png",
       "video": "https://www.youtube.com/",
@@ -806,25 +827,37 @@
       ]
     },
     {
-      "id": 23,
-      "image": "https://i.imgur.com/VRNk9vz.png",
-      "video": "https://www.youtube.com/",
-      "title": "Distracted Driver Detection",
-      "description": "This project aims to detect and alert distracted drivers in real-time using computer vision and machine learning.",
-      "projectLink": [
-        "https://atitkh-distracted-driver-detection-and-a-streamlit-video-5ntfvk.streamlit.app/",
-        "https://github.com/atitkh/Distracted-Driver-Detection-and-Alerter"
-      ],
-      "categories": [
-        "Python",
-        "TensorFlow",
-        "Streamlit",
-        "Twilio"
-      ],
-      "date": "2022",
-      "mainCategory": [
-        "ML"
-      ]
+      "id": 24,
+      "image": "https://i.imgur.com/wwgoVG6.png",
+      "video": "",
+      "title": "Snapchat's next mission in AR",
+      "description": "I was mentioned in a CNET article for my work on the Learn Languages project. This project is an augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages. It was an honor to be recognized by such a respected tech news source.",
+      "projectLink": ["https://www.cnet.com/tech/mobile/snapchats-next-mission-in-ar-going-from-playground-to-practical/"],
+      "categories": ["News"],
+      "date": "2020",
+      "mainCategory": ["In the Media"]
+    },
+    {
+      "id": 25,
+      "image": "https://i.imgur.com/6K4jnn1.png",
+      "video": "",
+      "title": "SnapAR - Creator Spotlight",
+      "description": "In this piece, Snap AR showcases Lens Creators who are actively bringing languages to life through augmented reality. Cyrene Quiamco, creator of \"Write LOVE Chinese,\" and I, creator of \"Learn Hindi\" and \"Learn Yugambeh,\" were featured as prominent contributors. Our innovative approaches in utilizing AR technology to teach languages and raise awareness about cultural diversity are showcased, emphasizing the significant role AR plays in sharing information.",
+      "projectLink": ["https://ar.snap.com/lens-drop-creator-spotlight"],
+      "categories": ["Article"],
+      "date": "2021",
+      "mainCategory": ["In the Media"]
+    },
+    {
+      "id": 26,
+      "image": "https://i.imgur.com/cPzcpSg.png",
+      "video": "",
+      "title": "Heartbeat by Comet ML",
+      "description": "I was featured in an article titled \"Snapchat Lens Creator Spotlight: Atit Kharel\" published by Comet ML. This article captures the AR creations developed by me.",
+      "projectLink": ["https://heartbeat.comet.ml/snapchat-lens-creator-spotlight-atit-kharel-c39962b778fd"],
+      "categories": ["Article"],
+      "date": "2020",
+      "mainCategory": ["In the Media"]
     }
   ]
 }
