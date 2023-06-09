@@ -15,7 +15,8 @@
     "Design",
     "In the Media"
   ],
-  "portfolio": [{
+  "portfolio": [
+    {
       "id": 1,
       "image": "https://i.imgur.com/tt8k8Il.png",
       "video": "https://www.youtube.com/",
@@ -333,9 +334,7 @@
       "video": "https://www.youtube.com/",
       "title": "Dino Run",
       "description": "Replica game of Google Chrome's T-Rex Run playable in No Internet Connection page of the browser, published as AR Filter in Instagram and Snapchat.",
-      "projectLink": [
-
-      ],
+      "projectLink": [],
       "categories": [
         "JavScript",
         "Lens Studio"
@@ -832,10 +831,16 @@
       "video": "",
       "title": "Snapchat's next mission in AR",
       "description": "I was mentioned in a CNET article for my work on the Learn Languages project. This project is an augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
-      "projectLink": ["https://www.cnet.com/tech/mobile/snapchats-next-mission-in-ar-going-from-playground-to-practical/"],
-      "categories": ["News"],
-      "date": "2020",
-      "mainCategory": ["In the Media"]
+      "projectLink": [
+        "https://www.cnet.com/tech/mobile/snapchats-next-mission-in-ar-going-from-playground-to-practical/"
+      ],
+      "categories": [
+        "News"
+      ],
+      "date": "December 8, 2020",
+      "mainCategory": [
+        "In the Media"
+      ]
     },
     {
       "id": 25,
@@ -843,21 +848,33 @@
       "video": "",
       "title": "SnapAR - Creator Spotlight",
       "description": "In this piece, Snap AR showcases Lens Creators who are actively bringing languages to life through augmented reality. Cyrene Quiamco, creator of \"Write LOVE Chinese,\" and I, creator of \"Learn Hindi\" and \"Learn Yugambeh,\" were featured as prominent contributors. Our innovative approaches in utilizing AR technology to teach languages and raise awareness about cultural diversity are showcased, emphasizing the significant role AR plays in education.",
-      "projectLink": ["https://ar.snap.com/lens-drop-creator-spotlight"],
-      "categories": ["Article"],
-      "date": "2021",
-      "mainCategory": ["In the Media"]
+      "projectLink": [
+        "https://ar.snap.com/lens-drop-creator-spotlight"
+      ],
+      "categories": [
+        "Article"
+      ],
+      "date": "April 5, 2022",
+      "mainCategory": [
+        "In the Media"
+      ]
     },
     {
-      "id": 26,
-      "image": "https://i.imgur.com/cPzcpSg.png",
+      "id": 28,
+      "image": "https://i.imgur.com/gfJGNMv.png",
       "video": "",
-      "title": "Heartbeat by Comet ML",
-      "description": "I was featured in an article titled \"Snapchat Lens Creator Spotlight: Atit Kharel\" published by Comet ML. This article captures the AR creations developed by me.",
-      "projectLink": ["https://heartbeat.comet.ml/snapchat-lens-creator-spotlight-atit-kharel-c39962b778fd"],
-      "categories": ["Article"],
-      "date": "2020",
-      "mainCategory": ["In the Media"]
+      "title": "Lenslist",
+      "description": "I was featured in Lenslist's article titled \"8 Snapchat Lens Creators You Should Know | April 2021\". This article specifically highlights my works done using combination of augmented reality (AR) and machine learning (ML).",
+      "projectLink": [
+        "https://blog.lenslist.co/2021/04/15/8-snapchat-lens-creators-you-should-know-april-2021/"
+      ],
+      "categories": [
+        "Article"
+      ],
+      "date": "April 15, 2021",
+      "mainCategory": [
+        "In the Media"
+      ]
     },
     {
       "id": 27,
@@ -865,24 +882,115 @@
       "video": "",
       "title": "SnapAR - Lens Fest 2020",
       "description": "I was honored to speak at Snap's Lens fest 2020, along with a panel of creators on using augmented reality on Snapchat to drive social change. Our conversation covered topics such as our role and responsibility as creators, and crafting lenses for global accessibility.",
-      "projectLink": ["https://youtu.be/-a7utnPQZ1s?t=38"],
-      "categories": ["Article"],
-      "date": "2020",
-      "mainCategory": ["In the Media"]
+      "projectLink": [
+        "https://youtu.be/-a7utnPQZ1s?t=38"
+      ],
+      "categories": [
+        "Event"
+      ],
+      "date": "December 9, 2020",
+      "mainCategory": [
+        "In the Media"
+      ]
     },
     {
-      "id": 28,
-      "image": "https://i.imgur.com/gfJGNMv.png",
+      "id": 26,
+      "image": "https://i.imgur.com/gJTnK1b.png",
       "video": "",
-      "title": "Lenslist",
-      "description": "I was featured in Lenslist's article titled \"8 Snapchat Lens Creators You Should Know | April 2021.\" This article specifically highlights my works done using combination of augmented reality (AR) and machine learning (ML).",
+      "title": "Hindustan Times",
+      "description": "I had the privilege of being featured in Hindustan Times' article titled \"How to use Snapchat's Learn Hindi lens\" where my contribution to developing an immersive AR lens on Snapchat was highlighted. The article provides step-by-step instructions on how to access and make the most of this language-learning experience.",
       "projectLink": [
-        "https://blog.lenslist.co/2021/04/15/8-snapchat-lens-creators-you-should-know-april-2021/"
+        "https://tech.hindustantimes.com/how-to/how-to-use-snapchat-s-learn-hindi-lens-71600085275012.html"
+      ],
+      "categories": [
+        "News"
+      ],
+      "date": "August 20, 2022",
+      "mainCategory": [
+        "In the Media"
+      ]
+    },
+    {
+      "id": 26,
+      "image": "https://i.imgur.com/cPzcpSg.png",
+      "video": "",
+      "title": "Heartbeat by Comet ML",
+      "description": "I was featured in an article titled \"Snapchat Lens Creator Spotlight: Atit Kharel\" published by Comet ML. This article captures the AR creations developed by me.",
+      "projectLink": [
+        "https://heartbeat.comet.ml/snapchat-lens-creator-spotlight-atit-kharel-c39962b778fd"
       ],
       "categories": [
         "Article"
       ],
-      "date": "2021",
+      "date": "Dec 8, 2020",
+      "mainCategory": [
+        "In the Media"
+      ]
+    },
+    {
+      "id": 32,
+      "image": "https://i.imgur.com/ad1vcfM.png",
+      "video": "",
+      "title": "The Indain Express",
+      "description": "I was featured in The Indian Express' article \"Snapchat brings 'Learn Hindi' lens to celebrate Hindi Diwas: How it works\" published on the occasion of Hindi Diwas 2020. It showcases my involvement in the development of the 'Learn Hindi' lens in collaboration with Snapchat.",
+      "projectLink": [
+        "https://indianexpress.com/article/technology/tech-news-technology/snapchat-learn-hindi-lens-to-celebrate-hindi-6595737/"
+      ],
+      "categories": [
+        "News"
+      ],
+      "date": "September 14, 2020",
+      "mainCategory": [
+        "In the Media"
+      ]
+    },
+    {
+      "id": 29,
+      "image": "https://i.imgur.com/rl3Wz1z.png",
+      "video": "",
+      "title": "The Statesman",
+      "description": "I was featured in The Statesman's article \"Learn six Indian language basics with AR lenses\". The article highlights innovative use of augmented reality (AR) lenses to facilitate language learning, offering users an immersive and engaging experience to learn the basics of six Indian languages.",
+      "projectLink": [
+        "https://www.thestatesman.com/features/learn-six-indian-language-basics-ar-lenses-1502971509.html"
+      ],
+      "categories": [
+        "News"
+      ],
+      "date": "June 9, 2021",
+      "mainCategory": [
+        "In the Media"
+      ]
+    },
+    {
+      "id": 30,
+      "image": "https://i.imgur.com/t351dS3.png",
+      "video": "",
+      "title": "Mid-Day",
+      "description": "I was featured in Mid-Day's article which highlights my use of augmented reality (AR) lenses for language learning, offering users an immersive and engaging experience to learn the basics of six Indian languages.",
+      "projectLink": [
+        "https://www.mid-day.com/lifestyle/culture/article/learn-six-indian-language-basics-with-ar-lenses-23177410"
+      ],
+      "categories": [
+        "News"
+      ],
+      "date": "June 9, 2021",
+      "mainCategory": [
+        "In the Media"
+      ]
+    },
+    {
+      "id": 30,
+      "image": "https://i.imgur.com/zQOS79k.png",
+      "video": "",
+      "title": "Times Now",
+      "description": "",
+      "projectLink": [
+        "https://www.timesnownews.com/technology-science/article/exclusive-working-to-create-educational-lenses-in-more-languages-says-snapchats-learn-hindi-lens-creator/653037"
+      ],
+      "categories": [
+        "News"
+      ],
+      "date": "September 15, 2020",
       "mainCategory": [
         "In the Media"
       ]
