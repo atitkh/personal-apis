@@ -831,7 +831,7 @@
       "image": "https://i.imgur.com/wwgoVG6.png",
       "video": "",
       "title": "Snapchat's next mission in AR",
-      "description": "I was mentioned in a CNET article for my work on the Learn Languages project. This project is an augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages. It was an honor to be recognized by such a respected tech news source.",
+      "description": "I was mentioned in a CNET article for my work on the Learn Languages project. This project is an augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
       "projectLink": ["https://www.cnet.com/tech/mobile/snapchats-next-mission-in-ar-going-from-playground-to-practical/"],
       "categories": ["News"],
       "date": "2020",
@@ -842,7 +842,7 @@
       "image": "https://i.imgur.com/6K4jnn1.png",
       "video": "",
       "title": "SnapAR - Creator Spotlight",
-      "description": "In this piece, Snap AR showcases Lens Creators who are actively bringing languages to life through augmented reality. Cyrene Quiamco, creator of \"Write LOVE Chinese,\" and I, creator of \"Learn Hindi\" and \"Learn Yugambeh,\" were featured as prominent contributors. Our innovative approaches in utilizing AR technology to teach languages and raise awareness about cultural diversity are showcased, emphasizing the significant role AR plays in sharing information.",
+      "description": "In this piece, Snap AR showcases Lens Creators who are actively bringing languages to life through augmented reality. Cyrene Quiamco, creator of \"Write LOVE Chinese,\" and I, creator of \"Learn Hindi\" and \"Learn Yugambeh,\" were featured as prominent contributors. Our innovative approaches in utilizing AR technology to teach languages and raise awareness about cultural diversity are showcased, emphasizing the significant role AR plays in education.",
       "projectLink": ["https://ar.snap.com/lens-drop-creator-spotlight"],
       "categories": ["Article"],
       "date": "2021",
@@ -858,6 +858,34 @@
       "categories": ["Article"],
       "date": "2020",
       "mainCategory": ["In the Media"]
+    },
+    {
+      "id": 27,
+      "image": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDYxNTcxZWZiMjU1NDZmZDkzNDFhYmIxYTNmNjA5ZWQzOGVhYjFjOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/NIkgNKFQkg6iV7f1ph/giphy.gif",
+      "video": "",
+      "title": "SnapAR - Lens Fest 2020",
+      "description": "I was honored to speak at Snap's Lens fest 2020, along with a panel of creators on using augmented reality on Snapchat to drive social change. Our conversation covered topics such as our role and responsibility as creators, and crafting lenses for global accessibility.",
+      "projectLink": ["https://youtu.be/-a7utnPQZ1s?t=38"],
+      "categories": ["Article"],
+      "date": "2020",
+      "mainCategory": ["In the Media"]
+    },
+    {
+      "id": 28,
+      "image": "https://i.imgur.com/gfJGNMv.png",
+      "video": "",
+      "title": "Lenslist",
+      "description": "I was featured in Lenslist's article titled \"8 Snapchat Lens Creators You Should Know | April 2021.\" This article specifically highlights my works done using combination of augmented reality (AR) and machine learning (ML).",
+      "projectLink": [
+        "https://blog.lenslist.co/2021/04/15/8-snapchat-lens-creators-you-should-know-april-2021/"
+      ],
+      "categories": [
+        "Article"
+      ],
+      "date": "2021",
+      "mainCategory": [
+        "In the Media"
+      ]
     }
   ]
 }
