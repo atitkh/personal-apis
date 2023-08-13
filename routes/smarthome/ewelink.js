@@ -6,7 +6,9 @@ const verify = require('../auth/verifyToken');
 const ewelinkApi = new ewelink({
     email: process.env.EWELINK_EMAIL,
     password: process.env.EWELINK_PASSWORD,
-    region: 'as'
+    region: 'as',
+    APP_ID: process.env.EWELINK_APP_ID,
+    APP_SECRET: process.env.EWELINK_APP_SECRET,
 });
 
 router.get('/', (req, res) => {
