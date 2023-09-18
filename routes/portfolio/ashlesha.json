@@ -68,10 +68,32 @@
         "Blender",
         "Adobe Substance Painter"
       ],
-      "date": 2022,
+      "date": "2022",
       "mainCategory": [
         "Game",
         "AR"
+      ]
+    },
+    {
+      "id": 2,
+      "image": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
+      "video": "https://www.youtube.com/",
+      "title": "AR Business Card",
+      "description": "WebXR project that uses image tracking in a web browser to track and animate business cards in AR.",
+      "projectLink": [
+        "https://bcard.kerkarcreations.com/ashlesha/",
+        "https://github.com/atitkh/WebAR-Business-Card/tree/master/atit"
+      ],
+      "categories": [
+        "HTML",
+        "CSS",
+        "JavaScript",
+        "A-Frame"
+      ],
+      "date": "2022",
+      "mainCategory": [
+        "AR",
+        "Website"
       ]
     },
     {
@@ -326,7 +348,7 @@
       ],
       "date": 2021,
       "mainCategory": [
-        "AR/VR"
+        "AR"
       ]
     },
     {
@@ -344,7 +366,7 @@
       ],
       "date": 2021,
       "mainCategory": [
-        "AR/VR"
+        "AR"
       ]
     },
     {
@@ -363,7 +385,7 @@
       ],
       "date": 2021,
       "mainCategory": [
-        "AR/VR"
+        "AR"
       ]
     },
     {
@@ -382,7 +404,7 @@
       ],
       "date": 2021,
       "mainCategory": [
-        "AR/VR"
+        "AR"
       ]
     },
     {
@@ -400,7 +422,7 @@
       ],
       "date": 2021,
       "mainCategory": [
-        "AR/VR"
+        "AR"
       ]
     },
     {
