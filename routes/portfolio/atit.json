@@ -13,7 +13,8 @@
     "Website",
     "Bot",
     "Design",
-    "In the Media"
+    "In the Media",
+    "Community Engagements"
   ],
   "portfolio": [
     {
@@ -896,6 +897,23 @@
     },
     {
       "id": 46,
+      "image": "https://i.imgur.com/rIvMUKK.png",
+      "video": "",
+      "title": "SnapAR - APAC AR Day 2023",
+      "description": "I had the honor of being a presenter at SnapAR's APAC AR Day in Mumbai, India, where I delved into the limitless potential of AR to enhance interactive learning. In a breakout room session, I shared insights from my journey within the augmented reality ecosystem. The event provided a valuable showcase, emphasizing the transformative capabilities of AR across diverse domains.",
+      "projectLink": [
+        "https://newsroom.snap.com/snap-celebrates-augmented-reality-at-inaugural-apac-ar-day"
+      ],
+      "categories": [
+        "Event"
+      ],
+      "date": "November 6, 2023",
+      "mainCategory": [
+        "Community Engagements"
+      ]
+    },
+    {
+      "id": 47,
       "image": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDYxNTcxZWZiMjU1NDZmZDkzNDFhYmIxYTNmNjA5ZWQzOGVhYjFjOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/NIkgNKFQkg6iV7f1ph/giphy.gif",
       "video": "",
       "title": "SnapAR - Lens Fest 2020",
@@ -908,11 +926,11 @@
       ],
       "date": "December 9, 2020",
       "mainCategory": [
-        "In the Media"
+        "Community Engagements"
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "image": "https://i.imgur.com/gJTnK1b.png",
       "video": "",
       "title": "Hindustan Times",
@@ -929,7 +947,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "image": "https://i.imgur.com/cPzcpSg.png",
       "video": "",
       "title": "Heartbeat by Comet ML",
@@ -946,7 +964,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "image": "https://i.imgur.com/ad1vcfM.png",
       "video": "",
       "title": "The Indain Express",
@@ -963,7 +981,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "image": "https://i.imgur.com/rl3Wz1z.png",
       "video": "",
       "title": "The Statesman",
@@ -980,7 +998,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "image": "https://i.imgur.com/t351dS3.png",
       "video": "",
       "title": "Mid-Day",
@@ -997,7 +1015,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "image": "https://i.imgur.com/zQOS79k.png",
       "video": "",
       "title": "Times Now",
