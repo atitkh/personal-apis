@@ -17,7 +17,7 @@
   ],
   "portfolio": [
     {
-      "id": 1,
+      "id": 0,
       "image": "https://i.imgur.com/tt8k8Il.png",
       "video": "https://www.youtube.com/",
       "title": "NFT Viewer - VR",
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "id": 2,
+      "id": 1,
       "image": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "AR Business Card",
@@ -62,7 +62,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": 2,
       "image": "https://i.giphy.com/media/MeEjmsSSikKUqCNmws/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "AR Guitar Tutor",
@@ -82,11 +82,11 @@
       ]
     },
     {
-      "id": 5,
+      "id": 3,
       "lensID": "6670d0dc-aa43-4e6e-9936-26c5c44715ed",
       "image": "https://media1.giphy.com/media/OJPPkGKXbH3Q0YXmvs/giphy.gif?cid=790b76112d2874212823f347fc4fb250a85b34c29e923e0b&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
-      "title": "Pokédex Kanto",
+      "title": "Pok\u00c3\u00a9dex Kanto",
       "description": "AR Experience to recognize and give info about all Pokemons in Kanto Region using Machine Learning.",
       "projectLink": [
         "https://lens.snapchat.com/3cff8cef4cc94839863f7f7dd90bdae6"
@@ -102,7 +102,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 4,
       "lensID": "93696625-cc30-49d3-8346-e2794a52c3be",
       "image": "https://media3.giphy.com/media/PTb1liSXPYPya2DTkS/giphy.gif?cid=790b7611fc4da349ca9310a888247ab9c8de472335e873c0&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -121,7 +121,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 5,
       "lensID": "6c91d6cd-f312-44d9-8d14-21eb1138d5b4",
       "image": "https://media2.giphy.com/media/2NOe6cOkCbote0JVqN/giphy.gif?cid=790b76113bd251a580beb71e418a19614c4f0791a56de416&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -141,7 +141,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 6,
       "lensID": "0cf808c8-f3bc-4ccc-9d04-28c3f5894438",
       "image": "https://media2.giphy.com/media/q3Fh8T6D2RLfBklMky/giphy.webp",
       "video": "https://www.youtube.com/",
@@ -161,7 +161,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 7,
       "lensID": "e9da6b94-d86d-42fc-a2c7-50394f795d34",
       "image": "https://media0.giphy.com/media/BUlQT9fBHGq8Crfwtb/giphy.gif?cid=790b7611d47b5b7f66886075866da6abff235da61031626f&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -182,7 +182,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 8,
       "image": "https://media3.giphy.com/media/fFGandES0njBDdFTmN/giphy.gif?cid=790b76118e8d6f55fae542104ce861290acd5fba0cda4720&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Mask Cleanup",
@@ -203,7 +203,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 9,
       "lensID": "b4c451d6-9cd1-4c02-bec5-6972fcf6d3a7",
       "image": "https://media3.giphy.com/media/tlD3bvU32GXF91C3vP/giphy.gif?cid=790b7611747de3b612bb568d0a65e7d96787af76aef01103&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -222,7 +222,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 10,
       "lensID": "a100d074-f561-4456-8eee-ce7e45888228",
       "image": "https://i.giphy.com/media/L3pc7pf1a1tCVCT0Dp/giphy.gif",
       "video": "https://www.youtube.com/",
@@ -242,7 +242,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 11,
       "lensID": "0d9a7811-f2b0-41fa-a6d8-e31a1e8c7fea",
       "image": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -262,7 +262,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 12,
       "lensID": "81b2738d-dda1-4b0d-9b58-c1354a80695a",
       "image": "https://i.giphy.com/media/FsGyagQuZ8Dsgw3K2c/giphy.gif",
       "video": "https://www.youtube.com/",
@@ -282,7 +282,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 13,
       "lensID": "1a608ed8-cfc5-476e-a33a-fd354fbee327",
       "image": "https://media0.giphy.com/media/GLfNQzzlmkdKfY4TLq/giphy.gif?cid=790b761190975cbf2568ed22051693d572f60d12b5692d13&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -294,7 +294,7 @@
       "categories": [
         "JavScript",
         "Lens Studio",
-        "Substance 3D Painter "
+        "Substance\u00c2\u00a03D\u00c2\u00a0Painter\u00c2\u00a0"
       ],
       "date": "2022",
       "mainCategory": [
@@ -303,7 +303,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 14,
       "lensID": "6babfea7-568f-4f2a-8bb6-7a2d964ae08d",
       "image": "https://i.giphy.com/media/Mev87Dib4DOaaoFQ51/giphy.gif",
       "video": "https://www.youtube.com/",
@@ -322,7 +322,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 15,
       "image": "https://i.giphy.com/media/HBaTKINicgnrk1jliw/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Obstacle Avoiding Robot",
@@ -340,12 +340,14 @@
       ]
     },
     {
-      "id": 9,
+      "id": 16,
       "image": "https://i.giphy.com/media/4TEgyBJF8lVltQuORq/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Dino Run",
       "description": "Replica game of Google Chrome's T-Rex Run playable in No Internet Connection page of the browser, published as AR Filter in Instagram and Snapchat.",
-      "projectLink": [],
+      "projectLink": [
+        
+      ],
       "categories": [
         "JavScript",
         "Lens Studio"
@@ -357,7 +359,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 17,
       "lensID": "00ad28dd-2c60-4e49-a0f2-f74e912025ea",
       "image": "https://media0.giphy.com/media/ubp4XZ67kfLuz48Dwg/giphy.gif",
       "video": "https://www.youtube.com/",
@@ -377,7 +379,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 18,
       "lensID": "37202534-53b1-44d7-9cb7-45e2a2dcd380",
       "image": "https://media0.giphy.com/media/FQzZ3KxizYyA9l81pw/giphy.gif?cid=790b76113a8fbe17e13c4748b5a6ae54bd5781f1e3b46265&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -397,7 +399,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 19,
       "lensID": "2bc3d80d-e558-4fdc-8589-81f3a6b02195",
       "image": "https://media4.giphy.com/media/vWBqzsln4FdZYAg8Ny/giphy.gif?cid=790b76115790bd86908d8747ec5065ed93afeb452ef77dc3&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
@@ -417,7 +419,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 20,
       "lensID": "9eadf7a2-266a-476a-99b9-28cb86708a1f",
       "image": "https://i.giphy.com/media/UL63PiRQvS7FfusOsr/giphy.gif",
       "video": "https://www.youtube.com/",
@@ -436,7 +438,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 21,
       "lensID": "2593ea4c-a8ac-45bf-ab24-245e96b5ed2f",
       "image": "https://i.giphy.com/media/c2MAn3sRaQVjD6z6fC/giphy.gif",
       "video": "https://www.youtube.com/",
@@ -455,7 +457,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 22,
       "image": "https://i.giphy.com/media/rbBr8OsXEOWLsSGqZv/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Falful Ninja",
@@ -474,7 +476,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 23,
       "image": "https://i.giphy.com/media/RKesXquUQbPIke0vQ5/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Hangman Game",
@@ -512,7 +514,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "image": "https://i.giphy.com/media/uSeXREed0RSfcTseo0/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Guess the Number",
@@ -531,7 +533,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 26,
       "image": "https://i.giphy.com/media/WOXfrzbrvCoUEIqDVk/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Personal API",
@@ -552,7 +554,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": 27,
       "image": "https://i.imgur.com/6eyuXF4.png",
       "video": "https://www.youtube.com/",
       "title": "Covid19 Updates Nepal",
@@ -571,7 +573,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": 28,
       "image": "https://i.imgur.com/FqdXMvQ.png",
       "video": "https://www.youtube.com/",
       "title": "Pidit DJ",
@@ -590,7 +592,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 29,
       "image": "https://i.imgur.com/DxdWSoT.jpg",
       "video": "https://www.youtube.com/",
       "title": "VSnake Bot",
@@ -609,7 +611,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 30,
       "image": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "NNZFSC Website",
@@ -627,7 +629,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 31,
       "image": "https://i.imgur.com/VRNk9vz.png",
       "video": "https://www.youtube.com/",
       "title": "Distracted Driver Detection",
@@ -648,7 +650,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 32,
       "image": "https://i.imgur.com/x53E3Rx.png",
       "video": "https://www.youtube.com/",
       "title": "TIA Airport",
@@ -665,7 +667,7 @@
       ]
     },
     {
-      "id": 12,
+      "id": 33,
       "image": "https://i.imgur.com/v0Ydfsm.png",
       "video": "https://www.youtube.com/",
       "title": "TIA Airport",
@@ -682,7 +684,7 @@
       ]
     },
     {
-      "id": 13,
+      "id": 34,
       "image": "https://i.imgur.com/kty3Zhd.gif",
       "video": "https://www.youtube.com/",
       "title": "Boudhanath Stupa",
@@ -700,7 +702,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 35,
       "image": "https://i.imgur.com/ogoJRTo.png",
       "video": "https://www.youtube.com/",
       "title": "Chabahil",
@@ -718,7 +720,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 36,
       "image": "https://i.imgur.com/Pjd8NmO.png",
       "video": "https://www.youtube.com/",
       "title": "Chabahil",
@@ -736,7 +738,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 37,
       "image": "https://i.imgur.com/vTaaYgH.png",
       "video": "https://www.youtube.com/",
       "title": "Dhumbarahi",
@@ -754,7 +756,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 38,
       "image": "https://i.imgur.com/3slMU77.png",
       "video": "https://www.youtube.com/",
       "title": "Durbarmargh",
@@ -772,7 +774,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 39,
       "image": "https://i.imgur.com/duaruGH.png",
       "video": "https://www.youtube.com/",
       "title": "Kathmandu",
@@ -789,7 +791,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 40,
       "image": "https://i.imgur.com/N9ONnHo.png",
       "video": "https://www.youtube.com/",
       "title": "Dharahara",
@@ -807,7 +809,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 41,
       "image": "https://i.imgur.com/SDxXxLl.png",
       "video": "https://www.youtube.com/",
       "title": "KUSOM",
@@ -825,7 +827,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 42,
       "image": "https://i.imgur.com/SntU5yD.gif",
       "video": "https://www.youtube.com/",
       "title": "Maharajgunj",
@@ -842,7 +844,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 43,
       "image": "https://i.imgur.com/wwgoVG6.png",
       "video": "",
       "title": "Snapchat's next mission in AR",
@@ -859,7 +861,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 44,
       "image": "https://i.imgur.com/6K4jnn1.png",
       "video": "",
       "title": "SnapAR - Creator Spotlight",
@@ -876,7 +878,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 45,
       "image": "https://i.imgur.com/gfJGNMv.png",
       "video": "",
       "title": "Lenslist",
@@ -893,7 +895,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 46,
       "image": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDYxNTcxZWZiMjU1NDZmZDkzNDFhYmIxYTNmNjA5ZWQzOGVhYjFjOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/NIkgNKFQkg6iV7f1ph/giphy.gif",
       "video": "",
       "title": "SnapAR - Lens Fest 2020",
@@ -910,7 +912,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 47,
       "image": "https://i.imgur.com/gJTnK1b.png",
       "video": "",
       "title": "Hindustan Times",
@@ -927,7 +929,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 48,
       "image": "https://i.imgur.com/cPzcpSg.png",
       "video": "",
       "title": "Heartbeat by Comet ML",
@@ -944,7 +946,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 49,
       "image": "https://i.imgur.com/ad1vcfM.png",
       "video": "",
       "title": "The Indain Express",
@@ -961,7 +963,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 50,
       "image": "https://i.imgur.com/rl3Wz1z.png",
       "video": "",
       "title": "The Statesman",
@@ -978,7 +980,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 51,
       "image": "https://i.imgur.com/t351dS3.png",
       "video": "",
       "title": "Mid-Day",
@@ -995,7 +997,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 52,
       "image": "https://i.imgur.com/zQOS79k.png",
       "video": "",
       "title": "Times Now",

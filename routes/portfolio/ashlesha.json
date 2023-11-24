@@ -15,7 +15,7 @@
   ],
   "portfolio": [
     {
-      "id": 1,
+      "id": 0,
       "image": "https://media1.giphy.com/media/B5cTq3XFZPFlTxMXP0/giphy.gif?cid=790b7611d62d394100fb30c661fee585172e0798e06958b5&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Cute Rollerskates",
@@ -34,7 +34,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": 1,
       "image": "https://i.giphy.com/media/MeEjmsSSikKUqCNmws/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "AR Guitar Tutor",
@@ -54,7 +54,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 2,
       "image": "https://media0.giphy.com/media/lKsmQ8QflspEENbItL/giphy.gif?cid=790b7611b39bedb174378eeedc48baea4cafc23127f658b1&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Apple Picking",
@@ -75,7 +75,7 @@
       ]
     },
     {
-      "id": 2,
+      "id": 3,
       "image": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "AR Business Card",
@@ -97,7 +97,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 4,
       "image": "https://media2.giphy.com/media/NAW0nGGy2JmvhgDHIu/giphy.gif?cid=790b76115d487d8fea2d339da8dab2997b07e6c2ae2fe844&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Save Our Planet",
@@ -118,7 +118,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 5,
       "image": "https://media0.giphy.com/media/uTYRzDqUzMPxT6A3y5/giphy.gif?cid=790b761102c358c0366784f37966c2133f02caddd6889498&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Decades of Fashion",
@@ -138,7 +138,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 6,
       "image": "https://media3.giphy.com/media/YG6ucXOf4oIXYn8FNL/giphy.gif?cid=790b76111855a70d54a9af7a8b56c1ba670a1975a187971f&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Penalty Shootout",
@@ -159,7 +159,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 7,
       "image": "https://media2.giphy.com/media/cKTMuHaG7lERHRXxQM/giphy.gif?cid=790b7611b285f5d13a4712ec9b06dba758cf0e2de9874501&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Subho Ashtami",
@@ -179,7 +179,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 8,
       "image": "https://media3.giphy.com/media/77kI3p1pvVhhAoTEZ7/giphy.gif?cid=790b7611e54c09c979064a7adf364b492132ef5e8f7f11f2&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Bastille Day",
@@ -199,7 +199,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 9,
       "image": "https://media2.giphy.com/media/NeyIrMNgrXkpggtvl6/giphy.gif?cid=790b76114f92ebe3eb35c6f32d6dd9e60d70b02bcac06eaa&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Canada Day",
@@ -219,7 +219,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 10,
       "image": "https://media4.giphy.com/media/tN6C9X1iMS1dcKTGQL/giphy.gif?cid=790b7611bde04a1ce5eaf08d3971dd079617539a669a9490&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Islamic New Year",
@@ -239,7 +239,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 11,
       "image": "https://media0.giphy.com/media/j0S9vzo5KsBN2rEltn/giphy.gif?cid=790b76118273473de32dbf7e5f48a4a6ff773c4fd146c085&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Floral Bloom",
@@ -258,7 +258,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 12,
       "image": "https://media3.giphy.com/media/LXmK8km3k3yMdNGHwM/giphy.gif?cid=790b76117c44f127675784de529d34fc4fcce0197a01e576&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Space Face",
@@ -277,7 +277,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 13,
       "image": "https://media2.giphy.com/media/QXFtKB0VBQMxpHbi3m/giphy.gif?cid=790b76113173ac8ccfdfe683fd94feeb15fdd4ce058abca3&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Yomari Khau",
@@ -296,7 +296,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 14,
       "image": "https://media0.giphy.com/media/R1MKVBmCLCA2hYz7JA/giphy.gif?cid=790b761103a0cac4a96f4a6ff2614bc0ae6c1f915817c967&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Happy Pride Month",
@@ -315,7 +315,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 15,
       "image": "https://media4.giphy.com/media/AmMv4IEH2sCm8dsF3T/giphy.gif?cid=790b7611f61d341737f17de67ef355b66281a3820d5b5a93&rid=giphy.gif&ct=g",
       "video": "https://www.youtube.com/",
       "title": "Kindness Game",
@@ -334,7 +334,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 16,
       "image": "https://i.giphy.com/media/Mev87Dib4DOaaoFQ51/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Dashain Lens",
@@ -352,7 +352,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 17,
       "image": "https://i.giphy.com/media/c2MAn3sRaQVjD6z6fC/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Coca-Cola Dashain Lens",
@@ -370,7 +370,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 18,
       "image": "https://i.giphy.com/media/L3pc7pf1a1tCVCT0Dp/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "SL Lion",
@@ -389,7 +389,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 19,
       "image": "https://i.giphy.com/media/FsGyagQuZ8Dsgw3K2c/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "BD Tiger",
@@ -408,7 +408,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 20,
       "image": "https://i.giphy.com/media/UL63PiRQvS7FfusOsr/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Me Malinga",
@@ -426,7 +426,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 21,
       "image": "https://i.giphy.com/media/HBaTKINicgnrk1jliw/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "Obstacle Avoiding Robot",
@@ -444,7 +444,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 22,
       "image": "https://i.imgur.com/PgVk5tY.jpeg",
       "video": "https://www.youtube.com/",
       "title": "SnapShop",
@@ -463,7 +463,7 @@
       ]
     },
     {
-      "id": 1,
+      "id": 23,
       "image": "https://i.imgur.com/PwYwBQw.jpeg",
       "video": "https://www.youtube.com/",
       "title": "TuneIn",
@@ -480,9 +480,8 @@
         "Design"
       ]
     },
-    
     {
-      "id": 3,
+      "id": 24,
       "image": "https://i.imgur.com/6eyuXF4.png",
       "video": "https://www.youtube.com/",
       "title": "Covid19 Updates Nepal",
@@ -501,7 +500,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 25,
       "image": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
       "video": "https://www.youtube.com/",
       "title": "NNZFSC Website",
