@@ -20,7 +20,7 @@
     {
       "id": 0,
       "image": "https://i.imgur.com/tt8k8Il.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "NFT Viewer - VR",
       "description": "An NFT Viewing website in VR which gives owned NFTs of connected wallet or provided address on Ethereum and Polygon Chain.",
       "projectLink": [
@@ -42,8 +42,8 @@
     },
     {
       "id": 1,
-      "image": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/8HQSVaO.png",
+      "video": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
       "title": "AR Business Card",
       "description": "WebXR project that uses image tracking in a web browser to track and animate business cards in AR.",
       "projectLink": [
@@ -64,8 +64,8 @@
     },
     {
       "id": 2,
-      "image": "https://i.giphy.com/media/MeEjmsSSikKUqCNmws/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/pX3jOES.png",
+      "video": "https://i.giphy.com/media/MeEjmsSSikKUqCNmws/giphy.gif",
       "title": "AR Guitar Tutor",
       "description": "AR Experience that helps you learn guitar chords in AR using image tracking.",
       "projectLink": [
@@ -85,8 +85,8 @@
     {
       "id": 3,
       "lensID": "6670d0dc-aa43-4e6e-9936-26c5c44715ed",
-      "image": "https://media1.giphy.com/media/OJPPkGKXbH3Q0YXmvs/giphy.gif?cid=790b76112d2874212823f347fc4fb250a85b34c29e923e0b&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/fwEPO7F.png",
+      "video": "https://media1.giphy.com/media/OJPPkGKXbH3Q0YXmvs/giphy.gif?cid=790b76112d2874212823f347fc4fb250a85b34c29e923e0b&rid=giphy.gif&ct=g",
       "title": "Pokédex Kanto",
       "description": "AR Experience to recognize and give info about all Pokemons in Kanto Region using Machine Learning.",
       "projectLink": [
@@ -105,8 +105,8 @@
     {
       "id": 4,
       "lensID": "93696625-cc30-49d3-8346-e2794a52c3be",
-      "image": "https://media3.giphy.com/media/PTb1liSXPYPya2DTkS/giphy.gif?cid=790b7611fc4da349ca9310a888247ab9c8de472335e873c0&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/JVq58Uv.png",
+      "video": "https://media3.giphy.com/media/PTb1liSXPYPya2DTkS/giphy.gif?cid=790b7611fc4da349ca9310a888247ab9c8de472335e873c0&rid=giphy.gif&ct=g",
       "title": "Sign Language",
       "description": "AR Experience that uses hand tracking for recognition of American Sign Language hand gestures for english alphabets.",
       "projectLink": [
@@ -124,8 +124,8 @@
     {
       "id": 5,
       "lensID": "6c91d6cd-f312-44d9-8d14-21eb1138d5b4",
-      "image": "https://media2.giphy.com/media/2NOe6cOkCbote0JVqN/giphy.gif?cid=790b76113bd251a580beb71e418a19614c4f0791a56de416&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/jRiPgai.png",
+      "video": "https://media2.giphy.com/media/2NOe6cOkCbote0JVqN/giphy.gif?cid=790b76113bd251a580beb71e418a19614c4f0791a56de416&rid=giphy.gif&ct=g",
       "title": "Learn Languages",
       "description": "An augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
       "projectLink": [
@@ -144,8 +144,8 @@
     {
       "id": 6,
       "lensID": "0cf808c8-f3bc-4ccc-9d04-28c3f5894438",
-      "image": "https://media2.giphy.com/media/q3Fh8T6D2RLfBklMky/giphy.webp",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/ZjEzGZh.png",
+      "video": "https://media2.giphy.com/media/q3Fh8T6D2RLfBklMky/giphy.webp",
       "title": "Car Refuel",
       "description": "Snapchat AR game lens compatible with Snap's AR Glasses to control and refuel a car by collecting fuel cans.",
       "projectLink": [
@@ -164,8 +164,8 @@
     {
       "id": 7,
       "lensID": "e9da6b94-d86d-42fc-a2c7-50394f795d34",
-      "image": "https://media0.giphy.com/media/BUlQT9fBHGq8Crfwtb/giphy.gif?cid=790b7611d47b5b7f66886075866da6abff235da61031626f&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/BQVZPqC.png",
+      "video": "https://media0.giphy.com/media/BUlQT9fBHGq8Crfwtb/giphy.gif?cid=790b7611d47b5b7f66886075866da6abff235da61031626f&rid=giphy.gif&ct=g",
       "title": "AR Snooker",
       "description": "An AR game for Snapchat, compatible with Snap's AR Glasses, where a snooker table is spawned on the floor, allowing users to play the game in a realistic and interactive way.",
       "projectLink": [
@@ -184,8 +184,8 @@
     },
     {
       "id": 8,
-      "image": "https://media3.giphy.com/media/fFGandES0njBDdFTmN/giphy.gif?cid=790b76118e8d6f55fae542104ce861290acd5fba0cda4720&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/xyMFoWC.png",
+      "video": "https://media3.giphy.com/media/fFGandES0njBDdFTmN/giphy.gif?cid=790b76118e8d6f55fae542104ce861290acd5fba0cda4720&rid=giphy.gif&ct=g",
       "title": "Mask Cleanup",
       "description": "An interactive AR world experience to clean up masks that have been carelessly discarded on the ground and properly dispose of them in a virtual bin.",
       "projectLink": [
@@ -206,8 +206,8 @@
     {
       "id": 9,
       "lensID": "b4c451d6-9cd1-4c02-bec5-6972fcf6d3a7",
-      "image": "https://media3.giphy.com/media/tlD3bvU32GXF91C3vP/giphy.gif?cid=790b7611747de3b612bb568d0a65e7d96787af76aef01103&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/gnoGsES.png",
+      "video": "https://media3.giphy.com/media/tlD3bvU32GXF91C3vP/giphy.gif?cid=790b7611747de3b612bb568d0a65e7d96787af76aef01103&rid=giphy.gif&ct=g",
       "title": "KEC Daily Routine",
       "description": "AR Poster created for KEC Daily Routine App. It uses image tracking to track and animate app's poster.",
       "projectLink": [
@@ -225,8 +225,8 @@
     {
       "id": 10,
       "lensID": "a100d074-f561-4456-8eee-ce7e45888228",
-      "image": "https://i.giphy.com/media/L3pc7pf1a1tCVCT0Dp/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/Sgavz8C.png",
+      "video": "https://i.giphy.com/media/L3pc7pf1a1tCVCT0Dp/giphy.gif",
       "title": "SL Lion",
       "description": "An AR lens for Viber that allows the user to transform their head into that of a lion, created to celebrate the Sri Lankan's participation in the T20 Cricket World Cup.",
       "projectLink": [
@@ -245,8 +245,8 @@
     {
       "id": 11,
       "lensID": "0d9a7811-f2b0-41fa-a6d8-e31a1e8c7fea",
-      "image": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/AH9WK19.png",
+      "video": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
       "title": "Bull Hand",
       "description": "AR Experience to track hand gesture and place a hand shaped bull developed for San Fermin.",
       "projectLink": [
@@ -265,8 +265,8 @@
     {
       "id": 12,
       "lensID": "81b2738d-dda1-4b0d-9b58-c1354a80695a",
-      "image": "https://i.giphy.com/media/FsGyagQuZ8Dsgw3K2c/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/6ndfoH4.png",
+      "video": "https://i.giphy.com/media/FsGyagQuZ8Dsgw3K2c/giphy.gif",
       "title": "BD Tiger",
       "description": "An AR lens for Viber that allows the user to transform their head into that of a tiger, created to celebrate the Bangladesh's participation in the T20 Cricket World Cup.",
       "projectLink": [
@@ -285,8 +285,8 @@
     {
       "id": 13,
       "lensID": "1a608ed8-cfc5-476e-a33a-fd354fbee327",
-      "image": "https://media0.giphy.com/media/GLfNQzzlmkdKfY4TLq/giphy.gif?cid=790b761190975cbf2568ed22051693d572f60d12b5692d13&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/C3Wr2gf.png",
+      "video": "https://media0.giphy.com/media/GLfNQzzlmkdKfY4TLq/giphy.gif?cid=790b761190975cbf2568ed22051693d572f60d12b5692d13&rid=giphy.gif&ct=g",
       "title": "Bakrid Mubarak",
       "description": "Snapchat AR game created for Eid (Bakrid) to feed the sheep by tracking user's hand.",
       "projectLink": [
@@ -295,7 +295,7 @@
       "categories": [
         "JavScript",
         "Lens Studio",
-        "Substance\u00c2\u00a03D\u00c2\u00a0Painter\u00c2\u00a0"
+        "SubstanceÂ 3DÂ PainterÂ "
       ],
       "date": "2022",
       "mainCategory": [
@@ -306,8 +306,8 @@
     {
       "id": 14,
       "lensID": "6babfea7-568f-4f2a-8bb6-7a2d964ae08d",
-      "image": "https://i.giphy.com/media/Mev87Dib4DOaaoFQ51/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/NwD9hem.png",
+      "video": "https://i.giphy.com/media/Mev87Dib4DOaaoFQ51/giphy.gif",
       "title": "Dashain Lens",
       "description": "A Viber AR lens to mark the occasion of Dashain Festival, that allows users to celebrate and wish their loved ones a joyful and blessed celebration.",
       "projectLink": [
@@ -324,8 +324,8 @@
     },
     {
       "id": 15,
-      "image": "https://i.giphy.com/media/HBaTKINicgnrk1jliw/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/zEQl1DQ.png",
+      "video": "https://i.giphy.com/media/HBaTKINicgnrk1jliw/giphy.gif",
       "title": "Obstacle Avoiding Robot",
       "description": "An obstacle-avoiding robot that uses ultrasonic sensors and an Arduino microcontroller to detect and navigate around objects in its environment.",
       "projectLink": [
@@ -342,13 +342,11 @@
     },
     {
       "id": 16,
-      "image": "https://i.giphy.com/media/4TEgyBJF8lVltQuORq/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/k36YuVu.png",
+      "video": "https://i.giphy.com/media/4TEgyBJF8lVltQuORq/giphy.gif",
       "title": "Dino Run",
       "description": "Replica game of Google Chrome's T-Rex Run playable in No Internet Connection page of the browser, published as AR Filter in Instagram and Snapchat.",
-      "projectLink": [
-        
-      ],
+      "projectLink": [],
       "categories": [
         "JavScript",
         "Lens Studio"
@@ -362,8 +360,8 @@
     {
       "id": 17,
       "lensID": "00ad28dd-2c60-4e49-a0f2-f74e912025ea",
-      "image": "https://media0.giphy.com/media/ubp4XZ67kfLuz48Dwg/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/oRtqXXm.png",
+      "video": "https://media0.giphy.com/media/ubp4XZ67kfLuz48Dwg/giphy.gif",
       "title": "Fly The Copter",
       "description": "Snapchat game lens to fly a copter by tapping on the screen. Users can create high score and share it with friends.",
       "projectLink": [
@@ -382,8 +380,8 @@
     {
       "id": 18,
       "lensID": "37202534-53b1-44d7-9cb7-45e2a2dcd380",
-      "image": "https://media0.giphy.com/media/FQzZ3KxizYyA9l81pw/giphy.gif?cid=790b76113a8fbe17e13c4748b5a6ae54bd5781f1e3b46265&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/G6c4dPz.png",
+      "video": "https://media0.giphy.com/media/FQzZ3KxizYyA9l81pw/giphy.gif?cid=790b76113a8fbe17e13c4748b5a6ae54bd5781f1e3b46265&rid=giphy.gif&ct=g",
       "title": "Coin Collect Game",
       "description": "Snapchat game lens to collect gold coins falling by tracking user's head. Users can create high score and share it with friends.",
       "projectLink": [
@@ -402,8 +400,8 @@
     {
       "id": 19,
       "lensID": "2bc3d80d-e558-4fdc-8589-81f3a6b02195",
-      "image": "https://media4.giphy.com/media/vWBqzsln4FdZYAg8Ny/giphy.gif?cid=790b76115790bd86908d8747ec5065ed93afeb452ef77dc3&rid=giphy.gif&ct=g",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/C1AzCcD.png",
+      "video": "https://media4.giphy.com/media/vWBqzsln4FdZYAg8Ny/giphy.gif?cid=790b76115790bd86908d8747ec5065ed93afeb452ef77dc3&rid=giphy.gif&ct=g",
       "title": "Easter Egg Catch",
       "description": "Snapchat game lens to collect Easter Eggs by tracking user's head. Users can create high score and share it with friends.",
       "projectLink": [
@@ -422,8 +420,8 @@
     {
       "id": 20,
       "lensID": "9eadf7a2-266a-476a-99b9-28cb86708a1f",
-      "image": "https://i.giphy.com/media/UL63PiRQvS7FfusOsr/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/wimOR2O.png",
+      "video": "https://i.giphy.com/media/UL63PiRQvS7FfusOsr/giphy.gif",
       "title": "Me Malinga",
       "description": "An AR lens for Sri Lankan former cricketer Malinga.",
       "projectLink": [
@@ -441,8 +439,8 @@
     {
       "id": 21,
       "lensID": "2593ea4c-a8ac-45bf-ab24-245e96b5ed2f",
-      "image": "https://i.giphy.com/media/c2MAn3sRaQVjD6z6fC/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/YkDMxaT.png",
+      "video": "https://i.giphy.com/media/c2MAn3sRaQVjD6z6fC/giphy.gif",
       "title": "Coca-Cola Dashain Lens",
       "description": "A Viber AR lens for Coca-Cola Nepal to mark the occasion of Dashain Festival with flying kite.",
       "projectLink": [
@@ -459,8 +457,8 @@
     },
     {
       "id": 22,
-      "image": "https://i.giphy.com/media/rbBr8OsXEOWLsSGqZv/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/KWwwnOi.png",
+      "video": "https://i.giphy.com/media/rbBr8OsXEOWLsSGqZv/giphy.gif",
       "title": "Falful Ninja",
       "description": "A game developed in Unity3D, inspired by the beloved classic Fruit Ninja.",
       "projectLink": [
@@ -478,8 +476,8 @@
     },
     {
       "id": 23,
-      "image": "https://i.giphy.com/media/RKesXquUQbPIke0vQ5/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/Wp1MX0V.jpeg",
+      "video": "https://i.giphy.com/media/RKesXquUQbPIke0vQ5/giphy.gif",
       "title": "Hangman Game",
       "description": "The classic word-guessing hangman game made in Unity3D.",
       "projectLink": [
@@ -497,8 +495,8 @@
     },
     {
       "id": 24,
-      "image": "https://i.giphy.com/media/AbHehbxmhM5O1qp9j2/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/pa46Yc0.jpeg",
+      "video": "https://i.giphy.com/media/AbHehbxmhM5O1qp9j2/giphy.gif",
       "title": "Space Invaders",
       "description": "A classic arcade game reimagined in Unity3D, where players must defend against waves of enemy spacecraft.",
       "projectLink": [
@@ -516,8 +514,8 @@
     },
     {
       "id": 25,
-      "image": "https://i.giphy.com/media/uSeXREed0RSfcTseo0/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/oKLEmbV.jpeg",
+      "video": "https://i.giphy.com/media/uSeXREed0RSfcTseo0/giphy.gif",
       "title": "Guess the Number",
       "description": "A simple Unity3D game where players must correctly guess a randomly chosen number from 1 to 5 in order to win.",
       "projectLink": [
@@ -535,8 +533,8 @@
     },
     {
       "id": 26,
-      "image": "https://i.giphy.com/media/WOXfrzbrvCoUEIqDVk/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/FfZdbAw.png",
+      "video": "https://i.giphy.com/media/WOXfrzbrvCoUEIqDVk/giphy.gif",
       "title": "Personal API",
       "description": "A REST API with collection of endpoints for personal uses.",
       "projectLink": [
@@ -557,7 +555,7 @@
     {
       "id": 27,
       "image": "https://i.imgur.com/6eyuXF4.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Covid19 Updates Nepal",
       "description": "A Twitter bot that tweets Nepal's COVID-19 cases updates on Twitter every day using data from the Nepal's Ministry of Health and Population.",
       "projectLink": [
@@ -576,7 +574,7 @@
     {
       "id": 28,
       "image": "https://i.imgur.com/FqdXMvQ.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Pidit DJ",
       "description": "A discord bot that plays music from multiple sources in Discord channels for users who want to enhance their Discord experience.",
       "projectLink": [
@@ -595,7 +593,7 @@
     {
       "id": 29,
       "image": "https://i.imgur.com/DxdWSoT.jpg",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "VSnake Bot",
       "description": "A discord bot for custom tasks like kick, react role assign, external API data, etc. to manage discord servers.",
       "projectLink": [
@@ -613,8 +611,8 @@
     },
     {
       "id": 30,
-      "image": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/K5VJdZ6.png",
+      "video": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
       "title": "NNZFSC Website",
       "description": "A website for the Nepal New Zealand Friendship Society, developed using ReactJS and Django.",
       "projectLink": [
@@ -632,7 +630,7 @@
     {
       "id": 31,
       "image": "https://i.imgur.com/VRNk9vz.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Distracted Driver Detection",
       "description": "This project aims to detect and alert distracted drivers in real-time using computer vision and machine learning.",
       "projectLink": [
@@ -653,7 +651,7 @@
     {
       "id": 32,
       "image": "https://i.imgur.com/x53E3Rx.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "TIA Airport",
       "description": "Illustration usable as geofilter in Snapchat for TIA Airport in Kathmandu, Nepal.",
       "projectLink": [
@@ -670,7 +668,7 @@
     {
       "id": 33,
       "image": "https://i.imgur.com/v0Ydfsm.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "TIA Airport",
       "description": "Illustration usable as geofilter in Snapchat for TIA Airport in Kathmandu, Nepal.",
       "projectLink": [
@@ -686,8 +684,8 @@
     },
     {
       "id": 34,
-      "image": "https://i.imgur.com/kty3Zhd.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/FdWRqd6.png",
+      "video": "https://i.imgur.com/kty3Zhd.gif",
       "title": "Boudhanath Stupa",
       "description": "Illustration usable as geofilter in Snapchat for Boudhanath Stupa in Kathmandu, Nepal.",
       "projectLink": [
@@ -705,7 +703,7 @@
     {
       "id": 35,
       "image": "https://i.imgur.com/ogoJRTo.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Chabahil",
       "description": "Illustration usable as geofilter in Snapchat for Chabahil in Kathmandu, Nepal.",
       "projectLink": [
@@ -723,7 +721,7 @@
     {
       "id": 36,
       "image": "https://i.imgur.com/Pjd8NmO.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Chabahil",
       "description": "Illustration usable as geofilter in Snapchat for Chabahil in Kathmandu, Nepal.",
       "projectLink": [
@@ -741,7 +739,7 @@
     {
       "id": 37,
       "image": "https://i.imgur.com/vTaaYgH.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Dhumbarahi",
       "description": "Illustration usable as geofilter in Snapchat for Dhumbarahi in Kathmandu, Nepal.",
       "projectLink": [
@@ -759,7 +757,7 @@
     {
       "id": 38,
       "image": "https://i.imgur.com/3slMU77.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Durbarmargh",
       "description": "Illustration usable as geofilter in Snapchat for Durbarmargh in Kathmandu, Nepal.",
       "projectLink": [
@@ -777,7 +775,7 @@
     {
       "id": 39,
       "image": "https://i.imgur.com/duaruGH.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Kathmandu",
       "description": "Illustration usable as geofilter in Snapchat for Kathmandu in Kathmandu, Nepal.",
       "projectLink": [
@@ -794,7 +792,7 @@
     {
       "id": 40,
       "image": "https://i.imgur.com/N9ONnHo.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "Dharahara",
       "description": "Illustration usable as geofilter in Snapchat for Dharahara in Kathmandu, Nepal.",
       "projectLink": [
@@ -812,7 +810,7 @@
     {
       "id": 41,
       "image": "https://i.imgur.com/SDxXxLl.png",
-      "video": "https://www.youtube.com/",
+      "video": "",
       "title": "KUSOM",
       "description": "Illustration usable as geofilter in Snapchat for Kathmandu University School of Management in Kathmandu, Nepal.",
       "projectLink": [
@@ -829,8 +827,8 @@
     },
     {
       "id": 42,
-      "image": "https://i.imgur.com/SntU5yD.gif",
-      "video": "https://www.youtube.com/",
+      "image": "https://i.imgur.com/9IIZvKi.png",
+      "video": "https://i.imgur.com/SntU5yD.gif",
       "title": "Maharajgunj",
       "description": "Illustration usable as geofilter in Snapchat for Maharajgunj in Kathmandu, Nepal.",
       "projectLink": [
@@ -914,8 +912,8 @@
     },
     {
       "id": 47,
-      "image": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDYxNTcxZWZiMjU1NDZmZDkzNDFhYmIxYTNmNjA5ZWQzOGVhYjFjOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/NIkgNKFQkg6iV7f1ph/giphy.gif",
-      "video": "",
+      "image": "https://i.imgur.com/ekUvzOa.png",
+      "video": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDYxNTcxZWZiMjU1NDZmZDkzNDFhYmIxYTNmNjA5ZWQzOGVhYjFjOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/NIkgNKFQkg6iV7f1ph/giphy.gif",
       "title": "SnapAR - Lens Fest 2020",
       "description": "I was honored to speak at Snap's Lens fest 2020, along with a panel of creators on using augmented reality on Snapchat to drive social change. Our conversation covered topics such as our role and responsibility as creators, and crafting lenses for global accessibility.",
       "projectLink": [
