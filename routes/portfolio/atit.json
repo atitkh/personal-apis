@@ -68,6 +68,10 @@
       "video": "https://i.giphy.com/media/MeEjmsSSikKUqCNmws/giphy.gif",
       "title": "AR Guitar Tutor",
       "description": "AR Experience that helps you learn guitar chords in AR using image tracking.",
+      "win" : {
+        "hackathon": "Snap AR Lensathon 2023",
+        "position": 2
+      },
       "projectLink": [
         "https://lens.snapchat.com/cf4164005bc4479d95a0c81da1124ad0",
         "https://devpost.com/software/guitar-tutor"
@@ -188,6 +192,10 @@
       "video": "https://media3.giphy.com/media/fFGandES0njBDdFTmN/giphy.gif?cid=790b76118e8d6f55fae542104ce861290acd5fba0cda4720&rid=giphy.gif&ct=g",
       "title": "Mask Cleanup",
       "description": "An interactive AR world experience to clean up masks that have been carelessly discarded on the ground and properly dispose of them in a virtual bin.",
+      "win" : {
+        "hackathon": "Snap AR Lensathon 2020",
+        "position": 0
+      },
       "projectLink": [
         "https://lens.snapchat.com/09092c26da13440d9c88744fb32fb026"
       ],
