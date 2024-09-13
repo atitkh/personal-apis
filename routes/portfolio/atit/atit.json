@@ -68,6 +68,7 @@
       "video": "https://i.giphy.com/media/MeEjmsSSikKUqCNmws/giphy.gif",
       "title": "AR Guitar Tutor",
       "description": "AR Experience that helps you learn guitar chords in AR using image tracking.",
+      "more": true,
       "win": {
         "hackathon": "Snap AR Lensathon 2023",
         "position": 2
@@ -197,7 +198,8 @@
         "position": 0
       },
       "projectLink": [
-        "https://lens.snapchat.com/09092c26da13440d9c88744fb32fb026"
+        "https://lens.snapchat.com/09092c26da13440d9c88744fb32fb026",
+        "https://ar.snap.com/lens-fest-snaps-global-ar-festival?lang=en-US"
       ],
       "categories": [
         "JavaScript",
