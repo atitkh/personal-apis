@@ -23,6 +23,7 @@
       "video": "",
       "title": "NFT Viewer - VR",
       "description": "An NFT Viewing website in VR which gives owned NFTs of connected wallet or provided address on Ethereum and Polygon Chain.",
+      "more": true,
       "projectLink": [
         "https://nftviewervr.atitkharel.com.np/",
         "https://github.com/atitkh/WebXR---NFT-Viewer"
