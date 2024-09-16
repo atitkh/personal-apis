@@ -47,6 +47,7 @@
       "video": "https://media3.giphy.com/media/XHqMMe8oTx6M8f0Vom/giphy.gif?cid=790b761177f97440c166581369a8616a304e4317b6dc2846&rid=giphy.gif&ct=g",
       "title": "AR Business Card",
       "description": "WebXR project that uses image tracking in a web browser to track and animate business cards in AR.",
+      "more": true,
       "projectLink": [
         "https://bcard.kerkarcreations.com/atit/",
         "https://github.com/atitkh/WebAR-Business-Card/tree/master/atit"
