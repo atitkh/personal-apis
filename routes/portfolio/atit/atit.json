@@ -116,9 +116,11 @@
       "image": "https://i.imgur.com/JVq58Uv.png",
       "video": "https://media3.giphy.com/media/PTb1liSXPYPya2DTkS/giphy.gif?cid=790b7611fc4da349ca9310a888247ab9c8de472335e873c0&rid=giphy.gif&ct=g",
       "title": "Sign Language",
-      "description": "AR Experience that uses hand tracking for recognition of American Sign Language hand gestures for english alphabets.",
+      "description": "Learning Experience that uses hand tracking for recognition of American Sign Language hand gestures for english alphabets.",
+      "more": true,
       "projectLink": [
-        "https://lens.snapchat.com/17e9115780384a2288fe14f54d7e1b54"
+        "https://lens.snapchat.com/17e9115780384a2288fe14f54d7e1b54",
+        "https://asl.atitkharel.com.np/"
       ],
       "categories": [
         "JavaScript",
@@ -126,7 +128,8 @@
       ],
       "date": "2021",
       "mainCategory": [
-        "AR/VR"
+        "AR/VR",
+        "ML"
       ]
     },
     {
@@ -135,6 +138,7 @@
       "image": "https://i.imgur.com/jRiPgai.png",
       "video": "https://media2.giphy.com/media/2NOe6cOkCbote0JVqN/giphy.gif?cid=790b76113bd251a580beb71e418a19614c4f0791a56de416&rid=giphy.gif&ct=g",
       "title": "Learn Languages",
+      "more": true,
       "description": "An augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
       "projectLink": [
         "https://lens.snapchat.com/3d32ee16732642519634841a3d373657"
