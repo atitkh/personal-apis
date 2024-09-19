@@ -181,6 +181,7 @@
       "video": "https://media0.giphy.com/media/BUlQT9fBHGq8Crfwtb/giphy.gif?cid=790b7611d47b5b7f66886075866da6abff235da61031626f&rid=giphy.gif&ct=g",
       "title": "AR Snooker",
       "description": "An AR game for Snapchat, compatible with Snap's AR Glasses, where a snooker table is spawned on the floor, allowing users to play the game in a realistic and interactive way.",
+      "more": true,
       "projectLink": [
         "https://lens.snapchat.com/23a2ec67050841c6beaa078e20c0d463"
       ],
