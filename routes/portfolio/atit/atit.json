@@ -202,6 +202,7 @@
       "video": "https://media3.giphy.com/media/fFGandES0njBDdFTmN/giphy.gif?cid=790b76118e8d6f55fae542104ce861290acd5fba0cda4720&rid=giphy.gif&ct=g",
       "title": "Mask Cleanup",
       "description": "An interactive AR world experience to clean up masks that have been carelessly discarded on the ground and properly dispose of them in a virtual bin.",
+      "more": true,
       "win": {
         "hackathon": "Snap AR Lensathon 2020",
         "position": 0
