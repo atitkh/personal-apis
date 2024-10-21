@@ -250,6 +250,7 @@
       "video": "https://i.giphy.com/media/L3pc7pf1a1tCVCT0Dp/giphy.gif",
       "title": "SL Lion",
       "description": "An AR lens for Viber that allows the user to transform their head into that of a lion, created to celebrate the Sri Lankan's participation in the T20 Cricket World Cup.",
+      "more": true,
       "projectLink": [
         "https://lens.snapchat.com/4c1f04fad14e4c3fb2168f5ebb20f1d4"
       ],
@@ -270,6 +271,7 @@
       "video": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
       "title": "Bull Hand",
       "description": "AR Experience to track hand gesture and place a hand shaped bull developed for San Fermin.",
+      "more": true,
       "projectLink": [
         "https://lens.snapchat.com/559b571b3d9147fdba3349156e9b9156"
       ],
@@ -290,6 +292,7 @@
       "video": "https://i.giphy.com/media/FsGyagQuZ8Dsgw3K2c/giphy.gif",
       "title": "BD Tiger",
       "description": "An AR lens for Viber that allows the user to transform their head into that of a tiger, created to celebrate the Bangladesh's participation in the T20 Cricket World Cup.",
+      "more": true,
       "projectLink": [
         "https://www.snapchat.com/unlock/?type=SNAPCODE&uuid=c4c672b1897041cb95fe73d6de75eb75&metadata=01"
       ],
@@ -310,13 +313,14 @@
       "video": "https://media0.giphy.com/media/GLfNQzzlmkdKfY4TLq/giphy.gif?cid=790b761190975cbf2568ed22051693d572f60d12b5692d13&rid=giphy.gif&ct=g",
       "title": "Bakrid Mubarak",
       "description": "Snapchat AR game created for Eid (Bakrid) to feed the sheep by tracking user's hand.",
+      "more": true,
       "projectLink": [
         "https://lens.snapchat.com/781b73c1edf34873859f4f12fddfebaa"
       ],
       "categories": [
         "JavaScript",
         "Lens Studio",
-        "SubstanceÂ 3DÂ PainterÂ "
+        "Substance 3D Painter"
       ],
       "date": "2022",
       "mainCategory": [
