@@ -1,17 +1,21 @@
-FROM node:10-alpine
+FROM node:20
 
-RUN mkdir -p /home/node/app/node_modules && chown -R voltex:voltex /home/node/app
+RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node
 
 WORKDIR /home/node/app
 
 COPY package*.json ./
 
-USER voltex
+RUN chown -R node /home/node/app
+
+USER node
 
 RUN npm install
 
-COPY --chown=voltex:voltex . .
+RUN npm install
+
+COPY --chown=node:node . .
 
 EXPOSE 3000
 
-CMD [ "node", "app.js" ]
+CMD [ "nodemon", "app.js" ]
