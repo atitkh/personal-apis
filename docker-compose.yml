@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  nodejs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nodejs
+    container_name: nodejs
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - /media/voltex/VS1/Docker/personal-apis:/home/node/app
+      - node_modules:/home/node/app/node_modules
+    networks:
+      - akapi-network
+
+networks:
+  akapi-network:
+    driver: bridge
+
+volumes:
+  node_modules:
