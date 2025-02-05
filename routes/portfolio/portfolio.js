@@ -24,6 +24,21 @@ router.get('/atit/md', (req, res) => {
     });
 });
 
+router.get('/atit/pdf', (req, res) => {
+    const id = req.query.id;
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'atit', 'pdf', id + '.pdf');
+
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            return res.status(500).send('Error');
+        }
+        res.contentType('application/pdf');
+        res.send(data);
+    });
+});
+
 router.get('/ashlesha', (req, res) => {
     const ashleshaPortfolio = require('./ashlesha/ashlesha.json');
     res.json(ashleshaPortfolio);

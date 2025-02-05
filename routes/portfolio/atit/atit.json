@@ -3,7 +3,9 @@
   "social_links": {
     "github": "https://github.com/atitkh",
     "linkedin": "https://www.linkedin.com/in/atitkharel/",
-    "website": "https://atitkharel.com.np/"
+    "website": "https://atitkharel.com.np/",
+    "researchgate": "https://www.researchgate.net/profile/Atit-Kharel-2",
+    "orcid": "https://orcid.org/0009-0001-6174-7314"
   },
   "main_categories": [
     "All",
@@ -13,6 +15,7 @@
     "Website",
     "Bot",
     "Design",
+    "Research",
     "In the Media",
     "Community Engagements"
   ],
@@ -1046,7 +1049,7 @@
       "image": "https://i.imgur.com/zQOS79k.png",
       "video": "",
       "title": "Times Now",
-      "description": "",
+      "description": "I was featured in Times Now's article showcasing my involvement in the development of the 'Learn Hindi' lens in collaboration with Snapchat.",
       "projectLink": [
         "https://www.timesnownews.com/technology-science/article/exclusive-working-to-create-educational-lenses-in-more-languages-says-snapchats-learn-hindi-lens-creator/653037"
       ],
@@ -1056,6 +1059,24 @@
       "date": "September 15, 2020",
       "mainCategory": [
         "In the Media"
+      ]
+    },
+    {
+      "id": 54,
+      "image": "https://i.imgur.com/KVYgEFn.jpeg",
+      "video": "",
+      "title": "Gaze Insights in XR",
+      "description": "This paper introduces a real-time gaze-tracking analytics framework for XR applications using the Elastic Stack, enabling efficient data collection, indexing, and visualization. The system integrates immersive heatmap overlays and replay mechanisms within Unity to analyze user attention, focus regions, and navigation strategies during interactive tasks. A pilot study validated its effectiveness in identifying performance bottlenecks and attention shifts, demonstrating its scalability and usability.",
+      "projectLink": [
+        "https://www.researchgate.net/publication/388485731_Gaze_Insights_in_XR_Real-Time_Eye-Tracking_Analytics_with_Elasticsearch",
+        "https://api.atitkharel.com.np/portfolio/atit/pdf?id=elk_stack"
+      ],
+      "categories": [
+        "Conference Paper"
+      ],
+      "date": "March 8, 2025",
+      "mainCategory": [
+        "Research"
       ]
     }
   ]
