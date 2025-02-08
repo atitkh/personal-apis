@@ -1063,7 +1063,7 @@
     },
     {
       "id": 54,
-      "image": "https://i.imgur.com/KVYgEFn.jpeg",
+      "image": "https://i.imgur.com/cyFcMd7.jpeg",
       "video": "",
       "title": "Gaze Insights in XR",
       "description": "This paper introduces a real-time gaze-tracking analytics framework for XR applications using the Elastic Stack, enabling efficient data collection, indexing, and visualization. The system integrates immersive heatmap overlays and replay mechanisms within Unity to analyze user attention, focus regions, and navigation strategies during interactive tasks. A pilot study validated its effectiveness in identifying performance bottlenecks and attention shifts, demonstrating its scalability and usability.",
