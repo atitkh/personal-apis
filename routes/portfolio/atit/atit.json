@@ -12,7 +12,7 @@
     "AR/VR",
     "ML",
     "Game",
-    "Website",
+    "Webapp",
     "Bot",
     "Design",
     "Research",
@@ -25,7 +25,7 @@
       "image": "https://i.imgur.com/tt8k8Il.png",
       "video": "",
       "title": "NFT Viewer - VR",
-      "description": "An NFT Viewing website in VR which gives owned NFTs of connected wallet or provided address on Ethereum and Polygon Chain.",
+      "description": "An NFT Viewing Webapp in VR which gives owned NFTs of connected wallet or provided address on Ethereum and Polygon Chain.",
       "more": true,
       "projectLink": [
         "https://nftviewervr.atitkharel.com.np/",
@@ -41,7 +41,7 @@
       "date": "2022",
       "mainCategory": [
         "AR/VR",
-        "Website"
+        "Webapp"
       ]
     },
     {
@@ -64,7 +64,7 @@
       "date": "2022",
       "mainCategory": [
         "AR/VR",
-        "Website"
+        "Webapp"
       ]
     },
     {
@@ -97,7 +97,7 @@
       "lensID": "6670d0dc-aa43-4e6e-9936-26c5c44715ed",
       "image": "https://i.imgur.com/fwEPO7F.png",
       "video": "https://media1.giphy.com/media/OJPPkGKXbH3Q0YXmvs/giphy.gif?cid=790b76112d2874212823f347fc4fb250a85b34c29e923e0b&rid=giphy.gif&ct=g",
-      "title": "Pokédex Kanto",
+      "title": "Pok\u00c3\u00a9dex Kanto",
       "description": "AR Experience to recognize and give info about all Pokemons in Kanto Region using Machine Learning.",
       "more": true,
       "projectLink": [
@@ -158,6 +158,25 @@
     },
     {
       "id": 6,
+      "image": "https://raw.githubusercontent.com/atitkh/GPT2_Visualizer/refs/heads/main/assets/introduction.png",
+      "video": "",
+      "title": "GPT2 Visuializer",
+      "more": true,
+      "description": "An interactive web application leveraging Streamlit to provide a comprehensive and visual exploration of GPT-2's transformer architecture by breaking down each layer and its components.",
+      "projectLink": [
+        "https://github.com/atitkh/GPT2_Visualizer"
+      ],
+      "categories": [
+        "Python"
+      ],
+      "date": "October 2024",
+      "mainCategory": [
+        "ML",
+        "Webapp"
+      ]
+    },
+    {
+      "id": 7,
       "lensID": "0cf808c8-f3bc-4ccc-9d04-28c3f5894438",
       "image": "https://i.imgur.com/ZjEzGZh.png",
       "video": "https://media2.giphy.com/media/q3Fh8T6D2RLfBklMky/giphy.webp",
@@ -178,7 +197,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 8,
       "lensID": "e9da6b94-d86d-42fc-a2c7-50394f795d34",
       "image": "https://i.imgur.com/BQVZPqC.png",
       "video": "https://media0.giphy.com/media/BUlQT9fBHGq8Crfwtb/giphy.gif?cid=790b7611d47b5b7f66886075866da6abff235da61031626f&rid=giphy.gif&ct=g",
@@ -200,7 +219,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "image": "https://i.imgur.com/xyMFoWC.png",
       "video": "https://media3.giphy.com/media/fFGandES0njBDdFTmN/giphy.gif?cid=790b76118e8d6f55fae542104ce861290acd5fba0cda4720&rid=giphy.gif&ct=g",
       "title": "Mask Cleanup",
@@ -227,7 +246,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 10,
       "lensID": "b4c451d6-9cd1-4c02-bec5-6972fcf6d3a7",
       "image": "https://i.imgur.com/gnoGsES.png",
       "video": "https://media3.giphy.com/media/tlD3bvU32GXF91C3vP/giphy.gif?cid=790b7611747de3b612bb568d0a65e7d96787af76aef01103&rid=giphy.gif&ct=g",
@@ -247,7 +266,7 @@
       ]
     },
     {
-      "id": 10,
+      "id": 11,
       "lensID": "a100d074-f561-4456-8eee-ce7e45888228",
       "image": "https://i.imgur.com/Sgavz8C.png",
       "video": "https://i.giphy.com/media/L3pc7pf1a1tCVCT0Dp/giphy.gif",
@@ -268,7 +287,7 @@
       ]
     },
     {
-      "id": 11,
+      "id": 12,
       "lensID": "0d9a7811-f2b0-41fa-a6d8-e31a1e8c7fea",
       "image": "https://i.imgur.com/AH9WK19.png",
       "video": "https://media1.giphy.com/media/MlUqHJrRLDB6WU2GOh/giphy.gif?cid=790b76113beeb358f89661e107f1f4290d2d3aeac2b1d189&rid=giphy.gif&ct=g",
@@ -289,7 +308,7 @@
       ]
     },
     {
-      "id": 12,
+      "id": 13,
       "lensID": "81b2738d-dda1-4b0d-9b58-c1354a80695a",
       "image": "https://i.imgur.com/6ndfoH4.png",
       "video": "https://i.giphy.com/media/FsGyagQuZ8Dsgw3K2c/giphy.gif",
@@ -310,7 +329,7 @@
       ]
     },
     {
-      "id": 13,
+      "id": 14,
       "lensID": "1a608ed8-cfc5-476e-a33a-fd354fbee327",
       "image": "https://i.imgur.com/C3Wr2gf.png",
       "video": "https://media0.giphy.com/media/GLfNQzzlmkdKfY4TLq/giphy.gif?cid=790b761190975cbf2568ed22051693d572f60d12b5692d13&rid=giphy.gif&ct=g",
@@ -332,7 +351,7 @@
       ]
     },
     {
-      "id": 14,
+      "id": 15,
       "lensID": "6babfea7-568f-4f2a-8bb6-7a2d964ae08d",
       "image": "https://i.imgur.com/NwD9hem.png",
       "video": "https://i.giphy.com/media/Mev87Dib4DOaaoFQ51/giphy.gif",
@@ -351,7 +370,7 @@
       ]
     },
     {
-      "id": 15,
+      "id": 16,
       "image": "https://i.imgur.com/zEQl1DQ.png",
       "video": "https://i.giphy.com/media/HBaTKINicgnrk1jliw/giphy.gif",
       "title": "Obstacle Avoiding Robot",
@@ -373,7 +392,7 @@
       ]
     },
     {
-      "id": 16,
+      "id": 17,
       "image": "https://i.imgur.com/k36YuVu.png",
       "video": "https://i.giphy.com/media/4TEgyBJF8lVltQuORq/giphy.gif",
       "title": "Dino Run",
@@ -390,7 +409,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 18,
       "lensID": "00ad28dd-2c60-4e49-a0f2-f74e912025ea",
       "image": "https://i.imgur.com/oRtqXXm.png",
       "video": "https://media0.giphy.com/media/ubp4XZ67kfLuz48Dwg/giphy.gif",
@@ -410,7 +429,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 19,
       "lensID": "37202534-53b1-44d7-9cb7-45e2a2dcd380",
       "image": "https://i.imgur.com/G6c4dPz.png",
       "video": "https://media0.giphy.com/media/FQzZ3KxizYyA9l81pw/giphy.gif?cid=790b76113a8fbe17e13c4748b5a6ae54bd5781f1e3b46265&rid=giphy.gif&ct=g",
@@ -430,7 +449,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 20,
       "lensID": "2bc3d80d-e558-4fdc-8589-81f3a6b02195",
       "image": "https://i.imgur.com/C1AzCcD.png",
       "video": "https://media4.giphy.com/media/vWBqzsln4FdZYAg8Ny/giphy.gif?cid=790b76115790bd86908d8747ec5065ed93afeb452ef77dc3&rid=giphy.gif&ct=g",
@@ -450,7 +469,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 21,
       "lensID": "9eadf7a2-266a-476a-99b9-28cb86708a1f",
       "image": "https://i.imgur.com/wimOR2O.png",
       "video": "https://i.giphy.com/media/UL63PiRQvS7FfusOsr/giphy.gif",
@@ -469,7 +488,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 22,
       "lensID": "2593ea4c-a8ac-45bf-ab24-245e96b5ed2f",
       "image": "https://i.imgur.com/YkDMxaT.png",
       "video": "https://i.giphy.com/media/c2MAn3sRaQVjD6z6fC/giphy.gif",
@@ -488,7 +507,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 23,
       "image": "https://i.imgur.com/KWwwnOi.png",
       "video": "https://i.giphy.com/media/rbBr8OsXEOWLsSGqZv/giphy.gif",
       "title": "Falful Ninja",
@@ -507,7 +526,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 24,
       "image": "https://i.imgur.com/Wp1MX0V.jpeg",
       "video": "https://i.giphy.com/media/RKesXquUQbPIke0vQ5/giphy.gif",
       "title": "Hangman Game",
@@ -526,7 +545,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 25,
       "image": "https://i.imgur.com/pa46Yc0.jpeg",
       "video": "https://i.giphy.com/media/AbHehbxmhM5O1qp9j2/giphy.gif",
       "title": "Space Invaders",
@@ -545,7 +564,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 26,
       "image": "https://i.imgur.com/oKLEmbV.jpeg",
       "video": "https://i.giphy.com/media/uSeXREed0RSfcTseo0/giphy.gif",
       "title": "Guess the Number",
@@ -564,7 +583,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 27,
       "image": "https://i.imgur.com/FfZdbAw.png",
       "video": "https://i.giphy.com/media/WOXfrzbrvCoUEIqDVk/giphy.gif",
       "title": "Personal API",
@@ -581,11 +600,11 @@
       ],
       "date": "2022",
       "mainCategory": [
-        "Website"
+        "Webapp"
       ]
     },
     {
-      "id": 27,
+      "id": 28,
       "image": "https://i.imgur.com/6eyuXF4.png",
       "video": "",
       "title": "Covid19 Updates Nepal",
@@ -604,7 +623,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 29,
       "image": "https://i.imgur.com/FqdXMvQ.png",
       "video": "",
       "title": "Pidit DJ",
@@ -623,7 +642,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 30,
       "image": "https://i.imgur.com/DxdWSoT.jpg",
       "video": "",
       "title": "VSnake Bot",
@@ -642,7 +661,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 31,
       "image": "https://i.imgur.com/K5VJdZ6.png",
       "video": "https://i.giphy.com/media/GhBYQRtpyzNGiywbCK/giphy.gif",
       "title": "NNZFSC Website",
@@ -656,11 +675,11 @@
       ],
       "date": "2022",
       "mainCategory": [
-        "Website"
+        "Webapp"
       ]
     },
     {
-      "id": 31,
+      "id": 32,
       "image": "https://i.imgur.com/VRNk9vz.png",
       "video": "",
       "title": "Distracted Driver Detection",
@@ -681,7 +700,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 33,
       "image": "https://i.imgur.com/x53E3Rx.png",
       "video": "",
       "title": "TIA Airport",
@@ -698,7 +717,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 34,
       "image": "https://i.imgur.com/v0Ydfsm.png",
       "video": "",
       "title": "TIA Airport",
@@ -715,7 +734,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 35,
       "image": "https://i.imgur.com/FdWRqd6.png",
       "video": "https://i.imgur.com/kty3Zhd.gif",
       "title": "Boudhanath Stupa",
@@ -733,7 +752,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "image": "https://i.imgur.com/ogoJRTo.png",
       "video": "",
       "title": "Chabahil",
@@ -751,7 +770,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "image": "https://i.imgur.com/Pjd8NmO.png",
       "video": "",
       "title": "Chabahil",
@@ -769,7 +788,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "image": "https://i.imgur.com/vTaaYgH.png",
       "video": "",
       "title": "Dhumbarahi",
@@ -787,7 +806,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "image": "https://i.imgur.com/3slMU77.png",
       "video": "",
       "title": "Durbarmargh",
@@ -805,7 +824,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 40,
       "image": "https://i.imgur.com/duaruGH.png",
       "video": "",
       "title": "Kathmandu",
@@ -822,7 +841,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 41,
       "image": "https://i.imgur.com/N9ONnHo.png",
       "video": "",
       "title": "Dharahara",
@@ -840,7 +859,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 42,
       "image": "https://i.imgur.com/SDxXxLl.png",
       "video": "",
       "title": "KUSOM",
@@ -858,7 +877,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 43,
       "image": "https://i.imgur.com/9IIZvKi.png",
       "video": "https://i.imgur.com/SntU5yD.gif",
       "title": "Maharajgunj",
@@ -875,7 +894,7 @@
       ]
     },
     {
-      "id": 43,
+      "id": 44,
       "image": "https://i.imgur.com/wwgoVG6.png",
       "video": "",
       "title": "Snapchat's next mission in AR",
@@ -892,7 +911,7 @@
       ]
     },
     {
-      "id": 44,
+      "id": 45,
       "image": "https://i.imgur.com/6K4jnn1.png",
       "video": "",
       "title": "SnapAR - Creator Spotlight",
@@ -909,7 +928,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 46,
       "image": "https://i.imgur.com/gfJGNMv.png",
       "video": "",
       "title": "Lenslist",
@@ -926,7 +945,7 @@
       ]
     },
     {
-      "id": 46,
+      "id": 47,
       "image": "https://i.imgur.com/0H7WC0S.png",
       "video": "",
       "title": "SnapAR - APAC AR Day 2023",
@@ -943,7 +962,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 48,
       "image": "https://i.imgur.com/ekUvzOa.png",
       "video": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDYxNTcxZWZiMjU1NDZmZDkzNDFhYmIxYTNmNjA5ZWQzOGVhYjFjOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/NIkgNKFQkg6iV7f1ph/giphy.gif",
       "title": "SnapAR - Lens Fest 2020",
@@ -960,7 +979,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 49,
       "image": "https://i.imgur.com/gJTnK1b.png",
       "video": "",
       "title": "Hindustan Times",
@@ -977,7 +996,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 50,
       "image": "https://i.imgur.com/cPzcpSg.png",
       "video": "",
       "title": "Heartbeat by Comet ML",
@@ -994,7 +1013,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "image": "https://i.imgur.com/ad1vcfM.png",
       "video": "",
       "title": "The Indain Express",
@@ -1011,7 +1030,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "image": "https://i.imgur.com/rl3Wz1z.png",
       "video": "",
       "title": "The Statesman",
@@ -1028,7 +1047,7 @@
       ]
     },
     {
-      "id": 52,
+      "id": 53,
       "image": "https://i.imgur.com/t351dS3.png",
       "video": "",
       "title": "Mid-Day",
@@ -1045,7 +1064,7 @@
       ]
     },
     {
-      "id": 53,
+      "id": 54,
       "image": "https://i.imgur.com/zQOS79k.png",
       "video": "",
       "title": "Times Now",
@@ -1062,7 +1081,7 @@
       ]
     },
     {
-      "id": 54,
+      "id": 55,
       "image": "https://i.imgur.com/cyFcMd7.jpeg",
       "video": "",
       "title": "Gaze Insights in XR",
