@@ -160,7 +160,7 @@
       "id": 6,
       "image": "https://raw.githubusercontent.com/atitkh/GPT2_Visualizer/refs/heads/main/assets/introduction.png",
       "video": "",
-      "title": "GPT2 Visuializer",
+      "title": "GPT2 Visualizer",
       "more": true,
       "description": "An interactive web application leveraging Streamlit to provide a comprehensive and visual exploration of GPT-2's transformer architecture by breaking down each layer and its components.",
       "projectLink": [
