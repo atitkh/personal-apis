@@ -1,0 +1,110 @@
+const express = require('express');
+const router = express.Router();
+const vortexController = require('../../../controllers/vortexController');
+const { authenticate } = require('../../../middleware/auth');
+const { validate, schemas } = require('../../../middleware/validation');
+
+/**
+ * @swagger
+ * tags:
+ *   name: Vortex
+ *   description: Vortex AI Agent endpoints
+ */
+
+/**
+ * @swagger
+ * /api/v1/vortex/chat:
+ *   post:
+ *     summary: Chat with Vortex AI
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 2000
+ *                 description: Message to send to Vortex
+ *               conversation_id:
+ *                 type: string
+ *                 description: Optional conversation ID for context
+ *               context:
+ *                 type: object
+ *                 description: Additional context information
+ *     responses:
+ *       200:
+ *         description: Vortex response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     response:
+ *                       type: string
+ *                     conversation_id:
+ *                       type: string
+ *                     metadata:
+ *                       type: object
+ *       401:
+ *         description: Authentication required
+ */
+router.post('/chat', authenticate, vortexController.chat);
+
+/**
+ * @swagger
+ * /api/v1/vortex/memory:
+ *   get:
+ *     summary: Retrieve conversation memory
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: conversation_id
+ *         schema:
+ *           type: string
+ *         description: Specific conversation ID
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [conversation, event, preference, context]
+ *         description: Memory type filter
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Number of memories to retrieve
+ *     responses:
+ *       200:
+ *         description: Memory records retrieved
+ */
+router.get('/memory', authenticate, vortexController.getMemory);
+
+/**
+ * @swagger
+ * /api/v1/vortex/status:
+ *   get:
+ *     summary: Get Vortex system status
+ *     tags: [Vortex]
+ *     responses:
+ *       200:
+ *         description: System status information
+ */
+router.get('/status', vortexController.getStatus);
+
+module.exports = router;
