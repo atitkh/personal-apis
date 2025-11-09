@@ -31,7 +31,7 @@ services:
     ports:
       - "8009:8000"
     volumes:
-      - ./chromadb_dev_data:/chroma/chroma
+      - ./chromadb_dev_data:/data
     environment:
       - CHROMA_SERVER_HOST=0.0.0.0
       - CHROMA_SERVER_HTTP_PORT=8000
