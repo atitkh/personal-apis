@@ -15,9 +15,20 @@ const authenticate = async (req, res, next) => {
         // Verify token
         const decoded = authService.verifyToken(token);
         
-        // Get user details (optional - you can skip this for performance)
-        const user = await authService.getProfile(decoded._id);
-        req.user = user;
+        // Check if token contains user info (new format)
+        if (decoded.name && decoded.email) {
+            // Use user info from JWT token (more efficient)
+            req.user = {
+                _id: decoded._id,
+                name: decoded.name,
+                email: decoded.email,
+                role: decoded.role || 'user'
+            };
+        } else {
+            // Fallback: legacy tokens without user info - fetch from database
+            const user = await authService.getProfile(decoded._id);
+            req.user = user;
+        }
         
         next();
     } catch (error) {
@@ -47,8 +58,20 @@ const optionalAuth = async (req, res, next) => {
         
         if (token) {
             const decoded = authService.verifyToken(token);
-            const user = await authService.getProfile(decoded._id);
-            req.user = user;
+            
+            // Check if token contains user info (new format)
+            if (decoded.name && decoded.email) {
+                req.user = {
+                    _id: decoded._id,
+                    name: decoded.name,
+                    email: decoded.email,
+                    role: decoded.role || 'user'
+                };
+            } else {
+                // Fallback: legacy tokens without user info - fetch from database
+                const user = await authService.getProfile(decoded._id);
+                req.user = user;
+            }
         }
         
         next();

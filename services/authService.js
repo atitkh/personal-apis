@@ -27,8 +27,12 @@ class AuthService {
             const user = new User({ name, email, password });
             await user.save();
             
-            // Generate token
-            const token = this.generateToken(user._id);
+            // Generate token with user info
+            const token = this.generateToken(user._id, {
+                name: user.name,
+                email: user.email,
+                role: user.role
+            });
             
             return {
                 user: user.toJSON(),
@@ -71,8 +75,12 @@ class AuthService {
             // Update last login
             await user.updateLastLogin();
             
-            // Generate token
-            const token = this.generateToken(user._id);
+            // Generate token with user info
+            const token = this.generateToken(user._id, {
+                name: user.name,
+                email: user.email,
+                role: user.role
+            });
             
             return {
                 user: user.toJSON(),
@@ -182,12 +190,23 @@ class AuthService {
     }
     
     /**
-     * Generate JWT token
+     * Generate JWT token with user information
      */
-    generateToken(userId) {
+    generateToken(userId, userInfo = null) {
         const jwtConfig = config.getJWTConfig();
+        
+        // Create payload with user ID and basic info
+        const payload = { _id: userId };
+        
+        // If user info is provided, include essential fields
+        if (userInfo) {
+            payload.name = userInfo.name;
+            payload.email = userInfo.email;
+            payload.role = userInfo.role || 'user';
+        }
+        
         return jwt.sign(
-            { _id: userId },
+            payload,
             jwtConfig.secret,
             { expiresIn: jwtConfig.expiresIn }
         );
