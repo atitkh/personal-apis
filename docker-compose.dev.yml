@@ -4,20 +4,20 @@ services:
   nodejs:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: nodejs
-    container_name: nodejs
+      dockerfile: Dockerfile.dev
+    image: nodejs-dev
+    container_name: nodejs-dev
     restart: unless-stopped
     env_file: .env
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3000
     ports:
       - "3000:3000"
     volumes:
       - ./:/home/node/app
-      - node_modules:/home/node/app/node_modules
-    command: sh -c "cd /home/node/app && npm install --production && npm start"
+      - node_modules_dev:/home/node/app/node_modules
+    command: sh -c "cd /home/node/app && npm install && npm run dev"
     networks:
       - akapi-network
 
@@ -26,4 +26,4 @@ networks:
     driver: bridge
 
 volumes:
-  node_modules:
+  node_modules_dev:

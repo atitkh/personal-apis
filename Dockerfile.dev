@@ -1,0 +1,21 @@
+FROM node:20
+
+WORKDIR /home/node/app
+
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Install dependencies first for better build caching
+COPY package*.json ./
+RUN npm ci && chown -R node:node /home/node
+
+# Run as non-root user
+USER node
+
+# Copy the rest of the source code
+COPY --chown=node:node . .
+
+EXPOSE 3000
+
+# Use nodemon for development
+CMD [ "npm", "run", "dev" ]
