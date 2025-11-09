@@ -8,12 +8,15 @@ services:
     image: nodejs
     container_name: nodejs
     restart: unless-stopped
-    env_file: /media/voltex/VS1/Docker/personal-apis/.env
+    env_file: .env
+    environment:
+      - PORT=3000
     ports:
       - "3000:3000"
     volumes:
-      - /media/voltex/VS1/Docker/personal-apis:/home/node/app
+      - ./:/home/node/app
       - node_modules:/home/node/app/node_modules
+    command: sh -c "if [ ! -d node_modules ] || [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm ci; fi && npm run dev"
     networks:
       - akapi-network
 
