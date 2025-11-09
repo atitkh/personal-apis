@@ -12,12 +12,29 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - CHROMADB_URL=http://chromadb:8000
     ports:
       - "3000:3000"
     volumes:
       - ./:/home/node/app
       - node_modules:/home/node/app/node_modules
     command: sh -c "cd /home/node/app && npm install --production && npm start"
+    depends_on:
+      - chromadb
+    networks:
+      - akapi-network
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    restart: unless-stopped
+    ports:
+      - "8009:8000"
+    volumes:
+      - ./chromadb_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
     networks:
       - akapi-network
 
