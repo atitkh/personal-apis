@@ -1,5 +1,5 @@
 const { ChromaClient } = require('chromadb');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 class MemoryService {
   constructor() {

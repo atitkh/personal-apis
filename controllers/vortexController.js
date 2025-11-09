@@ -1,6 +1,6 @@
 const vortexService = require('../services/vortexService');
 const memoryService = require('../services/memoryService');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 
 class VortexController {
   /**

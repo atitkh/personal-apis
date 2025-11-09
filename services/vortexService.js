@@ -1,6 +1,6 @@
 const memoryService = require('./memoryService');
 const llmService = require('./llmService');
-const logger = require('../utils/logger');
+const { logger } = require('../utils/logger');
 const crypto = require('crypto');
 
 class VortexService {
