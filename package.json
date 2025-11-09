@@ -1,19 +1,57 @@
 {
+  "name": "personal-apis",
+  "version": "1.0.1",
+  "description": "Personal API collection for various services and integrations",
+  "main": "app.js",
+  "author": "Atit Kharel",
+  "license": "MIT",
+  "keywords": [
+    "api",
+    "express",
+    "mongodb",
+    "valorant",
+    "nft",
+    "smart-home"
+  ],
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon --exec node app.js --watch . --ext js,json",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "audit:fix": "npm audit fix",
+    "lint": "echo 'Add ESLint for linting'",
+    "docker:build": "docker build -t personal-apis .",
+    "docker:run": "docker run -p 3000:3000 personal-apis"
+  },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
     "axios": "^0.27.2",
     "bcryptjs": "^2.4.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.0.1",
     "ethers": "^5.7.1",
     "ewelink-api": "^3.1.1",
     "express": "^4.18.1",
+    "express-rate-limit": "^8.2.1",
     "googleapis": "^39.2.0",
+    "helmet": "^8.1.0",
     "joi": "^17.6.0",
     "jsonwebtoken": ">=9.0.0",
     "mongoose": "^6.5.1",
+    "morgan": "^1.10.1",
     "node-fetch": "^2.6.7",
     "sharp": "^0.30.7",
-    "unofficial-valorant-api": "^2.3.0-stable.0"
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "unofficial-valorant-api": "^2.3.0-stable.0",
+    "uuid": "^13.0.0",
+    "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.4"
   }
 }
