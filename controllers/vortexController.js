@@ -9,7 +9,7 @@ class VortexController {
   async chat(req, res, next) {
     try {
       const { message, conversation_id, context, debug } = req.body;
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id; // Handle both _id and id formats
 
       logger.info('Vortex chat request - user details', {
         correlationId: req.correlationId,
@@ -72,7 +72,7 @@ class VortexController {
   async debugChat(req, res, next) {
     try {
       const { message, conversation_id, context } = req.body;
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id; // Handle both _id and id formats
 
       logger.info('Vortex debug chat request', {
         correlationId: req.correlationId,
@@ -127,7 +127,7 @@ class VortexController {
   async debugConversation(req, res, next) {
     try {
       const { conversation_id } = req.params;
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id; // Handle both _id and id formats
 
       logger.info('Debug conversation request', {
         conversation_id,
@@ -207,7 +207,7 @@ class VortexController {
   async testStoreConversation(req, res, next) {
     try {
       const { message, conversation_id } = req.body;
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id; // Handle both _id and id formats
 
       logger.info('Test store conversation', {
         userId: userId?.toString(),
@@ -259,7 +259,7 @@ class VortexController {
   async getMemory(req, res, next) {
     try {
       const { conversation_id, type, limit = 20 } = req.query;
-      const userId = req.user.id;
+      const userId = req.user._id || req.user.id; // Handle both _id and id formats
 
       const memories = await memoryService.getMemories({
         userId,

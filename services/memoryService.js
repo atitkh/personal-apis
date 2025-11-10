@@ -20,9 +20,23 @@ class MemoryService {
       // Import embedding function dynamically (ES module compatibility)
       let embeddingFunction = null;
       try {
-        const { DefaultEmbeddingFunction } = await import('chromadb-default-embed');
-        embeddingFunction = new DefaultEmbeddingFunction();
-        logger.debug('Using DefaultEmbeddingFunction for embeddings');
+        // Try different import patterns for chromadb-default-embed
+        let EmbeddingFunction;
+        try {
+          const module = await import('chromadb-default-embed');
+          EmbeddingFunction = module.DefaultEmbeddingFunction || module.default;
+        } catch (importError) {
+          // Fallback to require if import fails
+          const module = require('chromadb-default-embed');
+          EmbeddingFunction = module.DefaultEmbeddingFunction || module;
+        }
+        
+        if (EmbeddingFunction && typeof EmbeddingFunction === 'function') {
+          embeddingFunction = new EmbeddingFunction();
+          logger.debug('Using DefaultEmbeddingFunction for embeddings');
+        } else {
+          throw new Error('EmbeddingFunction is not a constructor or not found');
+        }
       } catch (error) {
         logger.warn('Could not load DefaultEmbeddingFunction, collections will work without semantic search', { 
           error: error.message 
