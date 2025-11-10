@@ -28,7 +28,8 @@ class VortexController {
           ...context,
           source: 'api',
           userAgent: req.get('User-Agent'),
-          ip: req.ip
+          ip: req.ip,
+          user: req.user  // Pass user info for system prompt
         },
         debug: debug || false
       });
@@ -87,7 +88,8 @@ class VortexController {
           ...context,
           source: 'debug-api',
           userAgent: req.get('User-Agent'),
-          ip: req.ip
+          ip: req.ip,
+          user: req.user  // Pass user info for system prompt
         },
         debug: true
       });
@@ -112,6 +114,63 @@ class VortexController {
         correlationId: req.correlationId,
         userId: req.user?.id,
         error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Debug conversation data endpoint
+   */
+  async debugConversation(req, res, next) {
+    try {
+      const { conversation_id } = req.params;
+      const userId = req.user.id;
+
+      const memoryService = require('../services/memoryService');
+      
+      // Get recent conversation data
+      const recentMessages = await memoryService.getRecentConversation({
+        userId,
+        conversationId: conversation_id,
+        limit: 10
+      });
+
+      // Get relevant memories for a test query
+      const relevantMemories = await memoryService.getRelevantContext({
+        userId,
+        query: "coffee preferences",
+        conversationId: conversation_id,
+        limit: 10
+      });
+
+      res.json({
+        conversation_id,
+        userId,
+        recent_messages: {
+          count: recentMessages.length,
+          messages: recentMessages.map(msg => ({
+            role: msg.metadata?.role,
+            content: msg.content?.substring(0, 100) + '...',
+            timestamp: msg.metadata?.timestamp,
+            conversation_id: msg.metadata?.conversation_id
+          }))
+        },
+        relevant_memories: {
+          count: relevantMemories.length,
+          memories: relevantMemories.map(mem => ({
+            type: mem.type,
+            content: mem.content?.substring(0, 100) + '...',
+            conversation_id: mem.metadata?.conversation_id,
+            distance: mem.distance
+          }))
+        }
+      });
+
+    } catch (error) {
+      logger.error('Debug conversation error', {
+        error: error.message,
+        userId: req.user?.id
       });
       next(error);
     }

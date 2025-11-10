@@ -97,6 +97,27 @@ router.post('/debug/chat', authenticate, vortexController.debugChat);
 
 /**
  * @swagger
+ * /api/v1/vortex/debug/conversation/{conversation_id}:
+ *   get:
+ *     summary: Debug conversation data
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: conversation_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Conversation ID to debug
+ *     responses:
+ *       200:
+ *         description: Conversation debug data
+ */
+router.get('/debug/conversation/:conversation_id', authenticate, vortexController.debugConversation);
+
+/**
+ * @swagger
  * /api/v1/vortex/memory:
  *   get:
  *     summary: Retrieve conversation memory

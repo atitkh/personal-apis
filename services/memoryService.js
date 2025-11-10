@@ -148,13 +148,20 @@ class MemoryService {
     await this.ensureInitialized();
 
     try {
-      // Search conversations for relevant context
+      // Search conversations for relevant context - FIXED: Include conversationId filter
+      const conversationWhere = {
+        user_id: userId
+      };
+      
+      // If we have a conversationId, prioritize current conversation context
+      if (conversationId) {
+        conversationWhere.conversation_id = conversationId;
+      }
+
       const conversationResults = await this.collections.conversations.query({
         queryTexts: [query],
         nResults: Math.floor(limit * 0.7), // 70% from conversations
-        where: {
-          user_id: userId
-        }
+        where: conversationWhere
       });
 
       // Search events for relevant context  
@@ -260,6 +267,62 @@ class MemoryService {
     } catch (error) {
       logger.error('Failed to get memories', { userId, type, error: error.message });
       throw error;
+    }
+  }
+
+  /**
+   * Get recent conversation messages for context building
+   */
+  async getRecentConversation({ userId, conversationId, limit = 6 }) {
+    await this.ensureInitialized();
+
+    try {
+      const results = await this.collections.conversations.get({
+        where: {
+          user_id: userId,
+          conversation_id: conversationId
+        },
+        limit: limit
+      });
+
+      const messages = [];
+      if (results.documents) {
+        // Combine documents with metadata, sorted by timestamp
+        const combined = results.documents.map((doc, index) => ({
+          document: doc,
+          metadata: results.metadatas[index],
+          id: results.ids[index]
+        }));
+
+        // Sort by timestamp (newest first, then reverse for chronological order)
+        combined.sort((a, b) => {
+          const timeA = new Date(a.metadata?.timestamp || 0);
+          const timeB = new Date(b.metadata?.timestamp || 0);
+          return timeA - timeB; // Chronological order
+        });
+
+        // Take the most recent messages and return in order
+        const recentMessages = combined.slice(-limit);
+        
+        recentMessages.forEach(item => {
+          messages.push({
+            content: item.document,
+            document: item.document,
+            metadata: item.metadata,
+            id: item.id
+          });
+        });
+      }
+
+      return messages;
+
+    } catch (error) {
+      logger.error('Failed to get recent conversation', { 
+        userId, 
+        conversationId, 
+        error: error.message 
+      });
+      return []; // Return empty array on error
     }
   }
 

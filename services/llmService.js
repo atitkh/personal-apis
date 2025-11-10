@@ -77,7 +77,7 @@ class LLMService {
   /**
    * Generate a chat response using the configured LLM
    */
-  async generateResponse({ systemPrompt, messages, userId, conversationId, functionCalls = [] }) {
+  async generateResponse({ systemPrompt, messages, userId, conversationId, functionCalls = [], temperature = 0.7, maxTokens = 1000 }) {
     try {
       if (!this.client) {
         await this.initialize();
@@ -89,22 +89,30 @@ class LLMService {
         response = await this.generateOpenAIResponse({
           systemPrompt,
           messages,
-          functionCalls
+          functionCalls,
+          temperature,
+          maxTokens
         });
       } else if (this.provider === 'anthropic') {
         response = await this.generateAnthropicResponse({
           systemPrompt,
-          messages
+          messages,
+          temperature,
+          maxTokens
         });
       } else if (this.provider === 'gemini') {
         response = await this.generateGeminiResponse({
           systemPrompt,
-          messages
+          messages,
+          temperature,
+          maxTokens
         });
       } else if (this.provider === 'ollama') {
         response = await this.generateOllamaResponse({
           systemPrompt,
-          messages
+          messages,
+          temperature,
+          maxTokens
         });
       }
 
@@ -226,9 +234,9 @@ class LLMService {
   }
 
   /**
-   * Generate response using Ollama (local models)
+   * Generate response using Ollama API
    */
-  async generateOllamaResponse({ systemPrompt, messages }) {
+  async generateOllamaResponse({ systemPrompt, messages, temperature = 0.7, maxTokens = 1000 }) {
     const axios = require('axios');
     
     // Build the prompt for Ollama
@@ -240,9 +248,10 @@ class LLMService {
       prompt: fullPrompt,
       stream: false,
       options: {
-        temperature: 0.7,
+        temperature: temperature,
         top_p: 0.9,
-        top_k: 40
+        top_k: 40,
+        num_predict: maxTokens // Ollama's parameter for max tokens
       }
     });
 

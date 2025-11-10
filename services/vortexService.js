@@ -54,7 +54,7 @@ class VortexService {
         userContext: context
       });
 
-      const systemPrompt = this.buildSystemPrompt(userId);
+      const systemPrompt = this.buildSystemPrompt(context.user || userId);
 
       // Capture debug information if requested
       let debugInfo = null;
@@ -78,11 +78,13 @@ class VortexService {
         };
       }
 
-      // Get LLM response
+      // Get LLM response with some randomness to avoid repetition
       const llmResponse = await llmService.generateResponse({
         messages: conversationContext,
         userId,
-        systemPrompt
+        systemPrompt,
+        temperature: 0.7, // Add some creativity/randomness
+        maxTokens: 1000   // Reasonable response length
       });
 
       // Store the assistant response in memory
@@ -150,8 +152,9 @@ class VortexService {
   /**
    * Build system prompt for Vortex personality
    */
-  buildSystemPrompt(userId) {
-    return `You are ${this.personality.name}, a personal AI assistant for ${userId}.
+  buildSystemPrompt(userInfo) {
+    const userName = userInfo?.name || userInfo || 'the user';
+    return `You are ${this.personality.name}, a personal AI assistant for ${userName}.
 
 Your characteristics:
 ${this.personality.traits.map(trait => `- ${trait}`).join('\n')}
@@ -159,8 +162,16 @@ ${this.personality.traits.map(trait => `- ${trait}`).join('\n')}
 You have access to the user's conversation history and can remember previous interactions. 
 You can control smart home devices, help with coding projects, and assist with various tasks.
 
-Always be helpful, concise, and maintain context from previous conversations.
+Communication Guidelines:
+- Be conversational and avoid repetitive responses
+- Build on previous context when available
+- Vary your language and response style
+- Ask follow-up questions to keep conversations engaging
+- Reference specific details from our conversation history when relevant
+- Avoid generic responses - personalize based on our interaction
+
 If you can help with smart home control, coding questions, or other technical tasks, offer to do so.
+Remember previous preferences and context to provide more personalized assistance.
 
 Current date: ${new Date().toISOString().split('T')[0]}`;
   }
@@ -174,13 +185,42 @@ Current date: ${new Date().toISOString().split('T')[0]}`;
     // Add relevant memories as context
     if (relevantMemories.length > 0) {
       const memoryContext = relevantMemories
-        .map(memory => `Previous: ${memory.content}`)
+        .slice(0, 5) // Limit to most relevant memories
+        .map(memory => {
+          // Extract role and content from memory metadata if available
+          const role = memory.metadata?.role || 'unknown';
+          const content = memory.document || memory.content;
+          return `${role}: ${content}`;
+        })
         .join('\n');
       
       context.push({
         role: 'system',
-        content: `Relevant conversation history:\n${memoryContext}`
+        content: `Recent conversation history:\n${memoryContext}`
       });
+    }
+
+    // Get recent conversation turns from this session
+    try {
+      const recentMessages = await memoryService.getRecentConversation({
+        userId: userContext.user?._id?.toString() || userContext.userId || userContext.user,
+        conversationId,
+        limit: 6 // Last 3 exchanges (6 messages)
+      });
+
+      // Add recent conversation turns
+      if (recentMessages.length > 0) {
+        recentMessages.forEach(msg => {
+          const role = msg.metadata?.role || 'user';
+          context.push({
+            role: role === 'assistant' ? 'assistant' : 'user',
+            content: msg.document || msg.content
+          });
+        });
+      }
+    } catch (error) {
+      // If recent messages retrieval fails, continue without them
+      console.warn('Could not retrieve recent messages:', error.message);
     }
 
     // Add current message
