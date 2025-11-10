@@ -223,18 +223,25 @@ class MemoryService {
 
       // Search conversations for relevant context - FIXED: Include conversationId filter
       const conversationWhere = {
-        user_id: userId
+        user_id: userId?.toString() || userId  // Ensure string format
       };
       
       // If we have a conversationId, prioritize current conversation context
       if (conversationId) {
-        conversationWhere.conversation_id = conversationId;
+        conversationWhere.conversation_id = conversationId?.toString() || conversationId;  // Ensure string format
+      }
+
+      // Validate where clause has valid values
+      if (!conversationWhere.user_id) {
+        throw new Error('Invalid userId for ChromaDB query');
       }
 
       logger.debug('ChromaDB query parameters', {
         queryTexts: [query],
         nResults: Math.floor(limit * 0.7),
-        where: conversationWhere
+        where: conversationWhere,
+        userIdType: typeof conversationWhere.user_id,
+        conversationIdType: typeof conversationWhere.conversation_id
       });
 
       let conversationResults;
@@ -276,32 +283,45 @@ class MemoryService {
 
       // Search events for relevant context  
       let eventResults;
-      try {
-        eventResults = await this.collections.events.query({
-          queryTexts: [query],
-          nResults: Math.floor(limit * 0.3), // 30% from events  
-          where: {
-            user_id: userId
-          }
-        });
-      } catch (queryError) {
-        logger.debug('Event semantic search failed, falling back to get()', {
-          error: queryError.message
-        });
-        
-        // Fallback to get() method
-        const getResults = await this.collections.events.get({
-          where: { user_id: userId },
-          limit: Math.floor(limit * 0.3)
-        });
+      const eventWhere = {
+        user_id: userId?.toString() || userId  // Ensure string format
+      };
 
-        // Convert get() results to query() format
+      // Validate where clause
+      if (!eventWhere.user_id) {
+        logger.warn('No valid userId for event query, skipping events');
         eventResults = {
-          documents: [getResults.documents || []],
-          metadatas: [getResults.metadatas || []],
-          ids: [getResults.ids || []],
-          distances: [Array(getResults.documents?.length || 0).fill(0)]
+          documents: [[]],
+          metadatas: [[]],
+          ids: [[]],
+          distances: [[]]
         };
+      } else {
+        try {
+          eventResults = await this.collections.events.query({
+            queryTexts: [query],
+            nResults: Math.floor(limit * 0.3), // 30% from events  
+            where: eventWhere
+          });
+        } catch (queryError) {
+          logger.debug('Event semantic search failed, falling back to get()', {
+            error: queryError.message
+          });
+          
+          // Fallback to get() method
+          const getResults = await this.collections.events.get({
+            where: eventWhere,
+            limit: Math.floor(limit * 0.3)
+          });
+
+          // Convert get() results to query() format
+          eventResults = {
+            documents: [getResults.documents || []],
+            metadatas: [getResults.metadatas || []],
+            ids: [getResults.ids || []],
+            distances: [Array(getResults.documents?.length || 0).fill(0)]
+          };
+        }
       }
 
       // Combine and format results
