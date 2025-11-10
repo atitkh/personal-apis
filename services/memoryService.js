@@ -69,13 +69,24 @@ class MemoryService {
         schema_version: '1.0',
         memory_type: 'conversation',
         timestamp: new Date().toISOString(),
-        user_id: userId,
+        user_id: userId?.toString() || userId, // Ensure string format
         source: context.source || 'api',
-        conversation_id: conversationId,
+        conversation_id: conversationId?.toString() || conversationId, // Ensure string format
         role: role,
-        message_length: content.length,
-        ...context
+        message_length: content.length
+        // Don't spread context directly - it might contain problematic data
       };
+
+      // Add safe context fields only
+      if (context.userAgent) metadata.user_agent = context.userAgent;
+      if (context.ip) metadata.ip_address = context.ip;
+
+      // Debug log the data being sent to ChromaDB
+      logger.debug('Storing conversation in ChromaDB', {
+        id,
+        contentLength: content.length,
+        metadata: JSON.stringify(metadata)
+      });
 
       await this.collections.conversations.add({
         ids: [id],
@@ -112,14 +123,18 @@ class MemoryService {
         schema_version: '1.0',
         memory_type: 'event',
         timestamp: new Date().toISOString(),
-        user_id: userId,
+        user_id: userId?.toString() || userId, // Ensure string format
         source: context.source || 'system',
         event_type: eventType,
         domain: domain,
         user_intent: userIntent,
-        system_response: systemResponse,
-        ...context
+        system_response: systemResponse
+        // Don't spread context directly - it might contain problematic data
       };
+
+      // Add safe context fields only
+      if (context.confidence) metadata.confidence = context.confidence;
+      if (context.model_used) metadata.model_used = context.model_used;
 
       await this.collections.events.add({
         ids: [id],
