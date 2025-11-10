@@ -214,8 +214,10 @@ class MemoryService {
     await this.ensureInitialized();
 
     try {
-      logger.debug('Getting relevant context', {
+      logger.debug('Getting relevant context - input parameters', {
         userId,
+        userIdType: typeof userId,
+        userIdValue: JSON.stringify(userId),
         query,
         conversationId,
         limit
@@ -232,8 +234,8 @@ class MemoryService {
       }
 
       // Validate where clause has valid values
-      if (!conversationWhere.user_id) {
-        throw new Error('Invalid userId for ChromaDB query');
+      if (!conversationWhere.user_id || conversationWhere.user_id === 'undefined' || conversationWhere.user_id === 'null') {
+        throw new Error(`Invalid userId for ChromaDB query: ${conversationWhere.user_id}`);
       }
 
       logger.debug('ChromaDB query parameters', {
@@ -428,18 +430,38 @@ class MemoryService {
     await this.ensureInitialized();
 
     try {
-      logger.debug('Getting recent conversation', {
+      logger.debug('Getting recent conversation - input parameters', {
         userId,
+        userIdType: typeof userId,
+        userIdValue: JSON.stringify(userId),
         conversationId,
+        conversationIdType: typeof conversationId,
         limit,
         collectionReady: !!this.collections.conversations
       });
 
+      // Ensure proper data types for ChromaDB where clause
+      const whereClause = {
+        user_id: userId?.toString() || userId,
+        conversation_id: conversationId?.toString() || conversationId
+      };
+
+      // Validate required parameters
+      if (!whereClause.user_id || whereClause.user_id === 'undefined' || whereClause.user_id === 'null') {
+        throw new Error(`Invalid userId for getRecentConversation: ${whereClause.user_id}`);
+      }
+      if (!whereClause.conversation_id || whereClause.conversation_id === 'undefined' || whereClause.conversation_id === 'null') {
+        throw new Error(`Invalid conversationId for getRecentConversation: ${whereClause.conversation_id}`);
+      }
+
+      logger.debug('ChromaDB get where clause', {
+        where: whereClause,
+        userIdType: typeof whereClause.user_id,
+        conversationIdType: typeof whereClause.conversation_id
+      });
+
       const results = await this.collections.conversations.get({
-        where: {
-          user_id: userId,
-          conversation_id: conversationId
-        },
+        where: whereClause,
         limit: limit
       });
 

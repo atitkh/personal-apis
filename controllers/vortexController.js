@@ -11,9 +11,11 @@ class VortexController {
       const { message, conversation_id, context, debug } = req.body;
       const userId = req.user.id;
 
-      logger.info('Vortex chat request', {
+      logger.info('Vortex chat request - user details', {
         correlationId: req.correlationId,
         userId,
+        userIdType: typeof userId,
+        userObject: JSON.stringify(req.user),
         messageLength: message.length,
         conversationId: conversation_id,
         debugMode: debug || false
