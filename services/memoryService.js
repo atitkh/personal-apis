@@ -85,8 +85,14 @@ class MemoryService {
       logger.debug('Storing conversation in ChromaDB', {
         id,
         contentLength: content.length,
-        metadata: JSON.stringify(metadata)
+        metadata: JSON.stringify(metadata),
+        collectionReady: !!this.collections.conversations
       });
+
+      // Verify collection exists before adding
+      if (!this.collections.conversations) {
+        throw new Error('Conversations collection not initialized');
+      }
 
       await this.collections.conversations.add({
         ids: [id],
@@ -94,7 +100,12 @@ class MemoryService {
         metadatas: [metadata]
       });
 
-      logger.debug('Conversation stored', { id, role, userId });
+      logger.info('Conversation stored successfully', { 
+        id, 
+        role, 
+        userId: userId?.toString(), 
+        conversationId 
+      });
       return id;
 
     } catch (error) {
@@ -292,12 +303,25 @@ class MemoryService {
     await this.ensureInitialized();
 
     try {
+      logger.debug('Getting recent conversation', {
+        userId,
+        conversationId,
+        limit,
+        collectionReady: !!this.collections.conversations
+      });
+
       const results = await this.collections.conversations.get({
         where: {
           user_id: userId,
           conversation_id: conversationId
         },
         limit: limit
+      });
+
+      logger.debug('ChromaDB get results', {
+        documentsCount: results.documents?.length || 0,
+        idsCount: results.ids?.length || 0,
+        metadatasCount: results.metadatas?.length || 0
       });
 
       const messages = [];

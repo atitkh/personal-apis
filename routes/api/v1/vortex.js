@@ -118,6 +118,31 @@ router.get('/debug/conversation/:conversation_id', authenticate, vortexControlle
 
 /**
  * @swagger
+ * /api/v1/vortex/test/store:
+ *   post:
+ *     summary: Test conversation storage
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *               conversation_id:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Test storage results
+ */
+router.post('/test/store', authenticate, vortexController.testStoreConversation);
+
+/**
+ * @swagger
  * /api/v1/vortex/memory:
  *   get:
  *     summary: Retrieve conversation memory
