@@ -17,25 +17,65 @@ class MemoryService {
         path: process.env.CHROMADB_URL || 'http://localhost:8000'
       });
 
-      // Create/get collections for different memory types
+      // Import embedding function dynamically (ES module compatibility)
+      let embeddingFunction = null;
+      try {
+        const { DefaultEmbeddingFunction } = await import('chromadb-default-embed');
+        embeddingFunction = new DefaultEmbeddingFunction();
+        logger.debug('Using DefaultEmbeddingFunction for embeddings');
+      } catch (error) {
+        logger.warn('Could not load DefaultEmbeddingFunction, collections will work without semantic search', { 
+          error: error.message 
+        });
+      }
+
+      // Create/get collections for different memory types with embedding function
+      const collectionConfig = {
+        metadata: { description: 'Chat conversations and messages' }
+      };
+      if (embeddingFunction) {
+        collectionConfig.embeddingFunction = embeddingFunction;
+      }
+
       this.collections.conversations = await this.client.getOrCreateCollection({
         name: 'vortex_conversations',
-        metadata: { description: 'Chat conversations and messages' }
+        ...collectionConfig
       });
+
+      const eventCollectionConfig = {
+        metadata: { description: 'Significant events and actions' }
+      };
+      if (embeddingFunction) {
+        eventCollectionConfig.embeddingFunction = embeddingFunction;
+      }
 
       this.collections.events = await this.client.getOrCreateCollection({
         name: 'vortex_events', 
-        metadata: { description: 'Significant events and actions' }
+        ...eventCollectionConfig
       });
+
+      const prefCollectionConfig = {
+        metadata: { description: 'User preferences and patterns' }
+      };
+      if (embeddingFunction) {
+        prefCollectionConfig.embeddingFunction = embeddingFunction;
+      }
 
       this.collections.preferences = await this.client.getOrCreateCollection({
         name: 'vortex_preferences',
-        metadata: { description: 'User preferences and patterns' }
+        ...prefCollectionConfig
       });
+
+      const contextCollectionConfig = {
+        metadata: { description: 'Session and contextual information' }
+      };
+      if (embeddingFunction) {
+        contextCollectionConfig.embeddingFunction = embeddingFunction;
+      }
 
       this.collections.context = await this.client.getOrCreateCollection({
         name: 'vortex_context',
-        metadata: { description: 'Session and contextual information' }
+        ...contextCollectionConfig
       });
 
       this.isInitialized = true;
@@ -174,6 +214,13 @@ class MemoryService {
     await this.ensureInitialized();
 
     try {
+      logger.debug('Getting relevant context', {
+        userId,
+        query,
+        conversationId,
+        limit
+      });
+
       // Search conversations for relevant context - FIXED: Include conversationId filter
       const conversationWhere = {
         user_id: userId
@@ -184,20 +231,78 @@ class MemoryService {
         conversationWhere.conversation_id = conversationId;
       }
 
-      const conversationResults = await this.collections.conversations.query({
+      logger.debug('ChromaDB query parameters', {
         queryTexts: [query],
-        nResults: Math.floor(limit * 0.7), // 70% from conversations
+        nResults: Math.floor(limit * 0.7),
         where: conversationWhere
       });
 
+      let conversationResults;
+      try {
+        conversationResults = await this.collections.conversations.query({
+          queryTexts: [query],
+          nResults: Math.floor(limit * 0.7), // 70% from conversations
+          where: conversationWhere
+        });
+
+        logger.debug('ChromaDB conversation query results', {
+          documentsCount: conversationResults.documents?.[0]?.length || 0,
+          idsCount: conversationResults.ids?.[0]?.length || 0,
+          distances: conversationResults.distances?.[0] || []
+        });
+      } catch (queryError) {
+        logger.warn('Semantic search failed, falling back to get() method', {
+          error: queryError.message
+        });
+        
+        // Fallback to get() method if query() fails (no embeddings)
+        const getResults = await this.collections.conversations.get({
+          where: conversationWhere,
+          limit: Math.floor(limit * 0.7)
+        });
+
+        // Convert get() results to query() format
+        conversationResults = {
+          documents: [getResults.documents || []],
+          metadatas: [getResults.metadatas || []],
+          ids: [getResults.ids || []],
+          distances: [Array(getResults.documents?.length || 0).fill(0)] // Default distance 0
+        };
+
+        logger.debug('Fallback get() results', {
+          documentsCount: conversationResults.documents?.[0]?.length || 0
+        });
+      }
+
       // Search events for relevant context  
-      const eventResults = await this.collections.events.query({
-        queryTexts: [query],
-        nResults: Math.floor(limit * 0.3), // 30% from events  
-        where: {
-          user_id: userId
-        }
-      });
+      let eventResults;
+      try {
+        eventResults = await this.collections.events.query({
+          queryTexts: [query],
+          nResults: Math.floor(limit * 0.3), // 30% from events  
+          where: {
+            user_id: userId
+          }
+        });
+      } catch (queryError) {
+        logger.debug('Event semantic search failed, falling back to get()', {
+          error: queryError.message
+        });
+        
+        // Fallback to get() method
+        const getResults = await this.collections.events.get({
+          where: { user_id: userId },
+          limit: Math.floor(limit * 0.3)
+        });
+
+        // Convert get() results to query() format
+        eventResults = {
+          documents: [getResults.documents || []],
+          metadatas: [getResults.metadatas || []],
+          ids: [getResults.ids || []],
+          distances: [Array(getResults.documents?.length || 0).fill(0)]
+        };
+      }
 
       // Combine and format results
       const relevantMemories = [];
