@@ -65,6 +65,38 @@ router.post('/chat', authenticate, vortexController.chat);
 
 /**
  * @swagger
+ * /api/v1/vortex/debug/chat:
+ *   post:
+ *     summary: Chat with Vortex AI (Debug Mode)
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Message to send to Vortex
+ *               conversation_id:
+ *                 type: string
+ *                 description: Optional conversation ID for context
+ *               context:
+ *                 type: object
+ *                 description: Additional context information
+ *     responses:
+ *       200:
+ *         description: Vortex response with debug information
+ */
+router.post('/debug/chat', authenticate, vortexController.debugChat);
+
+/**
+ * @swagger
  * /api/v1/vortex/memory:
  *   get:
  *     summary: Retrieve conversation memory

@@ -22,7 +22,7 @@ class VortexService {
   /**
    * Process a chat message through the full Vortex pipeline
    */
-  async processChat({ userId, message, conversationId, context = {} }) {
+  async processChat({ userId, message, conversationId, context = {}, debug = false }) {
     try {
       // Generate conversation ID if not provided
       if (!conversationId) {
@@ -54,11 +54,35 @@ class VortexService {
         userContext: context
       });
 
+      const systemPrompt = this.buildSystemPrompt(userId);
+
+      // Capture debug information if requested
+      let debugInfo = null;
+      if (debug) {
+        debugInfo = {
+          prompt: {
+            system: systemPrompt,
+            messages: conversationContext,
+            message_count: conversationContext.length,
+            total_chars: JSON.stringify(conversationContext).length
+          },
+          memory: {
+            relevant_memories_count: relevantMemories.length,
+            memories: relevantMemories.map(m => ({
+              type: m.metadata?.type,
+              content_preview: m.document?.substring(0, 100) + '...',
+              distance: m.distance
+            }))
+          },
+          timestamp: new Date().toISOString()
+        };
+      }
+
       // Get LLM response
       const llmResponse = await llmService.generateResponse({
         messages: conversationContext,
         userId,
-        systemPrompt: this.buildSystemPrompt(userId)
+        systemPrompt
       });
 
       // Store the assistant response in memory
@@ -82,7 +106,18 @@ class VortexService {
         await this.handleDetectedAction(action, llmResponse.content, userId, conversationId, context);
       }
 
-      return {
+      // Add LLM response to debug info if debug mode is enabled
+      if (debug && debugInfo) {
+        debugInfo.llm_response = {
+          model: llmResponse.model,
+          tokens_used: llmResponse.usage?.total_tokens,
+          response_chars: llmResponse.content.length,
+          actions_detected: detectedActions.length,
+          actions: detectedActions.map(a => ({ type: a.type, content: a.content?.substring(0, 50) + '...' }))
+        };
+      }
+
+      const result = {
         response: llmResponse.content,
         conversation_id: conversationId,
         actions: detectedActions,
@@ -94,6 +129,13 @@ class VortexService {
           timestamp: new Date().toISOString()
         }
       };
+
+      // Include debug info if requested
+      if (debug && debugInfo) {
+        result.debug = debugInfo;
+      }
+
+      return result;
 
     } catch (error) {
       logger.error('Vortex chat processing error', { 

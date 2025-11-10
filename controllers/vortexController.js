@@ -8,14 +8,15 @@ class VortexController {
    */
   async chat(req, res, next) {
     try {
-      const { message, conversation_id, context } = req.body;
+      const { message, conversation_id, context, debug } = req.body;
       const userId = req.user.id;
 
       logger.info('Vortex chat request', {
         correlationId: req.correlationId,
         userId,
         messageLength: message.length,
-        conversationId: conversation_id
+        conversationId: conversation_id,
+        debugMode: debug || false
       });
 
       // Process the chat request through Vortex service
@@ -28,7 +29,8 @@ class VortexController {
           source: 'api',
           userAgent: req.get('User-Agent'),
           ip: req.ip
-        }
+        },
+        debug: debug || false
       });
 
       logger.info('Vortex chat completed', {
@@ -38,14 +40,75 @@ class VortexController {
         responseLength: result.response.length
       });
 
-      res.success({
+      const responseData = {
         response: result.response,
         conversation_id: result.conversation_id,
         metadata: result.metadata
-      }, 'Chat processed successfully');
+      };
+
+      // Include debug information if requested
+      if (debug && result.debug) {
+        responseData.debug = result.debug;
+      }
+
+      res.success(responseData, 'Chat processed successfully');
 
     } catch (error) {
       logger.error('Vortex chat error', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Debug chat endpoint - always includes debug information
+   */
+  async debugChat(req, res, next) {
+    try {
+      const { message, conversation_id, context } = req.body;
+      const userId = req.user.id;
+
+      logger.info('Vortex debug chat request', {
+        correlationId: req.correlationId,
+        userId,
+        messageLength: message.length,
+        conversationId: conversation_id
+      });
+
+      // Always enable debug mode
+      const result = await vortexService.processChat({
+        userId,
+        message,
+        conversationId: conversation_id,
+        context: {
+          ...context,
+          source: 'debug-api',
+          userAgent: req.get('User-Agent'),
+          ip: req.ip
+        },
+        debug: true
+      });
+
+      logger.info('Vortex debug chat completed', {
+        correlationId: req.correlationId,
+        userId,
+        conversationId: result.conversation_id,
+        responseLength: result.response.length,
+        debugDataIncluded: !!result.debug
+      });
+
+      res.success({
+        response: result.response,
+        conversation_id: result.conversation_id,
+        metadata: result.metadata,
+        debug: result.debug
+      }, 'Debug chat processed successfully');
+
+    } catch (error) {
+      logger.error('Vortex debug chat error', {
         correlationId: req.correlationId,
         userId: req.user?.id,
         error: error.message
