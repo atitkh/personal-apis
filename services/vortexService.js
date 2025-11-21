@@ -178,11 +178,16 @@ Be helpful but succinct. Today is ${new Date().toISOString().split('T')[0]}.`;
   async buildConversationContext({ currentMessage, conversationId, relevantMemories, userContext }) {
     const context = [];
 
-    // Add relevant memories as context (only if very relevant)
+    // Add relevant memories as context (more lenient filtering)
     if (relevantMemories.length > 0) {
+      logger.debug('Processing relevant memories for context', {
+        totalMemories: relevantMemories.length,
+        distances: relevantMemories.map(m => m.distance)
+      });
+      
       const memoryContext = relevantMemories
         .slice(0, 3) // Limit to top 3 most relevant memories
-        .filter(memory => memory.distance < 0.7) // Only include highly relevant memories
+        .filter(memory => memory.distance < 1.2) // More lenient threshold for including memories
         .map(memory => {
           // Extract role and content from memory metadata if available
           const role = memory.metadata?.role || 'unknown';
@@ -190,6 +195,12 @@ Be helpful but succinct. Today is ${new Date().toISOString().split('T')[0]}.`;
           return `${role}: ${content}`;
         })
         .join('\n');
+      
+      logger.debug('Filtered memory context', {
+        originalCount: relevantMemories.length,
+        filteredCount: memoryContext.split('\n').filter(line => line.trim()).length,
+        hasContent: !!memoryContext.trim()
+      });
       
       if (memoryContext.trim()) { // Only add if there's relevant content
         context.push({

@@ -254,19 +254,40 @@ class MemoryService {
         limit
       });
 
-      // Build ChromaDB where clause with proper validation
+      // Build ChromaDB where clause with enhanced validation
       const conversationWhere = {};
       
       // Convert userId to string and validate
-      const userIdStr = userId?.toString?.() || String(userId || '');
-      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
-        throw new Error(`Invalid userId for ChromaDB query: ${userId}`);
+      let userIdStr;
+      if (typeof userId === 'object' && userId !== null) {
+        // Handle MongoDB ObjectId objects
+        userIdStr = userId.toString();
+      } else {
+        userIdStr = String(userId || '').trim();
       }
+      
+      // Validate the final user ID string
+      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
+        throw new Error(`Invalid userId for ChromaDB query: ${JSON.stringify(userId)}`);
+      }
+      
+      // Ensure no special characters that might break ChromaDB
+      if (!/^[a-zA-Z0-9_-]+$/.test(userIdStr)) {
+        logger.warn('User ID contains special characters, sanitizing', { originalUserId: userIdStr });
+        userIdStr = userIdStr.replace(/[^a-zA-Z0-9_-]/g, '_');
+      }
+      
       conversationWhere.user_id = userIdStr;
       
       // If we have a conversationId, add it to the filter
       if (conversationId) {
-        const conversationIdStr = conversationId?.toString?.() || String(conversationId || '');
+        let conversationIdStr;
+        if (typeof conversationId === 'object' && conversationId !== null) {
+          conversationIdStr = conversationId.toString();
+        } else {
+          conversationIdStr = String(conversationId || '').trim();
+        }
+        
         if (conversationIdStr && conversationIdStr !== 'undefined' && conversationIdStr !== 'null' && conversationIdStr !== '') {
           conversationWhere.conversation_id = conversationIdStr;
         }
@@ -280,13 +301,29 @@ class MemoryService {
         conversationIdType: typeof conversationWhere.conversation_id
       });
 
-      // Perform semantic search with embeddings
-      const conversationResults = await this.collections.conversations.query({
-        queryTexts: [query],
-        nResults: Math.floor(limit * 0.7), // 70% from conversations
-        where: conversationWhere,
-        include: ['metadatas', 'documents', 'distances']
-      });
+      // Perform semantic search with embeddings (with error handling)
+      let conversationResults;
+      try {
+        conversationResults = await this.collections.conversations.query({
+          queryTexts: [query],
+          nResults: Math.floor(limit * 0.7), // 70% from conversations
+          where: conversationWhere,
+          include: ['metadatas', 'documents', 'distances']
+        });
+      } catch (queryError) {
+        logger.error('ChromaDB conversation query failed', {
+          error: queryError.message,
+          whereClause: conversationWhere,
+          query: query.substring(0, 100)
+        });
+        // Return empty results if query fails
+        conversationResults = {
+          documents: [[]],
+          metadatas: [[]],
+          ids: [[]],
+          distances: [[]]
+        };
+      }
 
       logger.debug('ChromaDB semantic search results', {
         documentsCount: conversationResults.documents?.[0]?.length || 0,
@@ -450,21 +487,41 @@ class MemoryService {
         collectionReady: !!this.collections.conversations
       });
 
-      // Build ChromaDB where clause with proper data types
+      // Build ChromaDB where clause with enhanced validation
       const whereClause = {};
       
       // Convert userId to string and validate
-      const userIdStr = userId?.toString?.() || String(userId || '');
-      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
-        throw new Error(`Invalid userId for getRecentConversation: ${userId}`);
+      let userIdStr;
+      if (typeof userId === 'object' && userId !== null) {
+        userIdStr = userId.toString();
+      } else {
+        userIdStr = String(userId || '').trim();
       }
+      
+      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
+        throw new Error(`Invalid userId for getRecentConversation: ${JSON.stringify(userId)}`);
+      }
+      
+      // Sanitize user ID to prevent ChromaDB issues
+      if (!/^[a-zA-Z0-9_-]+$/.test(userIdStr)) {
+        logger.warn('User ID contains special characters, sanitizing for ChromaDB', { originalUserId: userIdStr });
+        userIdStr = userIdStr.replace(/[^a-zA-Z0-9_-]/g, '_');
+      }
+      
       whereClause.user_id = userIdStr;
       
       // Convert conversationId to string and validate
-      const conversationIdStr = conversationId?.toString?.() || String(conversationId || '');
-      if (!conversationIdStr || conversationIdStr === 'undefined' || conversationIdStr === 'null' || conversationIdStr === '') {
-        throw new Error(`Invalid conversationId for getRecentConversation: ${conversationId}`);
+      let conversationIdStr;
+      if (typeof conversationId === 'object' && conversationId !== null) {
+        conversationIdStr = conversationId.toString();
+      } else {
+        conversationIdStr = String(conversationId || '').trim();
       }
+      
+      if (!conversationIdStr || conversationIdStr === 'undefined' || conversationIdStr === 'null' || conversationIdStr === '') {
+        throw new Error(`Invalid conversationId for getRecentConversation: ${JSON.stringify(conversationId)}`);
+      }
+      
       whereClause.conversation_id = conversationIdStr;
 
       logger.debug('ChromaDB get where clause', {
@@ -473,10 +530,26 @@ class MemoryService {
         conversationIdType: typeof whereClause.conversation_id
       });
 
-      const results = await this.collections.conversations.get({
-        where: whereClause,
-        limit: limit
-      });
+      let results;
+      try {
+        results = await this.collections.conversations.get({
+          where: whereClause,
+          limit: limit
+        });
+      } catch (getError) {
+        logger.error('ChromaDB get conversation failed', {
+          error: getError.message,
+          whereClause: whereClause,
+          userId: userIdStr,
+          conversationId: conversationIdStr
+        });
+        // Return empty results if get fails
+        results = {
+          documents: [],
+          metadatas: [],
+          ids: []
+        };
+      }
 
       logger.debug('ChromaDB get results', {
         documentsCount: results.documents?.length || 0,

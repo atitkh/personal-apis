@@ -337,17 +337,18 @@ Always respond as Vortex, your personal AI assistant.`;
 
       const classificationPrompt = `Analyze the following user message and determine if it contains any actionable commands that should be executed by an AI assistant.
 
+IMPORTANT: Only detect actions when the user is giving instructions or making explicit requests to store/retrieve information. Questions ABOUT memory or past conversations should NOT be classified as actions.
+
 AVAILABLE ACTIONS:
 1. "remember" - Store information for future reference
 2. "remind" - Set a reminder or note for later  
-3. "search" - Search through previous conversations/memories
-4. "note" - Save a general note or observation
+3. "note" - Save a general note or observation
 
 USER MESSAGE: "${message}"
 
 Respond with a JSON array of detected actions. Each action should have:
 {
-  "type": "remember|remind|search|note",
+  "type": "remember|remind|note",
   "content": "the specific content to act on",
   "confidence": 0.0-1.0
 }
@@ -357,8 +358,9 @@ If no actions are detected, respond with an empty array [].
 Examples:
 - "Remember that I prefer TypeScript" → [{"type": "remember", "content": "I prefer TypeScript", "confidence": 0.9}]
 - "Remind me to call mom tomorrow" → [{"type": "remind", "content": "call mom tomorrow", "confidence": 0.9}]
-- "Can you search for our previous conversation about APIs?" → [{"type": "search", "content": "previous conversation about APIs", "confidence": 0.8}]
 - "Note that the deployment was successful" → [{"type": "note", "content": "the deployment was successful", "confidence": 0.8}]
+- "What did I ask you to remember?" → [] (this is a QUESTION, not an action)
+- "Can you tell me what we talked about before?" → [] (this is a QUESTION, not an action)
 - "What's the weather like?" → []
 
 Respond with only the JSON array, no other text.`;
