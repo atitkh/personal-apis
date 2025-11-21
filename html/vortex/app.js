@@ -33,6 +33,7 @@ class VortexDebugInterface {
         this.newConversationBtn = document.getElementById('newConversationBtn');
         this.clearChatBtn = document.getElementById('clearChatBtn');
         this.debugTokenBtn = document.getElementById('debugTokenBtn');
+        this.testMessageBtn = document.getElementById('testMessageBtn');
         
         // Set initial conversation ID
         this.conversationIdInput.value = this.conversationId;
@@ -54,6 +55,7 @@ class VortexDebugInterface {
         this.newConversationBtn.addEventListener('click', () => this.newConversation());
         this.clearChatBtn.addEventListener('click', () => this.clearChat());
         this.debugTokenBtn.addEventListener('click', () => this.debugToken());
+        this.testMessageBtn.addEventListener('click', () => this.testMessageDisplay());
         this.conversationIdInput.addEventListener('change', (e) => {
             this.conversationId = e.target.value;
         });
@@ -183,16 +185,26 @@ class VortexDebugInterface {
             });
 
             const data = await response.json();
+            console.log('Chat API response:', response.status, data);
 
             if (response.ok) {
-                this.addMessage('assistant', data.response);
+                // Handle both direct and wrapped response formats
+                const aiResponse = data.data?.response || data.response;
+                const debugInfo = data.data?.debug || data.debug;
+                
+                if (aiResponse) {
+                    this.addMessage('assistant', aiResponse);
+                } else {
+                    console.error('No response field found in API response:', data);
+                    this.addMessage('system', '❌ No response received from AI');
+                }
                 
                 // Update debug info if available
-                if (data.debug) {
-                    this.updateDebugOutput(data.debug);
+                if (debugInfo) {
+                    this.updateDebugOutput(debugInfo);
                 }
             } else {
-                this.addMessage('system', `❌ Error: ${data.message || 'Failed to get response'}`);
+                this.addMessage('system', `❌ Error (${response.status}): ${data.message || 'Failed to get response'}`);
             }
         } catch (error) {
             console.error('Send message error:', error);
@@ -205,6 +217,13 @@ class VortexDebugInterface {
     }
 
     addMessage(role, content) {
+        console.log('Adding message:', role, content);
+        
+        if (!this.chatMessages) {
+            console.error('chatMessages element not found!');
+            return;
+        }
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}`;
         
@@ -219,6 +238,8 @@ class VortexDebugInterface {
         
         this.chatMessages.appendChild(messageDiv);
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        
+        console.log('Message added, total messages now:', this.chatMessages.children.length);
     }
 
     async debugConversation() {
@@ -291,6 +312,14 @@ class VortexDebugInterface {
         };
         this.debugOutput.textContent = JSON.stringify(tokenInfo, null, 2);
         console.log('Token debug info:', tokenInfo);
+    }
+
+    testMessageDisplay() {
+        console.log('Testing message display...');
+        this.addMessage('user', 'Test user message');
+        this.addMessage('assistant', 'Test AI response');
+        this.addMessage('system', 'Test system message');
+        console.log('Test messages added');
     }
 }
 
