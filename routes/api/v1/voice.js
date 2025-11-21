@@ -1,6 +1,6 @@
 const express = require('express');
-const voiceController = require('../../controllers/voiceController');
-const authenticate = require('../../middleware/auth');
+const voiceController = require('../../../controllers/voiceController');
+const { authenticate } = require('../../../middleware/auth');
 
 const router = express.Router();
 
