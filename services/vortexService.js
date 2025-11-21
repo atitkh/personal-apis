@@ -54,7 +54,13 @@ class VortexService {
         userContext: context
       });
 
-      const systemPrompt = this.buildSystemPrompt(context.user || userId);
+      // Build proper system prompt with memory context using llmService
+      const systemPrompt = llmService.buildSystemPrompt({
+        userContext: context.user || { name: 'User' },
+        relevantMemories,
+        currentTime: new Date().toISOString(),
+        personality: this.personality
+      });
 
       // Capture debug information if requested
       let debugInfo = null;
@@ -149,28 +155,7 @@ class VortexService {
     }
   }
 
-  /**
-   * Build system prompt for Vortex personality
-   */
-  buildSystemPrompt(userInfo) {
-    const userName = userInfo?.name || userInfo || 'the user';
-    return `You are ${this.personality.name}, a personal AI assistant for ${userName}.
 
-Your characteristics:
-${this.personality.traits.map(trait => `- ${trait}`).join('\n')}
-
-Communication Guidelines:
-- Be concise and natural - avoid unnecessary verbose responses
-- Don't mention remembering conversations unless specifically relevant
-- Don't say "nice to talk to you again" or similar repetitive greetings
-- Use previous context naturally without explicitly calling attention to it
-- Keep responses focused and to the point
-- Only reference past conversations when directly relevant to the current question
-- Avoid meta-commentary about memory or conversation history
-
-You can help with smart home control, coding projects, and various technical tasks.
-Be helpful but succinct. Today is ${new Date().toISOString().split('T')[0]}.`;
-  }
 
   /**
    * Build conversation context for LLM
@@ -178,45 +163,18 @@ Be helpful but succinct. Today is ${new Date().toISOString().split('T')[0]}.`;
   async buildConversationContext({ currentMessage, conversationId, relevantMemories, userContext }) {
     const context = [];
 
-    // Add relevant memories as context (more lenient filtering)
-    if (relevantMemories.length > 0) {
-      logger.debug('Processing relevant memories for context', {
-        totalMemories: relevantMemories.length,
-        distances: relevantMemories.map(m => m.distance)
-      });
-      
-      const memoryContext = relevantMemories
-        .slice(0, 3) // Limit to top 3 most relevant memories
-        .filter(memory => memory.distance < 1.2) // More lenient threshold for including memories
-        .map(memory => {
-          // Extract role and content from memory metadata if available
-          const role = memory.metadata?.role || 'unknown';
-          const content = memory.document || memory.content;
-          return `${role}: ${content}`;
-        })
-        .join('\n');
-      
-      logger.debug('Filtered memory context', {
-        originalCount: relevantMemories.length,
-        filteredCount: memoryContext.split('\n').filter(line => line.trim()).length,
-        hasContent: !!memoryContext.trim()
-      });
-      
-      if (memoryContext.trim()) { // Only add if there's relevant content
-        context.push({
-          role: 'system',
-          content: `Relevant context:\n${memoryContext}`
-        });
-      }
-    }
+    // Don't add memories here - they're handled in the system prompt via llmService.buildSystemPrompt
+    // This prevents duplication of memory context
 
-      // Get recent conversation turns from this session
-      try {
-        const recentMessages = await memoryService.getRecentConversation({
-          userId: userContext.user?._id?.toString() || userContext.userId || userContext.user,
-          conversationId,
-          limit: 4 // Last 2 exchanges (4 messages) - reduced to prevent repetitive context
-        });      // Add recent conversation turns
+    // Get recent conversation turns from this session
+    try {
+      const recentMessages = await memoryService.getRecentConversation({
+        userId: userContext.user?._id?.toString() || userContext.userId || userContext.user,
+        conversationId,
+        limit: 4 // Last 2 exchanges (4 messages) - reduced to prevent repetitive context
+      });
+      
+      // Add recent conversation turns
       if (recentMessages.length > 0) {
         recentMessages.forEach(msg => {
           const role = msg.metadata?.role || 'user';
