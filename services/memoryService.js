@@ -237,19 +237,22 @@ class MemoryService {
         limit
       });
 
-      // Search conversations for relevant context - FIXED: Include conversationId filter
-      const conversationWhere = {
-        user_id: userId?.toString() || userId  // Ensure string format
-      };
+      // Build ChromaDB where clause with proper validation
+      const conversationWhere = {};
       
-      // If we have a conversationId, prioritize current conversation context
-      if (conversationId) {
-        conversationWhere.conversation_id = conversationId?.toString() || conversationId;  // Ensure string format
+      // Convert userId to string and validate
+      const userIdStr = userId?.toString?.() || String(userId || '');
+      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
+        throw new Error(`Invalid userId for ChromaDB query: ${userId}`);
       }
-
-      // Validate where clause has valid values
-      if (!conversationWhere.user_id || conversationWhere.user_id === 'undefined' || conversationWhere.user_id === 'null') {
-        throw new Error(`Invalid userId for ChromaDB query: ${conversationWhere.user_id}`);
+      conversationWhere.user_id = userIdStr;
+      
+      // If we have a conversationId, add it to the filter
+      if (conversationId) {
+        const conversationIdStr = conversationId?.toString?.() || String(conversationId || '');
+        if (conversationIdStr && conversationIdStr !== 'undefined' && conversationIdStr !== 'null' && conversationIdStr !== '') {
+          conversationWhere.conversation_id = conversationIdStr;
+        }
       }
 
       logger.debug('ChromaDB query parameters', {
@@ -299,12 +302,11 @@ class MemoryService {
 
       // Search events for relevant context  
       let eventResults;
-      const eventWhere = {
-        user_id: userId?.toString() || userId  // Ensure string format
-      };
-
-      // Validate where clause
-      if (!eventWhere.user_id) {
+      const eventWhere = {};
+      
+      // Build proper where clause for events
+      const eventUserIdStr = userId?.toString?.() || String(userId || '');
+      if (!eventUserIdStr || eventUserIdStr === 'undefined' || eventUserIdStr === 'null' || eventUserIdStr === '') {
         logger.warn('No valid userId for event query, skipping events');
         eventResults = {
           documents: [[]],
@@ -313,6 +315,7 @@ class MemoryService {
           distances: [[]]
         };
       } else {
+        eventWhere.user_id = eventUserIdStr;
         try {
           eventResults = await this.collections.events.query({
             queryTexts: [query],
@@ -396,13 +399,23 @@ class MemoryService {
 
     try {
       let collection;
-      let whereClause = { user_id: userId };
+      
+      // Build proper where clause with validation
+      const userIdStr = userId?.toString?.() || String(userId || '');
+      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
+        throw new Error(`Invalid userId for getMemories: ${userId}`);
+      }
+      
+      const whereClause = { user_id: userIdStr };
 
       // Determine collection based on type
       if (type === 'conversation') {
         collection = this.collections.conversations;
         if (conversationId) {
-          whereClause.conversation_id = conversationId;
+          const conversationIdStr = conversationId?.toString?.() || String(conversationId || '');
+          if (conversationIdStr && conversationIdStr !== 'undefined' && conversationIdStr !== 'null' && conversationIdStr !== '') {
+            whereClause.conversation_id = conversationIdStr;
+          }
         }
       } else if (type === 'event') {
         collection = this.collections.events;
@@ -454,19 +467,22 @@ class MemoryService {
         collectionReady: !!this.collections.conversations
       });
 
-      // Ensure proper data types for ChromaDB where clause
-      const whereClause = {
-        user_id: userId?.toString() || userId,
-        conversation_id: conversationId?.toString() || conversationId
-      };
-
-      // Validate required parameters
-      if (!whereClause.user_id || whereClause.user_id === 'undefined' || whereClause.user_id === 'null') {
-        throw new Error(`Invalid userId for getRecentConversation: ${whereClause.user_id}`);
+      // Build ChromaDB where clause with proper data types
+      const whereClause = {};
+      
+      // Convert userId to string and validate
+      const userIdStr = userId?.toString?.() || String(userId || '');
+      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
+        throw new Error(`Invalid userId for getRecentConversation: ${userId}`);
       }
-      if (!whereClause.conversation_id || whereClause.conversation_id === 'undefined' || whereClause.conversation_id === 'null') {
-        throw new Error(`Invalid conversationId for getRecentConversation: ${whereClause.conversation_id}`);
+      whereClause.user_id = userIdStr;
+      
+      // Convert conversationId to string and validate
+      const conversationIdStr = conversationId?.toString?.() || String(conversationId || '');
+      if (!conversationIdStr || conversationIdStr === 'undefined' || conversationIdStr === 'null' || conversationIdStr === '') {
+        throw new Error(`Invalid conversationId for getRecentConversation: ${conversationId}`);
       }
+      whereClause.conversation_id = conversationIdStr;
 
       logger.debug('ChromaDB get where clause', {
         where: whereClause,
@@ -577,7 +593,6 @@ class MemoryService {
         throw new Error('UserId is required for browsing memories');
       }
 
-      const userIdStr = String(userId);
       const collection = this.collections[type];
       
       if (!collection) {
@@ -585,11 +600,18 @@ class MemoryService {
         return [];
       }
 
-      logger.debug('Browsing memories', { userId: userIdStr, type, limit });
+      // Build proper where clause
+      const userIdStr = userId?.toString?.() || String(userId || '');
+      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
+        throw new Error(`Invalid userId for browsing memories: ${userId}`);
+      }
+
+      const whereClause = { user_id: userIdStr };
+      logger.debug('Browsing memories', { userId: userIdStr, type, limit, whereClause });
 
       // Get recent memories for this user
       const results = await collection.get({
-        where: { userId: userIdStr },
+        where: whereClause,
         limit: parseInt(limit),
         include: ['metadatas', 'documents']
       });
@@ -632,7 +654,6 @@ class MemoryService {
         throw new Error('UserId and query are required for searching memories');
       }
 
-      const userIdStr = String(userId);
       const collection = this.collections[type];
       
       if (!collection) {
@@ -640,13 +661,20 @@ class MemoryService {
         return [];
       }
 
-      logger.debug('Searching memories', { userId: userIdStr, query: query.substring(0, 100), type, limit });
+      // Build proper where clause
+      const userIdStr = userId?.toString?.() || String(userId || '');
+      if (!userIdStr || userIdStr === 'undefined' || userIdStr === 'null' || userIdStr === '') {
+        throw new Error(`Invalid userId for searching memories: ${userId}`);
+      }
+
+      const whereClause = { user_id: userIdStr };
+      logger.debug('Searching memories', { userId: userIdStr, query: query.substring(0, 100), type, limit, whereClause });
 
       // Perform semantic search
       const results = await collection.query({
         queryTexts: [query],
         nResults: parseInt(limit),
-        where: { userId: userIdStr },
+        where: whereClause,
         include: ['metadatas', 'documents', 'distances']
       });
 

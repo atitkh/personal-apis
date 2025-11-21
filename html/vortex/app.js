@@ -354,9 +354,25 @@ class VortexDebugInterface {
 
             const data = await response.json();
             console.log('Browse memories response:', data);
+            console.log('Response structure:', {
+                hasData: !!data.data,
+                hasMemories: !!data.memories,
+                dataType: typeof data.data,
+                memoriesType: typeof data.memories,
+                dataIsArray: Array.isArray(data.data),
+                memoriesIsArray: Array.isArray(data.memories)
+            });
 
             if (response.ok) {
-                const memories = data.data || data;
+                // Extract memories array from nested response structure
+                let memories = data.data?.memories || data.memories || data.data || data;
+                
+                // Ensure memories is an array
+                if (!Array.isArray(memories)) {
+                    console.warn('Memories is not an array:', memories);
+                    memories = [];
+                }
+                
                 this.displayMemories(memories, `Recent ${memoryType}`);
             } else {
                 this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to browse memories'}`;
@@ -399,9 +415,25 @@ class VortexDebugInterface {
 
             const data = await response.json();
             console.log('Search memories response:', data);
+            console.log('Search response structure:', {
+                hasData: !!data.data,
+                hasMemories: !!data.memories,
+                dataType: typeof data.data,
+                memoriesType: typeof data.memories,
+                dataIsArray: Array.isArray(data.data),
+                memoriesIsArray: Array.isArray(data.memories)
+            });
 
             if (response.ok) {
-                const memories = data.data || data;
+                // Extract memories array from nested response structure
+                let memories = data.data?.memories || data.memories || data.data || data;
+                
+                // Ensure memories is an array
+                if (!Array.isArray(memories)) {
+                    console.warn('Memories is not an array:', memories);
+                    memories = [];
+                }
+                
                 this.displayMemories(memories, `Search results for "${query}" in ${memoryType}`);
             } else {
                 this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to search memories'}`;
@@ -413,7 +445,16 @@ class VortexDebugInterface {
     }
 
     displayMemories(memories, title) {
-        if (!memories || memories.length === 0) {
+        console.log('displayMemories called with:', { memories, title, memoriesType: typeof memories, isArray: Array.isArray(memories) });
+        
+        // Ensure memories is an array
+        if (!Array.isArray(memories)) {
+            console.error('Memories is not an array:', memories);
+            this.debugOutput.textContent = `${title}:\n\nError: Invalid memory data format\nReceived: ${typeof memories}\nData: ${JSON.stringify(memories, null, 2)}`;
+            return;
+        }
+        
+        if (memories.length === 0) {
             this.debugOutput.textContent = `${title}:\n\nNo memories found.`;
             return;
         }
@@ -424,15 +465,17 @@ class VortexDebugInterface {
             timestamp: new Date().toISOString(),
             memories: memories.map(memory => {
                 // Handle different memory formats
-                if (memory.metadata) {
+                if (memory && typeof memory === 'object') {
                     return {
                         id: memory.id,
                         content: memory.document || memory.content,
-                        metadata: memory.metadata,
-                        distance: memory.distance
+                        metadata: memory.metadata || {},
+                        distance: memory.distance,
+                        relevanceScore: memory.relevanceScore,
+                        type: memory.type
                     };
                 } else {
-                    return memory;
+                    return { content: String(memory), metadata: {} };
                 }
             })
         };
