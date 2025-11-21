@@ -275,6 +275,13 @@ class LLMService {
       ? this.formatMemoryContext(relevantMemories)
       : 'No relevant memories found.';
 
+    // Log what memories are being used in the system prompt
+    this.safeLog('debug', 'Building system prompt with memories', {
+      memoryCount: relevantMemories.length,
+      memoryTypes: relevantMemories.map(m => m.type),
+      memoryPreview: relevantMemories.slice(0, 2).map(m => m.content?.substring(0, 50) + '...')
+    });
+
     return `You are Vortex, ${personality.description}
 
 PERSONALITY TRAITS:
@@ -290,11 +297,12 @@ ${memoryContext}
 
 RESPONSE GUIDELINES:
 1. Be helpful, personal, and engaging
-2. Reference relevant memories when appropriate  
-3. Maintain context across conversations
-4. Ask clarifying questions when needed
-5. Suggest actions or next steps when relevant
-6. Stay in character as a personal AI assistant
+2. **IMPORTANT**: Always reference and use the relevant memories above when answering questions about the user's background, preferences, or past conversations
+3. If you have relevant memories, use them naturally in your responses without saying "I remember" or "based on our conversation"
+4. If no relevant memories are provided, be honest about not having that specific information
+5. Maintain context across conversations using the memory information
+6. Ask clarifying questions when needed
+7. Stay in character as a personal AI assistant
 
 Communication Guidelines:
 - Be concise and natural - avoid unnecessary verbose responses

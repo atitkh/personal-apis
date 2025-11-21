@@ -460,11 +460,46 @@ class MemoryService {
       // Sort by relevance (lower distance = more relevant)
       relevantMemories.sort((a, b) => a.distance - b.distance);
 
-      logger.debug('Retrieved relevant context', { 
+      logger.debug('Retrieved relevant context - detailed', { 
         userId, 
         query, 
-        memoryCount: relevantMemories.length 
+        memoryCount: relevantMemories.length,
+        memories: relevantMemories.slice(0, 3).map(m => ({
+          type: m.type,
+          distance: m.distance,
+          preview: m.content?.substring(0, 100) + '...'
+        }))
       });
+
+      // If no relevant memories found with semantic search, try fallback with recent memories
+      if (relevantMemories.length === 0) {
+        logger.info('No memories found via semantic search, trying fallback with recent memories');
+        
+        try {
+          const fallbackMemories = await this.getRecentConversation({
+            userId: userIdStr,
+            conversationId: null, // Get from any conversation
+            limit: Math.min(limit, 3)
+          });
+          
+          // Convert to same format as semantic search results
+          fallbackMemories.forEach(memory => {
+            relevantMemories.push({
+              type: 'conversation',
+              content: memory.document || memory.content,
+              metadata: memory.metadata,
+              distance: 1.0 // Mark as fallback with moderate relevance
+            });
+          });
+          
+          logger.debug('Added fallback memories', {
+            fallbackCount: fallbackMemories.length,
+            totalMemories: relevantMemories.length
+          });
+        } catch (fallbackError) {
+          logger.warn('Fallback memory retrieval also failed', { error: fallbackError.message });
+        }
+      }
 
       return relevantMemories.slice(0, limit);
 
@@ -554,9 +589,7 @@ class MemoryService {
         collectionReady: !!this.collections.conversations
       });
 
-      // Build ChromaDB where clause with enhanced validation
-      const whereClause = {};
-      
+      // Build ChromaDB where clause with enhanced validation  
       // Convert userId to string and validate
       let userIdStr;
       if (typeof userId === 'object' && userId !== null) {
@@ -588,7 +621,7 @@ class MemoryService {
       }
       
       // Use $and operator for multiple conditions (following ChromaDB docs)
-      whereClause = {
+      const whereClause = {
         "$and": [
           { "user_id": userIdStr },
           { "conversation_id": conversationIdStr }
@@ -635,8 +668,8 @@ class MemoryService {
           const filteredIndices = [];
           if (allResults.metadatas) {
             allResults.metadatas.forEach((metadata, index) => {
-              const matchesUser = metadata.user_id === whereClause.user_id;
-              const matchesConversation = metadata.conversation_id === whereClause.conversation_id;
+              const matchesUser = metadata.user_id === userIdStr;
+              const matchesConversation = metadata.conversation_id === conversationIdStr;
               if (matchesUser && matchesConversation) {
                 filteredIndices.push(index);
               }
