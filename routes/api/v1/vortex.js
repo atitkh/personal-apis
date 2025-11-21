@@ -175,6 +175,67 @@ router.get('/memory', authenticate, vortexController.getMemory);
 
 /**
  * @swagger
+ * /api/v1/vortex/memory/browse:
+ *   get:
+ *     summary: Browse recent memories by type
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [conversations, events, preferences]
+ *           default: conversations
+ *         description: Memory type to browse
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Number of memories to retrieve
+ *     responses:
+ *       200:
+ *         description: Recent memories retrieved
+ */
+router.get('/memory/browse', authenticate, vortexController.browseMemories);
+
+/**
+ * @swagger
+ * /api/v1/vortex/memory/search:
+ *   post:
+ *     summary: Search memories using semantic search
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - query
+ *             properties:
+ *               query:
+ *                 type: string
+ *                 description: Search query
+ *               type:
+ *                 type: string
+ *                 enum: [conversations, events, preferences]
+ *                 default: conversations
+ *               limit:
+ *                 type: integer
+ *                 default: 20
+ *     responses:
+ *       200:
+ *         description: Matching memories found
+ */
+router.post('/memory/search', authenticate, vortexController.searchMemories);
+
+/**
+ * @swagger
  * /api/v1/vortex/status:
  *   get:
  *     summary: Get Vortex system status

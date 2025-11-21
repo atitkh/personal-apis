@@ -253,6 +253,21 @@ button:disabled {
     font-size: 14px;
 }
 
+.debug-section h4 {
+    margin: 0 0 15px 0;
+    color: #667eea;
+    font-size: 1em;
+}
+
+.debug-section select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
 .debug-output {
     background: white;
     border: 1px solid #eee;

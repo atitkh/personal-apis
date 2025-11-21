@@ -284,6 +284,80 @@ class VortexController {
   }
 
   /**
+   * Browse memories - get recent memories by type
+   */
+  async browseMemories(req, res, next) {
+    try {
+      const { type = 'conversations', limit = 20 } = req.query;
+      const userId = req.user._id || req.user.id;
+
+      logger.info('Browse memories request', {
+        correlationId: req.correlationId,
+        userId,
+        type,
+        limit
+      });
+
+      const memories = await memoryService.browseMemories(userId, type, parseInt(limit));
+
+      res.success({
+        memories,
+        type,
+        count: memories.length,
+        userId
+      }, `Retrieved ${memories.length} ${type} memories`);
+
+    } catch (error) {
+      logger.error('Browse memories error', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Search memories - semantic search across memories
+   */
+  async searchMemories(req, res, next) {
+    try {
+      const { query, type = 'conversations', limit = 20 } = req.body;
+      const userId = req.user._id || req.user.id;
+
+      if (!query) {
+        return res.badRequest('Search query is required');
+      }
+
+      logger.info('Search memories request', {
+        correlationId: req.correlationId,
+        userId,
+        query: query.substring(0, 100), // Log first 100 chars only
+        type,
+        limit
+      });
+
+      const memories = await memoryService.searchMemories(userId, query, type, parseInt(limit));
+
+      res.success({
+        memories,
+        query,
+        type,
+        count: memories.length,
+        userId
+      }, `Found ${memories.length} matching memories`);
+
+    } catch (error) {
+      logger.error('Search memories error', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
    * Get Vortex system status
    */
   async getStatus(req, res, next) {

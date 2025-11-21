@@ -565,6 +565,120 @@ class MemoryService {
       };
     }
   }
+
+  /**
+   * Browse memories - get recent memories by type
+   */
+  async browseMemories(userId, type = 'conversations', limit = 20) {
+    try {
+      await this.initialize();
+      
+      if (!userId) {
+        throw new Error('UserId is required for browsing memories');
+      }
+
+      const userIdStr = String(userId);
+      const collection = this.collections[type];
+      
+      if (!collection) {
+        logger.warn(`Collection ${type} not found, available collections:`, Object.keys(this.collections));
+        return [];
+      }
+
+      logger.debug('Browsing memories', { userId: userIdStr, type, limit });
+
+      // Get recent memories for this user
+      const results = await collection.get({
+        where: { userId: userIdStr },
+        limit: parseInt(limit),
+        include: ['metadatas', 'documents']
+      });
+
+      if (!results || !results.ids || results.ids.length === 0) {
+        logger.debug('No memories found for user', { userId: userIdStr, type });
+        return [];
+      }
+
+      // Format results
+      const memories = results.ids.map((id, index) => ({
+        id,
+        content: results.documents[index],
+        metadata: results.metadatas ? results.metadatas[index] : {},
+        type
+      }));
+
+      logger.debug(`Retrieved ${memories.length} memories for browsing`, { userId: userIdStr, type });
+      return memories;
+
+    } catch (error) {
+      logger.error('Error browsing memories', { 
+        error: error.message,
+        userId,
+        type,
+        limit
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Search memories - semantic search across memories
+   */
+  async searchMemories(userId, query, type = 'conversations', limit = 20) {
+    try {
+      await this.initialize();
+      
+      if (!userId || !query) {
+        throw new Error('UserId and query are required for searching memories');
+      }
+
+      const userIdStr = String(userId);
+      const collection = this.collections[type];
+      
+      if (!collection) {
+        logger.warn(`Collection ${type} not found, available collections:`, Object.keys(this.collections));
+        return [];
+      }
+
+      logger.debug('Searching memories', { userId: userIdStr, query: query.substring(0, 100), type, limit });
+
+      // Perform semantic search
+      const results = await collection.query({
+        queryTexts: [query],
+        nResults: parseInt(limit),
+        where: { userId: userIdStr },
+        include: ['metadatas', 'documents', 'distances']
+      });
+
+      if (!results || !results.ids || results.ids.length === 0 || !results.ids[0] || results.ids[0].length === 0) {
+        logger.debug('No matching memories found', { userId: userIdStr, query: query.substring(0, 50), type });
+        return [];
+      }
+
+      // Format results (query returns nested arrays)
+      const memories = results.ids[0].map((id, index) => ({
+        id,
+        content: results.documents[0][index],
+        metadata: results.metadatas ? results.metadatas[0][index] : {},
+        distance: results.distances ? results.distances[0][index] : null,
+        type,
+        relevanceScore: results.distances ? (1 - results.distances[0][index]) : null
+      }));
+
+      logger.debug(`Found ${memories.length} matching memories`, { userId: userIdStr, type });
+      return memories;
+
+    } catch (error) {
+      logger.error('Error searching memories', { 
+        error: error.message,
+        userId,
+        query: query ? query.substring(0, 100) : 'undefined',
+        type,
+        limit
+      });
+      return [];
+    }
+  }
 }
 
 module.exports = new MemoryService();

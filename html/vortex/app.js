@@ -35,6 +35,12 @@ class VortexDebugInterface {
         this.debugTokenBtn = document.getElementById('debugTokenBtn');
         this.testMessageBtn = document.getElementById('testMessageBtn');
         
+        // Memory exploration elements
+        this.memoryType = document.getElementById('memoryType');
+        this.memorySearch = document.getElementById('memorySearch');
+        this.browseMemoriesBtn = document.getElementById('browseMemoriesBtn');
+        this.searchMemoriesBtn = document.getElementById('searchMemoriesBtn');
+        
         // Set initial conversation ID
         this.conversationIdInput.value = this.conversationId;
     }
@@ -56,6 +62,13 @@ class VortexDebugInterface {
         this.clearChatBtn.addEventListener('click', () => this.clearChat());
         this.debugTokenBtn.addEventListener('click', () => this.debugToken());
         this.testMessageBtn.addEventListener('click', () => this.testMessageDisplay());
+        
+        // Memory exploration events
+        this.browseMemoriesBtn.addEventListener('click', () => this.browseMemories());
+        this.searchMemoriesBtn.addEventListener('click', () => this.searchMemories());
+        this.memorySearch.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.searchMemories();
+        });
         this.conversationIdInput.addEventListener('change', (e) => {
             this.conversationId = e.target.value;
         });
@@ -320,6 +333,111 @@ class VortexDebugInterface {
         this.addMessage('assistant', 'Test AI response');
         this.addMessage('system', 'Test system message');
         console.log('Test messages added');
+    }
+
+    async browseMemories() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        const memoryType = this.memoryType.value;
+        console.log('Browsing memories of type:', memoryType);
+
+        try {
+            const response = await fetch(`/api/v1/vortex/memory/browse?type=${memoryType}&limit=20`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            console.log('Browse memories response:', data);
+
+            if (response.ok) {
+                const memories = data.data || data;
+                this.displayMemories(memories, `Recent ${memoryType}`);
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to browse memories'}`;
+            }
+        } catch (error) {
+            console.error('Browse memories error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+        }
+    }
+
+    async searchMemories() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        const query = this.memorySearch.value.trim();
+        const memoryType = this.memoryType.value;
+        
+        if (!query) {
+            this.debugOutput.textContent = 'Please enter a search query';
+            return;
+        }
+
+        console.log('Searching memories:', { query, type: memoryType });
+
+        try {
+            const response = await fetch('/api/v1/vortex/memory/search', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query,
+                    type: memoryType,
+                    limit: 20
+                })
+            });
+
+            const data = await response.json();
+            console.log('Search memories response:', data);
+
+            if (response.ok) {
+                const memories = data.data || data;
+                this.displayMemories(memories, `Search results for "${query}" in ${memoryType}`);
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to search memories'}`;
+            }
+        } catch (error) {
+            console.error('Search memories error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+        }
+    }
+
+    displayMemories(memories, title) {
+        if (!memories || memories.length === 0) {
+            this.debugOutput.textContent = `${title}:\n\nNo memories found.`;
+            return;
+        }
+
+        const displayData = {
+            title,
+            count: memories.length,
+            timestamp: new Date().toISOString(),
+            memories: memories.map(memory => {
+                // Handle different memory formats
+                if (memory.metadata) {
+                    return {
+                        id: memory.id,
+                        content: memory.document || memory.content,
+                        metadata: memory.metadata,
+                        distance: memory.distance
+                    };
+                } else {
+                    return memory;
+                }
+            })
+        };
+
+        this.debugOutput.textContent = JSON.stringify(displayData, null, 2);
     }
 }
 
