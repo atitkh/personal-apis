@@ -17,64 +17,47 @@ class MemoryService {
         path: process.env.CHROMADB_URL || 'http://localhost:8000'
       });
 
-      // Load embedding function properly - no fallbacks, fix the root issue
+      // Load embedding function properly using the official ChromaDB approach
       let embeddingFunction = null;
       
       try {
-        logger.info('Loading ChromaDB embedding function...');
+        logger.info('Loading ChromaDB DefaultEmbeddingFunction...');
         
-        // Check if chromadb-default-embed is installed
-        try {
-          require.resolve('chromadb-default-embed');
-          logger.info('chromadb-default-embed module found');
-        } catch (resolveError) {
-          throw new Error('chromadb-default-embed module not found. Please install it with: npm install chromadb-default-embed');
-        }
-        
-        // Load the embedding function using dynamic import (ES module)
-        logger.info('Attempting to import chromadb-default-embed...');
-        const embeddingModule = await import('chromadb-default-embed');
-        logger.info('Module imported successfully', { 
-          moduleKeys: Object.keys(embeddingModule),
-          hasDefaultEmbeddingFunction: 'DefaultEmbeddingFunction' in embeddingModule,
-          defaultEmbeddingFunctionType: typeof embeddingModule.DefaultEmbeddingFunction
-        });
-        
-        const { DefaultEmbeddingFunction } = embeddingModule;
+        // Import the official DefaultEmbeddingFunction from @chroma-core/default-embed
+        logger.info('Importing DefaultEmbeddingFunction from @chroma-core/default-embed...');
+        const { DefaultEmbeddingFunction } = await import('@chroma-core/default-embed');
         
         if (!DefaultEmbeddingFunction) {
-          throw new Error('DefaultEmbeddingFunction not found in chromadb-default-embed module');
+          throw new Error('DefaultEmbeddingFunction not found in @chroma-core/default-embed package');
         }
         
         if (typeof DefaultEmbeddingFunction !== 'function') {
           throw new Error(`DefaultEmbeddingFunction is not a constructor, got: ${typeof DefaultEmbeddingFunction}`);
         }
         
+        // Create instance with default settings (all-MiniLM-L6-v2 model)
         logger.info('Creating DefaultEmbeddingFunction instance...');
         embeddingFunction = new DefaultEmbeddingFunction();
-        logger.info('Successfully initialized DefaultEmbeddingFunction instance');
+        logger.info('Successfully initialized DefaultEmbeddingFunction with default model');
         
         // Test the embedding function
-        try {
-          const testEmbedding = await embeddingFunction.generate(['test']);
-          if (!testEmbedding || !Array.isArray(testEmbedding) || testEmbedding.length === 0) {
-            throw new Error('Embedding function test failed - invalid output');
-          }
-          logger.info('Embedding function test passed', { 
-            outputType: typeof testEmbedding,
-            outputLength: testEmbedding.length,
-            firstEmbeddingLength: testEmbedding[0]?.length 
-          });
-        } catch (testError) {
-          throw new Error(`Embedding function test failed: ${testError.message}`);
+        logger.info('Testing embedding function...');
+        const testEmbedding = await embeddingFunction.generate(['test']);
+        if (!testEmbedding || !Array.isArray(testEmbedding) || testEmbedding.length === 0) {
+          throw new Error('Embedding function test failed - invalid output');
         }
+        logger.info('Embedding function test passed', { 
+          outputType: typeof testEmbedding,
+          outputLength: testEmbedding.length,
+          firstEmbeddingLength: testEmbedding[0]?.length 
+        });
         
       } catch (error) {
-        logger.error('Failed to load embedding function - this will break semantic search', { 
+        logger.error('Failed to load ChromaDB DefaultEmbeddingFunction', { 
           error: error.message,
           stack: error.stack 
         });
-        throw error; // Don't continue without embeddings
+        throw error; // Don't continue without embeddings - this is a real fix, not a workaround
       }
 
       // Create/get collections for different memory types
