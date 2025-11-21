@@ -254,13 +254,12 @@ class MemoryService {
         limit
       });
 
-      // Build ChromaDB where clause with enhanced validation
-      const conversationWhere = {};
+      // Build ChromaDB where clause - try different formats based on the stored data you showed
+      let conversationWhere = {};
       
-      // Convert userId to string and validate
+      // Convert userId to exact format that's stored (based on your browse data)
       let userIdStr;
       if (typeof userId === 'object' && userId !== null) {
-        // Handle MongoDB ObjectId objects
         userIdStr = userId.toString();
       } else {
         userIdStr = String(userId || '').trim();
@@ -271,15 +270,14 @@ class MemoryService {
         throw new Error(`Invalid userId for ChromaDB query: ${JSON.stringify(userId)}`);
       }
       
-      // Ensure no special characters that might break ChromaDB
-      if (!/^[a-zA-Z0-9_-]+$/.test(userIdStr)) {
-        logger.warn('User ID contains special characters, sanitizing', { originalUserId: userIdStr });
-        userIdStr = userIdStr.replace(/[^a-zA-Z0-9_-]/g, '_');
-      }
+      // Use the same pattern as browseMemories which works
+      // Start with just user_id (like browseMemories does)
+      conversationWhere = {
+        user_id: userIdStr
+      };
       
-      conversationWhere.user_id = userIdStr;
-      
-      // If we have a conversationId, add it to the filter
+      // TEMPORARILY skip conversation_id to test if that's the issue
+      // Based on browse memories working with just user_id
       if (conversationId) {
         let conversationIdStr;
         if (typeof conversationId === 'object' && conversationId !== null) {
@@ -289,9 +287,22 @@ class MemoryService {
         }
         
         if (conversationIdStr && conversationIdStr !== 'undefined' && conversationIdStr !== 'null' && conversationIdStr !== '') {
-          conversationWhere.conversation_id = conversationIdStr;
+          // Try using $and operator for multiple conditions as per ChromaDB docs
+          conversationWhere = {
+            "$and": [
+              { "user_id": userIdStr },
+              { "conversation_id": conversationIdStr }
+            ]
+          };
         }
       }
+      
+      logger.debug('ChromaDB where clause constructed', {
+        whereClause: conversationWhere,
+        userIdOriginal: userId,
+        userIdFinal: userIdStr,
+        conversationId: conversationId
+      });
 
       logger.debug('ChromaDB semantic search query parameters', {
         queryTexts: [query],
@@ -304,6 +315,12 @@ class MemoryService {
       // Perform semantic search with embeddings (with error handling)
       let conversationResults;
       try {
+        // First, try without where clause to see what data exists
+        logger.debug('Attempting ChromaDB query with where clause', {
+          whereClause: conversationWhere,
+          query: query.substring(0, 50)
+        });
+        
         conversationResults = await this.collections.conversations.query({
           queryTexts: [query],
           nResults: Math.floor(limit * 0.7), // 70% from conversations
@@ -311,18 +328,68 @@ class MemoryService {
           include: ['metadatas', 'documents', 'distances']
         });
       } catch (queryError) {
-        logger.error('ChromaDB conversation query failed', {
+        logger.error('ChromaDB conversation query failed, trying without where clause', {
           error: queryError.message,
           whereClause: conversationWhere,
           query: query.substring(0, 100)
         });
-        // Return empty results if query fails
-        conversationResults = {
-          documents: [[]],
-          metadatas: [[]],
-          ids: [[]],
-          distances: [[]]
-        };
+        
+        // Try without where clause to see what data actually exists
+        try {
+          const allResults = await this.collections.conversations.query({
+            queryTexts: [query],
+            nResults: Math.floor(limit * 0.7),
+            include: ['metadatas', 'documents', 'distances']
+          });
+          
+          logger.debug('Query without where clause successful', {
+            resultCount: allResults.documents?.[0]?.length || 0,
+            sampleMetadata: allResults.metadatas?.[0]?.[0] || null
+          });
+          
+          // Filter results manually if we got any
+          if (allResults.documents && allResults.documents[0] && allResults.documents[0].length > 0) {
+            const filteredIndices = [];
+            allResults.metadatas[0].forEach((metadata, index) => {
+              const matchesUser = metadata.user_id === conversationWhere.user_id;
+              const matchesConversation = !conversationWhere.conversation_id || metadata.conversation_id === conversationWhere.conversation_id;
+              if (matchesUser && matchesConversation) {
+                filteredIndices.push(index);
+              }
+            });
+            
+            // Build filtered results
+            conversationResults = {
+              documents: [filteredIndices.map(i => allResults.documents[0][i])],
+              metadatas: [filteredIndices.map(i => allResults.metadatas[0][i])],
+              ids: [filteredIndices.map(i => allResults.ids[0][i])],
+              distances: [filteredIndices.map(i => allResults.distances[0][i])]
+            };
+            
+            logger.debug('Manual filtering applied', {
+              originalCount: allResults.documents[0].length,
+              filteredCount: filteredIndices.length
+            });
+          } else {
+            conversationResults = {
+              documents: [[]],
+              metadatas: [[]],
+              ids: [[]],
+              distances: [[]]
+            };
+          }
+        } catch (fallbackError) {
+          logger.error('Even query without where clause failed', {
+            error: fallbackError.message
+          });
+          // Return empty results if everything fails
+          conversationResults = {
+            documents: [[]],
+            metadatas: [[]],
+            ids: [[]],
+            distances: [[]]
+          };
+        }
       }
 
       logger.debug('ChromaDB semantic search results', {
@@ -508,8 +575,6 @@ class MemoryService {
         userIdStr = userIdStr.replace(/[^a-zA-Z0-9_-]/g, '_');
       }
       
-      whereClause.user_id = userIdStr;
-      
       // Convert conversationId to string and validate
       let conversationIdStr;
       if (typeof conversationId === 'object' && conversationId !== null) {
@@ -522,7 +587,13 @@ class MemoryService {
         throw new Error(`Invalid conversationId for getRecentConversation: ${JSON.stringify(conversationId)}`);
       }
       
-      whereClause.conversation_id = conversationIdStr;
+      // Use $and operator for multiple conditions (following ChromaDB docs)
+      whereClause = {
+        "$and": [
+          { "user_id": userIdStr },
+          { "conversation_id": conversationIdStr }
+        ]
+      };
 
       logger.debug('ChromaDB get where clause', {
         where: whereClause,
@@ -532,23 +603,75 @@ class MemoryService {
 
       let results;
       try {
+        logger.debug('Attempting ChromaDB get with where clause', {
+          whereClause: whereClause,
+          limit: limit
+        });
+        
         results = await this.collections.conversations.get({
           where: whereClause,
           limit: limit
         });
       } catch (getError) {
-        logger.error('ChromaDB get conversation failed', {
+        logger.error('ChromaDB get conversation failed, trying without where clause', {
           error: getError.message,
           whereClause: whereClause,
           userId: userIdStr,
           conversationId: conversationIdStr
         });
-        // Return empty results if get fails
-        results = {
-          documents: [],
-          metadatas: [],
-          ids: []
-        };
+        
+        // Try to get all documents and filter manually
+        try {
+          const allResults = await this.collections.conversations.get({
+            limit: limit * 3 // Get more to filter from
+          });
+          
+          logger.debug('Get without where clause successful', {
+            totalCount: allResults.documents?.length || 0,
+            sampleMetadata: allResults.metadatas?.[0] || null
+          });
+          
+          // Filter manually
+          const filteredIndices = [];
+          if (allResults.metadatas) {
+            allResults.metadatas.forEach((metadata, index) => {
+              const matchesUser = metadata.user_id === whereClause.user_id;
+              const matchesConversation = metadata.conversation_id === whereClause.conversation_id;
+              if (matchesUser && matchesConversation) {
+                filteredIndices.push(index);
+              }
+            });
+          }
+          
+          // Build filtered results
+          results = {
+            documents: filteredIndices.map(i => allResults.documents[i]),
+            metadatas: filteredIndices.map(i => allResults.metadatas[i]),
+            ids: filteredIndices.map(i => allResults.ids[i])
+          };
+          
+          // Limit to requested size
+          if (results.documents.length > limit) {
+            results.documents = results.documents.slice(-limit); // Keep most recent
+            results.metadatas = results.metadatas.slice(-limit);
+            results.ids = results.ids.slice(-limit);
+          }
+          
+          logger.debug('Manual filtering for get applied', {
+            totalCount: allResults.documents?.length || 0,
+            filteredCount: filteredIndices.length,
+            finalCount: results.documents.length
+          });
+        } catch (fallbackError) {
+          logger.error('Even get without where clause failed', {
+            error: fallbackError.message
+          });
+          results = {
+            documents: [],
+            metadatas: [],
+            ids: []
+          };
+        }
       }
 
       logger.debug('ChromaDB get results', {
