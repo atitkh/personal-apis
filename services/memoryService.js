@@ -17,39 +17,73 @@ class MemoryService {
         path: process.env.CHROMADB_URL || 'http://localhost:8000'
       });
 
-      // Import embedding function dynamically (ES module compatibility)
+      // Load embedding function properly - no fallbacks, fix the root issue
       let embeddingFunction = null;
+      
       try {
-        // Try different import patterns for chromadb-default-embed
-        let EmbeddingFunction;
+        logger.info('Loading ChromaDB embedding function...');
+        
+        // Check if chromadb-default-embed is installed
         try {
-          const module = await import('chromadb-default-embed');
-          EmbeddingFunction = module.DefaultEmbeddingFunction || module.default;
-        } catch (importError) {
-          // Fallback to require if import fails
-          const module = require('chromadb-default-embed');
-          EmbeddingFunction = module.DefaultEmbeddingFunction || module;
+          require.resolve('chromadb-default-embed');
+          logger.info('chromadb-default-embed module found');
+        } catch (resolveError) {
+          throw new Error('chromadb-default-embed module not found. Please install it with: npm install chromadb-default-embed');
         }
         
-        if (EmbeddingFunction && typeof EmbeddingFunction === 'function') {
-          embeddingFunction = new EmbeddingFunction();
-          logger.debug('Using DefaultEmbeddingFunction for embeddings');
-        } else {
-          throw new Error('EmbeddingFunction is not a constructor or not found');
-        }
-      } catch (error) {
-        logger.warn('Could not load DefaultEmbeddingFunction, collections will work without semantic search', { 
-          error: error.message 
+        // Load the embedding function with detailed error reporting
+        logger.info('Attempting to require chromadb-default-embed...');
+        const embeddingModule = require('chromadb-default-embed');
+        logger.info('Module loaded successfully', { 
+          moduleKeys: Object.keys(embeddingModule),
+          hasDefaultEmbeddingFunction: 'DefaultEmbeddingFunction' in embeddingModule,
+          defaultEmbeddingFunctionType: typeof embeddingModule.DefaultEmbeddingFunction
         });
+        
+        const { DefaultEmbeddingFunction } = embeddingModule;
+        
+        if (!DefaultEmbeddingFunction) {
+          throw new Error('DefaultEmbeddingFunction not found in chromadb-default-embed module');
+        }
+        
+        if (typeof DefaultEmbeddingFunction !== 'function') {
+          throw new Error(`DefaultEmbeddingFunction is not a constructor, got: ${typeof DefaultEmbeddingFunction}`);
+        }
+        
+        logger.info('Creating DefaultEmbeddingFunction instance...');
+        embeddingFunction = new DefaultEmbeddingFunction();
+        logger.info('Successfully initialized DefaultEmbeddingFunction instance');
+        
+        // Test the embedding function
+        try {
+          const testEmbedding = await embeddingFunction.generate(['test']);
+          if (!testEmbedding || !Array.isArray(testEmbedding) || testEmbedding.length === 0) {
+            throw new Error('Embedding function test failed - invalid output');
+          }
+          logger.info('Embedding function test passed', { 
+            outputType: typeof testEmbedding,
+            outputLength: testEmbedding.length,
+            firstEmbeddingLength: testEmbedding[0]?.length 
+          });
+        } catch (testError) {
+          throw new Error(`Embedding function test failed: ${testError.message}`);
+        }
+        
+      } catch (error) {
+        logger.error('Failed to load embedding function - this will break semantic search', { 
+          error: error.message,
+          stack: error.stack 
+        });
+        throw error; // Don't continue without embeddings
       }
 
-      // Create/get collections for different memory types with embedding function
+      // Create/get collections for different memory types
       const collectionConfig = {
         metadata: { description: 'Chat conversations and messages' }
       };
-      if (embeddingFunction) {
-        collectionConfig.embeddingFunction = embeddingFunction;
-      }
+      
+      // Add embedding function to collection config
+      collectionConfig.embeddingFunction = embeddingFunction;
 
       this.collections.conversations = await this.client.getOrCreateCollection({
         name: 'vortex_conversations',
@@ -255,7 +289,7 @@ class MemoryService {
         }
       }
 
-      logger.debug('ChromaDB query parameters', {
+      logger.debug('ChromaDB semantic search query parameters', {
         queryTexts: [query],
         nResults: Math.floor(limit * 0.7),
         where: conversationWhere,
@@ -263,42 +297,20 @@ class MemoryService {
         conversationIdType: typeof conversationWhere.conversation_id
       });
 
-      let conversationResults;
-      try {
-        conversationResults = await this.collections.conversations.query({
-          queryTexts: [query],
-          nResults: Math.floor(limit * 0.7), // 70% from conversations
-          where: conversationWhere
-        });
+      // Perform semantic search with embeddings
+      const conversationResults = await this.collections.conversations.query({
+        queryTexts: [query],
+        nResults: Math.floor(limit * 0.7), // 70% from conversations
+        where: conversationWhere,
+        include: ['metadatas', 'documents', 'distances']
+      });
 
-        logger.debug('ChromaDB conversation query results', {
-          documentsCount: conversationResults.documents?.[0]?.length || 0,
-          idsCount: conversationResults.ids?.[0]?.length || 0,
-          distances: conversationResults.distances?.[0] || []
-        });
-      } catch (queryError) {
-        logger.warn('Semantic search failed, falling back to get() method', {
-          error: queryError.message
-        });
-        
-        // Fallback to get() method if query() fails (no embeddings)
-        const getResults = await this.collections.conversations.get({
-          where: conversationWhere,
-          limit: Math.floor(limit * 0.7)
-        });
-
-        // Convert get() results to query() format
-        conversationResults = {
-          documents: [getResults.documents || []],
-          metadatas: [getResults.metadatas || []],
-          ids: [getResults.ids || []],
-          distances: [Array(getResults.documents?.length || 0).fill(0)] // Default distance 0
-        };
-
-        logger.debug('Fallback get() results', {
-          documentsCount: conversationResults.documents?.[0]?.length || 0
-        });
-      }
+      logger.debug('ChromaDB semantic search results', {
+        documentsCount: conversationResults.documents?.[0]?.length || 0,
+        idsCount: conversationResults.ids?.[0]?.length || 0,
+        distances: conversationResults.distances?.[0] || [],
+        avgDistance: conversationResults.distances?.[0]?.reduce((a, b) => a + b, 0) / (conversationResults.distances?.[0]?.length || 1)
+      });
 
       // Search events for relevant context  
       let eventResults;
@@ -316,31 +328,19 @@ class MemoryService {
         };
       } else {
         eventWhere.user_id = eventUserIdStr;
-        try {
-          eventResults = await this.collections.events.query({
-            queryTexts: [query],
-            nResults: Math.floor(limit * 0.3), // 30% from events  
-            where: eventWhere
-          });
-        } catch (queryError) {
-          logger.debug('Event semantic search failed, falling back to get()', {
-            error: queryError.message
-          });
-          
-          // Fallback to get() method
-          const getResults = await this.collections.events.get({
-            where: eventWhere,
-            limit: Math.floor(limit * 0.3)
-          });
-
-          // Convert get() results to query() format
-          eventResults = {
-            documents: [getResults.documents || []],
-            metadatas: [getResults.metadatas || []],
-            ids: [getResults.ids || []],
-            distances: [Array(getResults.documents?.length || 0).fill(0)]
-          };
-        }
+        
+        // Perform semantic search on events
+        eventResults = await this.collections.events.query({
+          queryTexts: [query],
+          nResults: Math.floor(limit * 0.3), // 30% from events  
+          where: eventWhere,
+          include: ['metadatas', 'documents', 'distances']
+        });
+        
+        logger.debug('Event semantic search results', {
+          documentsCount: eventResults.documents?.[0]?.length || 0,
+          avgDistance: eventResults.distances?.[0]?.reduce((a, b) => a + b, 0) / (eventResults.distances?.[0]?.length || 1)
+        });
       }
 
       // Combine and format results
@@ -677,6 +677,12 @@ class MemoryService {
         where: whereClause,
         include: ['metadatas', 'documents', 'distances']
       });
+      
+      logger.debug('Semantic search completed', {
+        query: query.substring(0, 50),
+        resultsCount: results.ids?.[0]?.length || 0,
+        avgDistance: results.distances?.[0]?.reduce((a, b) => a + b, 0) / (results.distances?.[0]?.length || 1)
+      });
 
       if (!results || !results.ids || results.ids.length === 0 || !results.ids[0] || results.ids[0].length === 0) {
         logger.debug('No matching memories found', { userId: userIdStr, query: query.substring(0, 50), type });
@@ -707,6 +713,8 @@ class MemoryService {
       return [];
     }
   }
+
+
 }
 
 module.exports = new MemoryService();

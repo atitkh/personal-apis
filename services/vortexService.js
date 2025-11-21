@@ -43,7 +43,7 @@ class VortexService {
         userId,
         query: message,
         conversationId,
-        limit: 10
+        limit: 5 // Reduced to prevent information overload
       });
 
       // Build conversation context for LLM
@@ -78,13 +78,13 @@ class VortexService {
         };
       }
 
-      // Get LLM response with some randomness to avoid repetition
+      // Get LLM response with focused parameters
       const llmResponse = await llmService.generateResponse({
         messages: conversationContext,
         userId,
         systemPrompt,
-        temperature: 0.7, // Add some creativity/randomness
-        maxTokens: 1000   // Reasonable response length
+        temperature: 0.3, // Lower temperature for more focused responses
+        maxTokens: 500    // Shorter response length to encourage conciseness
       });
 
       // Store the assistant response in memory
@@ -159,21 +159,17 @@ class VortexService {
 Your characteristics:
 ${this.personality.traits.map(trait => `- ${trait}`).join('\n')}
 
-You have access to the user's conversation history and can remember previous interactions. 
-You can control smart home devices, help with coding projects, and assist with various tasks.
-
 Communication Guidelines:
-- Be conversational and avoid repetitive responses
-- Build on previous context when available
-- Vary your language and response style
-- Ask follow-up questions to keep conversations engaging
-- Reference specific details from our conversation history when relevant
-- Avoid generic responses - personalize based on our interaction
+- Be concise and natural - avoid unnecessary verbose responses
+- Don't mention remembering conversations unless specifically relevant
+- Don't say "nice to talk to you again" or similar repetitive greetings
+- Use previous context naturally without explicitly calling attention to it
+- Keep responses focused and to the point
+- Only reference past conversations when directly relevant to the current question
+- Avoid meta-commentary about memory or conversation history
 
-If you can help with smart home control, coding questions, or other technical tasks, offer to do so.
-Remember previous preferences and context to provide more personalized assistance.
-
-Current date: ${new Date().toISOString().split('T')[0]}`;
+You can help with smart home control, coding projects, and various technical tasks.
+Be helpful but succinct. Today is ${new Date().toISOString().split('T')[0]}.`;
   }
 
   /**
@@ -182,10 +178,11 @@ Current date: ${new Date().toISOString().split('T')[0]}`;
   async buildConversationContext({ currentMessage, conversationId, relevantMemories, userContext }) {
     const context = [];
 
-    // Add relevant memories as context
+    // Add relevant memories as context (only if very relevant)
     if (relevantMemories.length > 0) {
       const memoryContext = relevantMemories
-        .slice(0, 5) // Limit to most relevant memories
+        .slice(0, 3) // Limit to top 3 most relevant memories
+        .filter(memory => memory.distance < 0.7) // Only include highly relevant memories
         .map(memory => {
           // Extract role and content from memory metadata if available
           const role = memory.metadata?.role || 'unknown';
@@ -194,21 +191,21 @@ Current date: ${new Date().toISOString().split('T')[0]}`;
         })
         .join('\n');
       
-      context.push({
-        role: 'system',
-        content: `Recent conversation history:\n${memoryContext}`
-      });
+      if (memoryContext.trim()) { // Only add if there's relevant content
+        context.push({
+          role: 'system',
+          content: `Relevant context:\n${memoryContext}`
+        });
+      }
     }
 
-    // Get recent conversation turns from this session
-    try {
-      const recentMessages = await memoryService.getRecentConversation({
-        userId: userContext.user?._id?.toString() || userContext.userId || userContext.user,
-        conversationId,
-        limit: 6 // Last 3 exchanges (6 messages)
-      });
-
-      // Add recent conversation turns
+      // Get recent conversation turns from this session
+      try {
+        const recentMessages = await memoryService.getRecentConversation({
+          userId: userContext.user?._id?.toString() || userContext.userId || userContext.user,
+          conversationId,
+          limit: 4 // Last 2 exchanges (4 messages) - reduced to prevent repetitive context
+        });      // Add recent conversation turns
       if (recentMessages.length > 0) {
         recentMessages.forEach(msg => {
           const role = msg.metadata?.role || 'user';
