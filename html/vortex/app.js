@@ -41,6 +41,24 @@ class VortexDebugInterface {
         this.browseMemoriesBtn = document.getElementById('browseMemoriesBtn');
         this.searchMemoriesBtn = document.getElementById('searchMemoriesBtn');
         
+        // Voice interface elements
+        this.recordBtn = document.getElementById('recordBtn');
+        this.playLastBtn = document.getElementById('playLastBtn');
+        this.voiceStatus = document.getElementById('voiceStatus');
+        this.voiceEnabled = document.getElementById('voiceEnabled');
+        this.voiceSelect = document.getElementById('voiceSelect');
+        this.speechSpeed = document.getElementById('speechSpeed');
+        this.speedValue = document.getElementById('speedValue');
+        this.testVoiceBtn = document.getElementById('testVoiceBtn');
+        this.voiceStatusBtn = document.getElementById('voiceStatusBtn');
+        
+        // Voice-related properties
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.isRecording = false;
+        this.lastAudioResponse = null;
+        this.currentAudio = null;
+        
         // Set initial conversation ID
         this.conversationIdInput.value = this.conversationId;
     }
@@ -72,6 +90,18 @@ class VortexDebugInterface {
         this.conversationIdInput.addEventListener('change', (e) => {
             this.conversationId = e.target.value;
         });
+        
+        // Voice events
+        this.recordBtn.addEventListener('mousedown', () => this.startRecording());
+        this.recordBtn.addEventListener('mouseup', () => this.stopRecording());
+        this.recordBtn.addEventListener('mouseleave', () => this.stopRecording());
+        this.playLastBtn.addEventListener('click', () => this.playLastResponse());
+        this.testVoiceBtn.addEventListener('click', () => this.testVoice());
+        this.voiceStatusBtn.addEventListener('click', () => this.checkVoiceStatus());
+        this.speechSpeed.addEventListener('input', (e) => {
+            this.speedValue.textContent = e.target.value + 'x';
+        });
+        this.voiceEnabled.addEventListener('change', () => this.toggleVoiceMode());
     }
 
     async checkAuth() {
@@ -229,8 +259,8 @@ class VortexDebugInterface {
         }
     }
 
-    addMessage(role, content) {
-        console.log('Adding message:', role, content);
+    addMessage(role, content, isVoice = false) {
+        console.log('Adding message:', role, content, 'isVoice:', isVoice);
         
         if (!this.chatMessages) {
             console.error('chatMessages element not found!');
@@ -240,19 +270,27 @@ class VortexDebugInterface {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}`;
         
-        const contentDiv = document.createElement('div');
-        contentDiv.textContent = content;
-        messageDiv.appendChild(contentDiv);
+        const timestamp = new Date().toLocaleTimeString();
+        const voiceIcon = isVoice ? ' 🎤' : '';
         
-        const timeDiv = document.createElement('div');
-        timeDiv.className = 'message-time';
-        timeDiv.textContent = new Date().toLocaleTimeString();
-        messageDiv.appendChild(timeDiv);
+        messageDiv.innerHTML = `
+            <div class="message-header">
+                <span class="role">${role.charAt(0).toUpperCase() + role.slice(1)}${voiceIcon}</span>
+                <span class="timestamp">${timestamp}</span>
+            </div>
+            <div class="message-content">${this.escapeHtml(content)}</div>
+        `;
         
         this.chatMessages.appendChild(messageDiv);
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
         
         console.log('Message added, total messages now:', this.chatMessages.children.length);
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     async debugConversation() {
@@ -482,6 +520,372 @@ class VortexDebugInterface {
 
         this.debugOutput.textContent = JSON.stringify(displayData, null, 2);
     }
+
+    // ========== VOICE METHODS ==========
+
+    async toggleVoiceMode() {
+        const enabled = this.voiceEnabled.checked;
+        
+        if (enabled) {
+            // Check if browser supports audio recording
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.showVoiceStatus('Voice recording not supported in this browser', 'error');
+                this.voiceEnabled.checked = false;
+                return;
+            }
+            
+            try {
+                // Request microphone permission
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                this.showVoiceStatus('Voice mode enabled - hold microphone button to record', 'success');
+                this.recordBtn.disabled = false;
+            } catch (error) {
+                this.showVoiceStatus('Microphone access denied', 'error');
+                this.voiceEnabled.checked = false;
+            }
+        } else {
+            this.showVoiceStatus('Voice mode disabled', '');
+            this.recordBtn.disabled = true;
+            if (this.isRecording) {
+                this.stopRecording();
+            }
+        }
+    }
+
+    async startRecording() {
+        if (!this.voiceEnabled.checked || this.isRecording) return;
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                } 
+            });
+            
+            this.audioChunks = [];
+            this.mediaRecorder = new MediaRecorder(stream, {
+                mimeType: 'audio/webm;codecs=opus'
+            });
+            
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                }
+            };
+            
+            this.mediaRecorder.onstop = () => {
+                stream.getTracks().forEach(track => track.stop());
+                this.processRecording();
+            };
+            
+            this.mediaRecorder.start();
+            this.isRecording = true;
+            this.recordBtn.classList.add('recording');
+            this.showVoiceStatus('Recording... (release to send)', 'recording');
+            
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+            this.showVoiceStatus('Failed to start recording: ' + error.message, 'error');
+        }
+    }
+
+    stopRecording() {
+        if (!this.isRecording || !this.mediaRecorder) return;
+        
+        this.mediaRecorder.stop();
+        this.isRecording = false;
+        this.recordBtn.classList.remove('recording');
+        this.showVoiceStatus('Processing audio...', '');
+    }
+
+    async processRecording() {
+        if (this.audioChunks.length === 0) {
+            this.showVoiceStatus('No audio recorded', 'error');
+            return;
+        }
+        
+        try {
+            // Create audio blob
+            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
+            
+            // Convert to wav for better compatibility
+            const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+            
+            this.showVoiceStatus('Sending voice message...', '');
+            
+            // Send voice chat request
+            const formData = new FormData();
+            formData.append('audio', audioFile);
+            formData.append('conversation_id', this.conversationId);
+            formData.append('output_voice', this.voiceSelect.value);
+            formData.append('speech_speed', this.speechSpeed.value);
+            formData.append('debug', 'true');
+            
+            const response = await fetch('/api/v1/voice/chat', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const result = data.data;
+                
+                // Display transcription and response
+                this.addMessage('user', result.transcription.text, true);
+                this.addMessage('assistant', result.response);
+                
+                // Store audio response for playback
+                this.lastAudioResponse = {
+                    data: result.audio.data,
+                    contentType: result.audio.contentType
+                };
+                this.playLastBtn.disabled = false;
+                
+                // Auto-play response if enabled
+                if (this.voiceEnabled.checked) {
+                    this.playAudioResponse(this.lastAudioResponse);
+                }
+                
+                this.showVoiceStatus('Voice message processed successfully', 'success');
+                
+                // Update conversation ID if it changed
+                if (result.conversation_id !== this.conversationId) {
+                    this.conversationId = result.conversation_id;
+                    this.conversationIdInput.value = this.conversationId;
+                }
+                
+            } else {
+                throw new Error(data.message || 'Voice processing failed');
+            }
+            
+        } catch (error) {
+            console.error('Voice processing error:', error);
+            this.showVoiceStatus('Voice processing failed: ' + error.message, 'error');
+        }
+    }
+
+    playLastResponse() {
+        if (!this.lastAudioResponse) {
+            this.showVoiceStatus('No audio response to play', 'error');
+            return;
+        }
+        
+        this.playAudioResponse(this.lastAudioResponse);
+    }
+
+    playAudioResponse(audioResponse) {
+        try {
+            // Stop any currently playing audio
+            if (this.currentAudio) {
+                this.currentAudio.pause();
+                this.currentAudio = null;
+            }
+            
+            // Convert base64 to audio blob
+            const audioData = atob(audioResponse.data);
+            const audioArray = new Uint8Array(audioData.length);
+            for (let i = 0; i < audioData.length; i++) {
+                audioArray[i] = audioData.charCodeAt(i);
+            }
+            
+            const audioBlob = new Blob([audioArray], { type: audioResponse.contentType });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            this.currentAudio = new Audio(audioUrl);
+            
+            this.currentAudio.onplay = () => {
+                this.playLastBtn.classList.add('playing');
+                this.showVoiceStatus('Playing AI response...', 'success');
+            };
+            
+            this.currentAudio.onended = () => {
+                this.playLastBtn.classList.remove('playing');
+                this.showVoiceStatus('', '');
+                URL.revokeObjectURL(audioUrl);
+            };
+            
+            this.currentAudio.onerror = (error) => {
+                console.error('Audio playback error:', error);
+                this.playLastBtn.classList.remove('playing');
+                this.showVoiceStatus('Audio playback failed', 'error');
+                URL.revokeObjectURL(audioUrl);
+            };
+            
+            this.currentAudio.play();
+            
+        } catch (error) {
+            console.error('Failed to play audio:', error);
+            this.showVoiceStatus('Failed to play audio: ' + error.message, 'error');
+        }
+    }
+
+    async testVoice() {
+        try {
+            this.showVoiceStatus('Testing voice synthesis...', '');
+            
+            const response = await fetch('/api/v1/voice/text-to-speech', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: 'Hello! This is a voice test from Vortex AI. Voice synthesis is working correctly.',
+                    voice: this.voiceSelect.value,
+                    speed: parseFloat(this.speechSpeed.value),
+                    output_format: 'wav'
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            // Play the audio response directly
+            const audioBlob = await response.blob();
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audio = new Audio(audioUrl);
+            
+            audio.onplay = () => {
+                this.testVoiceBtn.textContent = 'Playing...';
+                this.showVoiceStatus('Playing voice test...', 'success');
+            };
+            
+            audio.onended = () => {
+                this.testVoiceBtn.textContent = 'Test Voice';
+                this.showVoiceStatus('Voice test completed', 'success');
+                URL.revokeObjectURL(audioUrl);
+            };
+            
+            audio.onerror = () => {
+                this.testVoiceBtn.textContent = 'Test Voice';
+                this.showVoiceStatus('Voice test playback failed', 'error');
+                URL.revokeObjectURL(audioUrl);
+            };
+            
+            audio.play();
+            
+        } catch (error) {
+            console.error('Voice test error:', error);
+            this.testVoiceBtn.textContent = 'Test Voice';
+            this.showVoiceStatus('Voice test failed: ' + error.message, 'error');
+        }
+    }
+
+    async checkVoiceStatus() {
+        try {
+            this.showVoiceStatus('Checking voice services...', '');
+            
+            const response = await fetch('/api/v1/voice/status', {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const status = data.data;
+                let statusText = `Voice Services Status:\n`;
+                statusText += `Overall: ${status.overall}\n`;
+                statusText += `Whisper: ${status.whisper.status} (${status.whisper.url})\n`;
+                statusText += `Piper: ${status.piper.status} (${status.piper.url})\n`;
+                statusText += `Available Voices: ${status.piper.availableVoices.length}`;
+                
+                this.debugOutput.textContent = JSON.stringify(status, null, 2);
+                
+                if (status.overall === 'operational') {
+                    this.showVoiceStatus('Voice services are operational', 'success');
+                    
+                    // Update voice options if available
+                    if (status.piper.availableVoices && status.piper.availableVoices.length > 0) {
+                        this.updateVoiceOptions(status.piper.availableVoices);
+                    }
+                } else {
+                    this.showVoiceStatus('Voice services partially available', 'error');
+                }
+            } else {
+                throw new Error(data.message || 'Failed to get voice status');
+            }
+            
+        } catch (error) {
+            console.error('Voice status check error:', error);
+            this.showVoiceStatus('Voice status check failed: ' + error.message, 'error');
+        }
+    }
+
+    updateVoiceOptions(voices) {
+        // Clear existing options except defaults
+        const currentValue = this.voiceSelect.value;
+        this.voiceSelect.innerHTML = '';
+        
+        // Add available voices
+        voices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice;
+            option.textContent = this.formatVoiceName(voice);
+            this.voiceSelect.appendChild(option);
+        });
+        
+        // Restore previous selection if available
+        if (voices.includes(currentValue)) {
+            this.voiceSelect.value = currentValue;
+        }
+    }
+
+    formatVoiceName(voice) {
+        // Convert voice names like "en_US-lessac-medium" to "English (US) - Lessac"
+        const parts = voice.split('-');
+        const locale = parts[0];
+        const speaker = parts[1];
+        const quality = parts[2];
+        
+        const localeMap = {
+            'en_US': 'English (US)',
+            'en_GB': 'English (UK)',
+            'es_ES': 'Spanish',
+            'fr_FR': 'French',
+            'de_DE': 'German',
+            'it_IT': 'Italian',
+            'pt_BR': 'Portuguese (BR)'
+        };
+        
+        const localeName = localeMap[locale] || locale;
+        const speakerName = speaker ? speaker.charAt(0).toUpperCase() + speaker.slice(1) : '';
+        
+        return `${localeName} - ${speakerName}${quality ? ` (${quality})` : ''}`;
+    }
+
+    showVoiceStatus(message, type = '') {
+        this.voiceStatus.textContent = message;
+        this.voiceStatus.className = 'voice-status' + (type ? ` ${type}` : '');
+        
+        // Auto-clear success messages after 3 seconds
+        if (type === 'success') {
+            setTimeout(() => {
+                if (this.voiceStatus.classList.contains('success')) {
+                    this.voiceStatus.textContent = '';
+                    this.voiceStatus.className = 'voice-status';
+                }
+            }, 3000);
+        }
+    }
+
+
 }
 
 // Initialize the interface when the page loads

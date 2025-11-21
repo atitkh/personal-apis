@@ -188,6 +188,29 @@ button:disabled {
     margin-top: 5px;
 }
 
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    opacity: 0.8;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.message-header .role {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.message-header .timestamp {
+    font-size: 11px;
+}
+
+.message-content {
+    line-height: 1.4;
+}
+
 .chat-input {
     display: flex;
     padding: 20px;
@@ -207,6 +230,96 @@ button:disabled {
 .chat-input input:focus {
     outline: none;
     border-color: #667eea;
+}
+
+/* Voice Controls */
+.voice-controls {
+    display: flex;
+    gap: 8px;
+    margin: 0 10px;
+}
+
+.voice-btn {
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 6px;
+    background: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 45px;
+}
+
+.voice-btn:hover:not(:disabled) {
+    border-color: #667eea;
+    background: #f0f2ff;
+}
+
+.voice-btn:active {
+    transform: scale(0.95);
+}
+
+.voice-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.voice-btn.recording {
+    background: #ff4757;
+    border-color: #ff4757;
+    color: white;
+    animation: pulse 1s infinite;
+}
+
+.voice-btn.playing {
+    background: #2ed573;
+    border-color: #2ed573;
+    color: white;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.voice-status {
+    padding: 10px 20px;
+    font-size: 14px;
+    color: #666;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+    min-height: 20px;
+}
+
+.voice-status.error {
+    color: #ff4757;
+    background: #fff5f5;
+}
+
+.voice-status.success {
+    color: #2ed573;
+    background: #f0fff4;
+}
+
+.voice-status.recording {
+    color: #ff6b35;
+    background: #fff8f0;
+}
+
+/* Voice Settings in Debug Panel */
+.debug-section input[type="range"] {
+    width: 100px;
+    margin: 0 10px;
+}
+
+.debug-section input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+#speedValue {
+    font-weight: bold;
+    color: #667eea;
 }
 
 /* Debug Panel */

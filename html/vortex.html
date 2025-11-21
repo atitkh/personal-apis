@@ -42,8 +42,13 @@
                 <div class="chat-messages" id="chatMessages"></div>
                 <div class="chat-input">
                     <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                    <div class="voice-controls">
+                        <button id="recordBtn" class="voice-btn" disabled title="Hold to record voice message">🎤</button>
+                        <button id="playLastBtn" class="voice-btn" disabled title="Play last AI response">🔊</button>
+                    </div>
                     <button id="sendBtn" disabled>Send</button>
                 </div>
+                <div class="voice-status" id="voiceStatus"></div>
             </div>
 
             <!-- Debug Panel -->
@@ -61,6 +66,23 @@
                     <button id="clearChatBtn">Clear Chat</button>
                     <button id="debugTokenBtn">Check Token</button>
                     <button id="testMessageBtn">Test Message Display</button>
+                </div>
+
+                <div class="debug-section">
+                    <h4>🎤 Voice Settings</h4>
+                    <label for="voiceEnabled">Voice Mode:</label>
+                    <input type="checkbox" id="voiceEnabled">
+                    <label for="voiceSelect">Voice:</label>
+                    <select id="voiceSelect">
+                        <option value="en_US-lessac-medium">English (US) - Lessac</option>
+                        <option value="en_US-ryan-high">English (US) - Ryan</option>
+                        <option value="en_GB-alan-medium">English (UK) - Alan</option>
+                    </select>
+                    <label for="speechSpeed">Speed:</label>
+                    <input type="range" id="speechSpeed" min="0.5" max="2.0" step="0.1" value="1.0">
+                    <span id="speedValue">1.0x</span>
+                    <button id="testVoiceBtn">Test Voice</button>
+                    <button id="voiceStatusBtn">Check Voice Status</button>
                 </div>
 
                 <div class="debug-section">

@@ -40,6 +40,15 @@ const configSchema = Joi.object({
     UNOFFICIAL_API_KEY: Joi.string().optional(),
     API_KEY: Joi.string().optional(),
     
+    // Voice Services
+    WHISPER_HOST: Joi.string().default('localhost'),
+    WHISPER_PORT: Joi.number().default(9000),
+    WHISPER_MODEL: Joi.string().default('base'),
+    WHISPER_LANGUAGE: Joi.string().default('auto'),
+    PIPER_HOST: Joi.string().default('localhost'),
+    PIPER_PORT: Joi.number().default(9001),
+    PIPER_DEFAULT_VOICE: Joi.string().default('en_US-lessac-medium'),
+    
     // Logging
     LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),
     LOG_FORMAT: Joi.string().valid('combined', 'common', 'dev', 'short', 'tiny').default('combined'),

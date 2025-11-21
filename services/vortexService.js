@@ -297,6 +297,16 @@ class VortexService {
     try {
       const memoryStatus = await memoryService.getStatus();
       const llmStatus = await llmService.getStatus();
+      
+      // Try to get voice service status (optional)
+      let voiceStatus = null;
+      try {
+        const voiceService = require('./voiceService');
+        voiceStatus = await voiceService.getStatus();
+      } catch (voiceError) {
+        // Voice service is optional, so don't fail the entire status check
+        voiceStatus = { overall: 'not_available', error: voiceError.message };
+      }
 
       return {
         vortex: {
@@ -306,6 +316,7 @@ class VortexService {
         },
         memory: memoryStatus,
         llm: llmStatus,
+        voice: voiceStatus,
         timestamp: new Date().toISOString()
       };
 
