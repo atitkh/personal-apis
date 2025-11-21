@@ -1,8 +1,11 @@
 class VortexDebugInterface {
     constructor() {
+        console.log('VortexDebugInterface initialized');
         this.token = localStorage.getItem('vortex_token');
         this.user = null;
         this.conversationId = 'debug-' + Date.now();
+        
+        console.log('Token from localStorage:', this.token ? 'exists' : 'not found');
         
         this.initializeElements();
         this.bindEvents();
@@ -29,6 +32,7 @@ class VortexDebugInterface {
         this.debugBtn = document.getElementById('debugBtn');
         this.newConversationBtn = document.getElementById('newConversationBtn');
         this.clearChatBtn = document.getElementById('clearChatBtn');
+        this.debugTokenBtn = document.getElementById('debugTokenBtn');
         
         // Set initial conversation ID
         this.conversationIdInput.value = this.conversationId;
@@ -49,6 +53,7 @@ class VortexDebugInterface {
         this.debugBtn.addEventListener('click', () => this.debugConversation());
         this.newConversationBtn.addEventListener('click', () => this.newConversation());
         this.clearChatBtn.addEventListener('click', () => this.clearChat());
+        this.debugTokenBtn.addEventListener('click', () => this.debugToken());
         this.conversationIdInput.addEventListener('change', (e) => {
             this.conversationId = e.target.value;
         });
@@ -69,9 +74,16 @@ class VortexDebugInterface {
             });
 
             if (response.ok) {
-                this.user = await response.json();
+                const data = await response.json();
+                console.log('Profile response:', data);
+                
+                // Handle both direct and wrapped response formats
+                this.user = data.data || data;
                 this.showChat();
             } else {
+                console.log('Profile check failed, showing login');
+                localStorage.removeItem('vortex_token');
+                this.token = null;
                 this.showLogin();
             }
         } catch (error) {
@@ -96,12 +108,20 @@ class VortexDebugInterface {
             });
 
             const data = await response.json();
+            console.log('Login response:', data);
 
             if (response.ok) {
-                this.token = data.token;
-                this.user = data.user;
-                localStorage.setItem('vortex_token', this.token);
-                this.showChat();
+                // Handle both direct and wrapped response formats
+                this.token = data.data?.token || data.token;
+                this.user = data.data?.user || data.user;
+                
+                if (this.token && this.user) {
+                    localStorage.setItem('vortex_token', this.token);
+                    this.showChat();
+                } else {
+                    console.error('Missing token or user in response:', data);
+                    this.loginError.textContent = 'Login response format error';
+                }
             } else {
                 this.loginError.textContent = data.message || 'Login failed';
             }
@@ -125,11 +145,14 @@ class VortexDebugInterface {
     }
 
     showChat() {
+        console.log('Showing chat interface', this.user);
         this.loginContainer.style.display = 'none';
         this.chatContainer.style.display = 'block';
         this.userEmail.textContent = this.user.email || this.user.name || 'User';
         this.messageInput.disabled = false;
         this.sendBtn.disabled = false;
+        
+        console.log('Chat input enabled:', !this.messageInput.disabled);
         
         // Add welcome message
         this.addMessage('system', `Welcome ${this.user.name || 'User'}! You can now chat with Vortex AI.`);
@@ -204,6 +227,14 @@ class VortexDebugInterface {
             return;
         }
 
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        console.log('Debug request with token:', this.token ? 'present' : 'missing');
+        console.log('Conversation ID:', this.conversationId);
+
         try {
             const response = await fetch(`/api/v1/vortex/debug/conversation/${this.conversationId}`, {
                 headers: {
@@ -212,12 +243,17 @@ class VortexDebugInterface {
                 }
             });
 
+            console.log('Debug response status:', response.status);
             const data = await response.json();
+            console.log('Debug response data:', data);
 
             if (response.ok) {
                 this.debugOutput.textContent = JSON.stringify(data, null, 2);
             } else {
-                this.debugOutput.textContent = `Error: ${data.message || 'Debug failed'}`;
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Debug failed'}`;
+                if (response.status === 401) {
+                    this.debugOutput.textContent += '\n\nAuthentication failed. Please logout and login again.';
+                }
             }
         } catch (error) {
             console.error('Debug error:', error);
@@ -243,6 +279,18 @@ class VortexDebugInterface {
             debug_info: debugData
         };
         this.debugOutput.textContent = JSON.stringify(formattedDebug, null, 2);
+    }
+
+    debugToken() {
+        const tokenInfo = {
+            token_exists: !!this.token,
+            token_length: this.token ? this.token.length : 0,
+            token_preview: this.token ? this.token.substring(0, 20) + '...' : 'null',
+            user_info: this.user,
+            localStorage_token: localStorage.getItem('vortex_token') ? 'exists' : 'not found'
+        };
+        this.debugOutput.textContent = JSON.stringify(tokenInfo, null, 2);
+        console.log('Token debug info:', tokenInfo);
     }
 }
 
