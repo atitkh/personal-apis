@@ -80,6 +80,20 @@ if (config.isDevelopment()) {
 }
 
 app.use(express.static("html"));
+
+// Vortex Web Interface Routes
+app.get('/vortex', (req, res) => {
+    res.sendFile(path.join(__dirname, 'html', 'vortex.html'));
+});
+
+app.get('/vortex/style.css', (req, res) => {
+    res.sendFile(path.join(__dirname, 'html', 'vortex', 'style.css'));
+});
+
+app.get('/vortex/app.js', (req, res) => {
+    res.sendFile(path.join(__dirname, 'html', 'vortex', 'app.js'));
+});
+
 app.use('/auth', authLimiter, authRoute);
 app.use('/api/v1/smarthome/ewelink', ewelinkRoute);
 app.use('/api/v1/smarthome/magichome', magichomeRoute);

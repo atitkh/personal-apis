@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex AI - Debug Interface</title>
+    <link rel="stylesheet" href="/vortex/style.css">
+</head>
+<body>
+    <!-- Login Form -->
+    <div id="loginContainer" class="container">
+        <div class="login-form">
+            <h1>Vortex AI</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+            <div id="loginError" class="error"></div>
+        </div>
+    </div>
+
+    <!-- Chat Interface -->
+    <div id="chatContainer" class="container" style="display: none;">
+        <div class="chat-header">
+            <h1>Vortex AI</h1>
+            <div class="user-info">
+                <span id="userEmail"></span>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </div>
+
+        <div class="chat-main">
+            <!-- Chat Messages -->
+            <div class="chat-section">
+                <div class="chat-messages" id="chatMessages"></div>
+                <div class="chat-input">
+                    <input type="text" id="messageInput" placeholder="Type your message..." disabled>
+                    <button id="sendBtn" disabled>Send</button>
+                </div>
+            </div>
+
+            <!-- Debug Panel -->
+            <div class="debug-panel">
+                <h3>🔧 Debug Info</h3>
+                
+                <div class="debug-section">
+                    <label for="conversationId">Conversation ID:</label>
+                    <input type="text" id="conversationId" placeholder="test-123">
+                    <button id="newConversationBtn">New Conversation</button>
+                </div>
+
+                <div class="debug-section">
+                    <button id="debugBtn">Debug Conversation</button>
+                    <button id="clearChatBtn">Clear Chat</button>
+                </div>
+
+                <div class="debug-output" id="debugOutput"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/vortex/app.js"></script>
+</body>
+</html>
