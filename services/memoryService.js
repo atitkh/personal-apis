@@ -31,10 +31,10 @@ class MemoryService {
           throw new Error('chromadb-default-embed module not found. Please install it with: npm install chromadb-default-embed');
         }
         
-        // Load the embedding function with detailed error reporting
-        logger.info('Attempting to require chromadb-default-embed...');
-        const embeddingModule = require('chromadb-default-embed');
-        logger.info('Module loaded successfully', { 
+        // Load the embedding function using dynamic import (ES module)
+        logger.info('Attempting to import chromadb-default-embed...');
+        const embeddingModule = await import('chromadb-default-embed');
+        logger.info('Module imported successfully', { 
           moduleKeys: Object.keys(embeddingModule),
           hasDefaultEmbeddingFunction: 'DefaultEmbeddingFunction' in embeddingModule,
           defaultEmbeddingFunctionType: typeof embeddingModule.DefaultEmbeddingFunction
