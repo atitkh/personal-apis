@@ -30,19 +30,35 @@ class WyomingClient {
         return new Promise((resolve, reject) => {
             this.socket = new net.Socket();
             
+            logger.debug('Attempting Wyoming connection', {
+                host: this.host,
+                port: this.port,
+                timeout: this.timeout
+            });
+
             const timeoutId = setTimeout(() => {
                 this.socket.destroy();
-                reject(new Error(`Connection timeout to ${this.host}:${this.port}`));
+                reject(new Error(`Connection timeout to ${this.host}:${this.port} after ${this.timeout}ms`));
             }, this.timeout);
 
             this.socket.connect(this.port, this.host, () => {
                 clearTimeout(timeoutId);
+                logger.debug('Wyoming connection established', {
+                    host: this.host,
+                    port: this.port
+                });
                 resolve();
             });
 
             this.socket.on('error', (error) => {
                 clearTimeout(timeoutId);
-                reject(error);
+                logger.error('Wyoming connection error', {
+                    host: this.host,
+                    port: this.port,
+                    error: error.message,
+                    code: error.code
+                });
+                reject(new Error(`Failed to connect to ${this.host}:${this.port}: ${error.message}`));
             });
         });
     }
