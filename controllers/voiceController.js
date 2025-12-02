@@ -67,11 +67,12 @@ class VoiceController {
         return res.error('No audio file provided', 400);
       }
 
+      // Parse audio format from file or use defaults
       const options = {
-        language: req.body.language,
-        model: req.body.model,
-        temperature: req.body.temperature ? parseFloat(req.body.temperature) : undefined,
-        response_format: req.body.response_format
+        language: req.body.language || 'en',
+        sampleRate: req.body.sample_rate ? parseInt(req.body.sample_rate) : 16000,
+        channels: req.body.channels ? parseInt(req.body.channels) : 1,
+        sampleWidth: req.body.sample_width ? parseInt(req.body.sample_width) : 2
       };
 
       logger.info('Processing speech-to-text request', {
@@ -82,13 +83,24 @@ class VoiceController {
         options
       });
 
-      const result = await voiceService.speechToText(
-        req.file.buffer,
-        req.file.originalname,
-        options
-      );
+      // Get the audio buffer - if it's a WAV file, strip the header
+      let audioBuffer = req.file.buffer;
+      if (req.file.originalname?.toLowerCase().endsWith('.wav') && audioBuffer.length > 44) {
+        // Skip WAV header (44 bytes) to get raw PCM
+        audioBuffer = audioBuffer.slice(44);
+      }
 
-      res.success(result, 'Speech converted to text successfully');
+      const result = await voiceService.speechToText(audioBuffer, options);
+
+      // Check if STT was successful
+      if (!result.success) {
+        return res.error(result.error || 'Speech-to-text failed', 503);
+      }
+
+      res.success({
+        text: result.text,
+        language: result.language
+      }, 'Speech converted to text successfully');
 
     } catch (error) {
       logger.error('Speech-to-text conversion failed', {
@@ -119,11 +131,7 @@ class VoiceController {
 
       const options = {
         voice: req.body.voice,
-        speed: req.body.speed ? parseFloat(req.body.speed) : undefined,
-        output_format: req.body.output_format,
-        speaker_id: req.body.speaker_id ? parseInt(req.body.speaker_id) : undefined,
-        noise_scale: req.body.noise_scale ? parseFloat(req.body.noise_scale) : undefined,
-        length_scale: req.body.length_scale ? parseFloat(req.body.length_scale) : undefined
+        speaker: req.body.speaker_id ? String(req.body.speaker_id) : undefined
       };
 
       logger.info('Processing text-to-speech request', {
@@ -135,14 +143,37 @@ class VoiceController {
 
       const result = await voiceService.textToSpeech(text, options);
 
+      // Check if TTS was successful
+      if (!result.success) {
+        return res.error(result.error || 'Text-to-speech failed', 503);
+      }
+
+      // Validate audio data exists
+      if (!result.audio || result.audio.length === 0) {
+        return res.error('TTS returned empty audio data', 503);
+      }
+
+      // Validate format exists
+      if (!result.format) {
+        return res.error('TTS returned no format information', 503);
+      }
+
+      // Convert raw PCM to WAV
+      const wavBuffer = voiceService.rawToWav(
+        result.audio,
+        result.format.rate || 22050,
+        result.format.channels || 1,
+        result.format.width || 2
+      );
+
       // Set appropriate headers for audio response
       res.set({
-        'Content-Type': result.contentType,
-        'Content-Length': result.audioBuffer.length,
-        'Content-Disposition': `inline; filename="speech.${result.format}"`
+        'Content-Type': 'audio/wav',
+        'Content-Length': wavBuffer.length,
+        'Content-Disposition': 'inline; filename="speech.wav"'
       });
 
-      res.send(result.audioBuffer);
+      res.send(wavBuffer);
 
     } catch (error) {
       logger.error('Text-to-speech conversion failed', {

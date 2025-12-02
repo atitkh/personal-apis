@@ -465,7 +465,20 @@ class VoiceService {
                 .filter(e => e.type === 'audio-chunk')
                 .map(e => e.payload);
             
+            logger.debug('TTS received chunks', {
+                chunkCount: audioChunks.length,
+                chunkSizes: audioChunks.map(c => c ? c.length : 0)
+            });
+
+            if (audioChunks.length === 0) {
+                throw new Error('No audio chunks received from TTS service');
+            }
+
             const audioBuffer = Buffer.concat(audioChunks);
+
+            if (audioBuffer.length === 0) {
+                throw new Error('TTS returned empty audio buffer');
+            }
 
             logger.info('Text-to-speech completed', {
                 audioSize: audioBuffer.length,

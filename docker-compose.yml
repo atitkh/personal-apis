@@ -13,6 +13,13 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - CHROMADB_URL=http://chromadb:8000
+      - WHISPER_BASE_URL=${WHISPER_BASE_URL:-http://voltex-ubuntu:10300}
+      - PIPER_BASE_URL=${PIPER_BASE_URL:-http://voltex-ubuntu:10200}
+      - PIPER_VOICE=${PIPER_VOICE:-en_US-amy-medium}
+    # Add host entry for voltex-ubuntu if it's not resolvable via DNS
+    # Replace the IP with the actual IP of your voltex-ubuntu machine
+    extra_hosts:
+      - "voltex-ubuntu:${VOLTEX_UBUNTU_IP:-host-gateway}"
     ports:
       - "3000:3000"
     volumes:
