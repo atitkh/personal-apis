@@ -192,7 +192,7 @@ router.post('/speech-to-text', authenticate, voiceController.getUploadMiddleware
  *               voice:
  *                 type: string
  *                 description: Voice model to use
- *                 default: en_US-lessac-medium
+ *                 default: en_US-amy-medium
  *               speed:
  *                 type: number
  *                 description: Speech speed multiplier
@@ -304,7 +304,7 @@ router.get('/voices', authenticate, voiceController.getVoices);
  *               output_voice:
  *                 type: string
  *                 description: Voice for AI response
- *                 default: en_US-lessac-medium
+ *                 default: en_US-amy-medium
  *               speech_speed:
  *                 type: number
  *                 description: Speech synthesis speed

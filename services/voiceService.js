@@ -1,351 +1,659 @@
-const axios = require('axios');
-const FormData = require('form-data');
+/**
+ * Voice Service - Wyoming Protocol Implementation
+ * 
+ * Wyoming Protocol Message Format:
+ * { "type": "...", "data": { ... }, "data_length": ..., "payload_length": ... }\n
+ * <data_length bytes (optional)>\n
+ * <payload_length bytes (optional)>
+ * 
+ * Service Discovery: describe -> info
+ * Speech-to-Text: transcribe -> audio-start -> audio-chunk(s) -> audio-stop -> transcript
+ * Text-to-Speech: synthesize -> audio-start -> audio-chunk(s) -> audio-stop
+ */
+
+const net = require('net');
 const { logger } = require('../utils/logger');
 
-class VoiceService {
-  constructor() {
-    // Whisper configuration
-    this.whisperHost = process.env.WHISPER_HOST || 'localhost';
-    this.whisperPort = process.env.WHISPER_PORT || '9000';
-    this.whisperBaseUrl = `http://${this.whisperHost}:${this.whisperPort}`;
-    
-    // Piper configuration
-    this.piperHost = process.env.PIPER_HOST || 'localhost';
-    this.piperPort = process.env.PIPER_PORT || '9001';
-    this.piperBaseUrl = `http://${this.piperHost}:${this.piperPort}`;
-    
-    // Voice settings
-    this.defaultVoice = process.env.PIPER_DEFAULT_VOICE || 'en_US-lessac-medium';
-    this.whisperModel = process.env.WHISPER_MODEL || 'base';
-    this.whisperLanguage = process.env.WHISPER_LANGUAGE || 'auto';
-    
-    // Supported audio formats
-    this.supportedAudioFormats = ['wav', 'mp3', 'ogg', 'flac', 'm4a', 'webm'];
-  }
-
-  /**
-   * Safe logging that falls back to console if logger is not available
-   */
-  safeLog(level, message, meta = {}) {
-    if (logger && typeof logger[level] === 'function') {
-      logger[level](message, meta);
-    } else {
-      console[level === 'error' ? 'error' : 'log'](`[${level.toUpperCase()}] ${message}`, meta);
-    }
-  }
-
-  /**
-   * Check if Whisper service is available
-   */
-  async checkWhisperHealth() {
-    try {
-      const response = await axios.get(`${this.whisperBaseUrl}/health`, {
-        timeout: 5000
-      });
-      return response.status === 200;
-    } catch (error) {
-      this.safeLog('debug', 'Whisper health check failed', { error: error.message });
-      return false;
-    }
-  }
-
-  /**
-   * Check if Piper service is available
-   */
-  async checkPiperHealth() {
-    try {
-      const response = await axios.get(`${this.piperBaseUrl}/health`, {
-        timeout: 5000
-      });
-      return response.status === 200;
-    } catch (error) {
-      this.safeLog('debug', 'Piper health check failed', { error: error.message });
-      return false;
-    }
-  }
-
-  /**
-   * Convert speech to text using Whisper
-   * @param {Buffer} audioBuffer - Audio file buffer
-   * @param {string} filename - Original filename (used to determine format)
-   * @param {Object} options - Transcription options
-   */
-  async speechToText(audioBuffer, filename, options = {}) {
-    try {
-      // Validate audio format
-      const fileExtension = filename.split('.').pop().toLowerCase();
-      if (!this.supportedAudioFormats.includes(fileExtension)) {
-        throw new Error(`Unsupported audio format: ${fileExtension}. Supported formats: ${this.supportedAudioFormats.join(', ')}`);
-      }
-
-      // Check if Whisper is available
-      const isHealthy = await this.checkWhisperHealth();
-      if (!isHealthy) {
-        throw new Error(`Whisper service not available at ${this.whisperBaseUrl}`);
-      }
-
-      // Prepare form data
-      const formData = new FormData();
-      formData.append('audio', audioBuffer, {
-        filename: filename,
-        contentType: this.getContentType(fileExtension)
-      });
-      
-      // Add optional parameters
-      if (options.language || this.whisperLanguage !== 'auto') {
-        formData.append('language', options.language || this.whisperLanguage);
-      }
-      
-      if (options.model || this.whisperModel !== 'base') {
-        formData.append('model', options.model || this.whisperModel);
-      }
-
-      if (options.temperature !== undefined) {
-        formData.append('temperature', options.temperature.toString());
-      }
-
-      if (options.response_format) {
-        formData.append('response_format', options.response_format);
-      }
-
-      this.safeLog('info', 'Sending audio to Whisper for transcription', {
-        audioSize: audioBuffer.length,
-        filename,
-        language: options.language || this.whisperLanguage,
-        model: options.model || this.whisperModel
-      });
-
-      // Send request to Whisper
-      const response = await axios.post(`${this.whisperBaseUrl}/v1/audio/transcriptions`, formData, {
-        headers: {
-          ...formData.getHeaders(),
-        },
-        timeout: 30000, // 30 second timeout for transcription
-        maxContentLength: 25 * 1024 * 1024, // 25MB max file size
-      });
-
-      const transcription = response.data;
-      
-      this.safeLog('info', 'Whisper transcription completed', {
-        transcriptionLength: transcription.text?.length || 0,
-        language: transcription.language || 'unknown'
-      });
-
-      return {
-        text: transcription.text,
-        language: transcription.language,
-        duration: transcription.duration,
-        confidence: transcription.confidence || null,
-        segments: transcription.segments || null
-      };
-
-    } catch (error) {
-      this.safeLog('error', 'Speech-to-text conversion failed', {
-        error: error.message,
-        whisperUrl: this.whisperBaseUrl
-      });
-      throw new Error(`Speech-to-text failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Convert text to speech using Piper
-   * @param {string} text - Text to synthesize
-   * @param {Object} options - TTS options
-   */
-  async textToSpeech(text, options = {}) {
-    try {
-      if (!text || typeof text !== 'string') {
-        throw new Error('Text is required for text-to-speech conversion');
-      }
-
-      // Check if Piper is available
-      const isHealthy = await this.checkPiperHealth();
-      if (!isHealthy) {
-        throw new Error(`Piper service not available at ${this.piperBaseUrl}`);
-      }
-
-      const requestData = {
-        text: text.trim(),
-        voice: options.voice || this.defaultVoice,
-        speed: options.speed || 1.0,
-        output_format: options.output_format || 'wav'
-      };
-
-      // Add optional parameters
-      if (options.speaker_id !== undefined) {
-        requestData.speaker_id = options.speaker_id;
-      }
-
-      if (options.noise_scale !== undefined) {
-        requestData.noise_scale = options.noise_scale;
-      }
-
-      if (options.length_scale !== undefined) {
-        requestData.length_scale = options.length_scale;
-      }
-
-      this.safeLog('info', 'Sending text to Piper for synthesis', {
-        textLength: text.length,
-        voice: requestData.voice,
-        speed: requestData.speed,
-        format: requestData.output_format
-      });
-
-      // Send request to Piper
-      const response = await axios.post(`${this.piperBaseUrl}/v1/tts`, requestData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        responseType: 'arraybuffer', // Important: Get binary audio data
-        timeout: 30000, // 30 second timeout
-      });
-
-      this.safeLog('info', 'Piper synthesis completed', {
-        audioSize: response.data.length,
-        contentType: response.headers['content-type']
-      });
-
-      return {
-        audioBuffer: Buffer.from(response.data),
-        contentType: response.headers['content-type'] || 'audio/wav',
-        format: requestData.output_format,
-        voice: requestData.voice
-      };
-
-    } catch (error) {
-      this.safeLog('error', 'Text-to-speech conversion failed', {
-        error: error.message,
-        piperUrl: this.piperBaseUrl,
-        textLength: text?.length || 0
-      });
-      throw new Error(`Text-to-speech failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * Get available voices from Piper
-   */
-  async getAvailableVoices() {
-    try {
-      const response = await axios.get(`${this.piperBaseUrl}/v1/voices`, {
-        timeout: 10000
-      });
-      
-      return response.data.voices || [];
-    } catch (error) {
-      this.safeLog('error', 'Failed to get available voices', {
-        error: error.message,
-        piperUrl: this.piperBaseUrl
-      });
-      return [];
-    }
-  }
-
-  /**
-   * Get service status
-   */
-  async getStatus() {
-    const whisperHealth = await this.checkWhisperHealth();
-    const piperHealth = await this.checkPiperHealth();
-    
-    let availableVoices = [];
-    if (piperHealth) {
-      try {
-        availableVoices = await this.getAvailableVoices();
-      } catch (error) {
-        // Ignore error, just use empty array
-      }
+class WyomingClient {
+    constructor(host, port, timeout = 30000) {
+        this.host = host;
+        this.port = port;
+        this.timeout = timeout;
+        this.socket = null;
+        this.buffer = Buffer.alloc(0);
     }
 
-    return {
-      whisper: {
-        status: whisperHealth ? 'available' : 'unavailable',
-        url: this.whisperBaseUrl,
-        model: this.whisperModel,
-        language: this.whisperLanguage,
-        supportedFormats: this.supportedAudioFormats
-      },
-      piper: {
-        status: piperHealth ? 'available' : 'unavailable',
-        url: this.piperBaseUrl,
-        defaultVoice: this.defaultVoice,
-        availableVoices: availableVoices.length > 0 ? availableVoices : ['Status check required']
-      },
-      overall: whisperHealth && piperHealth ? 'operational' : 'partial'
-    };
-  }
+    /**
+     * Connect to Wyoming server
+     */
+    async connect() {
+        return new Promise((resolve, reject) => {
+            this.socket = new net.Socket();
+            
+            const timeoutId = setTimeout(() => {
+                this.socket.destroy();
+                reject(new Error(`Connection timeout to ${this.host}:${this.port}`));
+            }, this.timeout);
 
-  /**
-   * Get content type for audio file extension
-   */
-  getContentType(extension) {
-    const contentTypes = {
-      'wav': 'audio/wav',
-      'mp3': 'audio/mpeg',
-      'ogg': 'audio/ogg',
-      'flac': 'audio/flac',
-      'm4a': 'audio/mp4',
-      'webm': 'audio/webm'
-    };
-    
-    return contentTypes[extension.toLowerCase()] || 'audio/wav';
-  }
+            this.socket.connect(this.port, this.host, () => {
+                clearTimeout(timeoutId);
+                resolve();
+            });
 
-  /**
-   * Process voice conversation: speech -> text -> AI response -> speech
-   * @param {Buffer} audioBuffer - Input audio
-   * @param {string} filename - Audio filename
-   * @param {Function} chatProcessor - Function to process the transcribed text
-   * @param {Object} options - Processing options
-   */
-  async processVoiceConversation(audioBuffer, filename, chatProcessor, options = {}) {
-    try {
-      // Step 1: Convert speech to text
-      this.safeLog('info', 'Starting voice conversation processing');
-      
-      const transcription = await this.speechToText(audioBuffer, filename, {
-        language: options.inputLanguage,
-        model: options.whisperModel
-      });
-
-      if (!transcription.text || transcription.text.trim().length === 0) {
-        throw new Error('No speech detected in audio');
-      }
-
-      this.safeLog('info', 'Transcription completed', {
-        text: transcription.text,
-        language: transcription.language
-      });
-
-      // Step 2: Process with AI
-      const chatResponse = await chatProcessor(transcription.text, {
-        ...options.chatOptions,
-        voiceInput: true,
-        detectedLanguage: transcription.language
-      });
-
-      // Step 3: Convert AI response to speech
-      const synthesis = await this.textToSpeech(chatResponse.response, {
-        voice: options.outputVoice,
-        speed: options.speechSpeed,
-        output_format: options.outputFormat
-      });
-
-      return {
-        transcription,
-        chatResponse,
-        synthesis,
-        processingTime: Date.now() - (options.startTime || Date.now())
-      };
-
-    } catch (error) {
-      this.safeLog('error', 'Voice conversation processing failed', {
-        error: error.message
-      });
-      throw error;
+            this.socket.on('error', (error) => {
+                clearTimeout(timeoutId);
+                reject(error);
+            });
+        });
     }
-  }
+
+    /**
+     * Disconnect from Wyoming server
+     */
+    disconnect() {
+        if (this.socket) {
+            this.socket.destroy();
+            this.socket = null;
+        }
+        this.buffer = Buffer.alloc(0);
+    }
+
+    /**
+     * Send a Wyoming event (JSON header only, no payload)
+     * Wyoming format: {"type": "...", "data": {...}}\n
+     */
+    sendEvent(type, data = {}) {
+        const event = { type, data };
+        const message = JSON.stringify(event) + '\n';
+        this.socket.write(message);
+    }
+
+    /**
+     * Send a Wyoming event with binary payload
+     * Wyoming format: {"type": "...", "data": {...}, "payload_length": N}\n<N bytes>
+     */
+    sendEventWithPayload(type, data = {}, payload = Buffer.alloc(0)) {
+        const event = { 
+            type, 
+            data,
+            payload_length: payload.length 
+        };
+        const header = JSON.stringify(event) + '\n';
+        this.socket.write(header);
+        if (payload.length > 0) {
+            this.socket.write(payload);
+        }
+    }
+
+    /**
+     * Read the next Wyoming event from the connection
+     * 
+     * Wyoming message format:
+     * {"type": "...", "data_length": N, "payload_length": M}\n
+     * <N bytes of JSON data>
+     * <M bytes of binary payload>
+     * 
+     * OR simple format (used for describe responses):
+     * {"type": "info", "data": {...}}\n
+     */
+    async readEvent() {
+        return new Promise((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+                this.socket.removeAllListeners('data');
+                reject(new Error('Read timeout'));
+            }, this.timeout);
+
+            let headerParsed = false;
+            let header = null;
+            let dataLength = 0;
+            let payloadLength = 0;
+            let dataBuffer = Buffer.alloc(0);
+            let payloadBuffer = Buffer.alloc(0);
+
+            const processBuffer = () => {
+                // Step 1: Parse JSON header (ends with newline)
+                if (!headerParsed) {
+                    const newlineIndex = this.buffer.indexOf(0x0a); // \n
+                    if (newlineIndex === -1) return false; // Need more data
+
+                    try {
+                        const headerStr = this.buffer.slice(0, newlineIndex).toString('utf8');
+                        header = JSON.parse(headerStr);
+                        headerParsed = true;
+                        dataLength = header.data_length || 0;
+                        payloadLength = header.payload_length || 0;
+                        this.buffer = this.buffer.slice(newlineIndex + 1);
+                    } catch (e) {
+                        clearTimeout(timeoutId);
+                        this.socket.removeListener('data', onData);
+                        reject(new Error(`Invalid JSON header: ${e.message}`));
+                        return true;
+                    }
+                }
+
+                // Step 2: Read data bytes if present (this is JSON)
+                if (dataLength > 0 && dataBuffer.length < dataLength) {
+                    const needed = dataLength - dataBuffer.length;
+                    const available = Math.min(needed, this.buffer.length);
+                    dataBuffer = Buffer.concat([dataBuffer, this.buffer.slice(0, available)]);
+                    this.buffer = this.buffer.slice(available);
+                    
+                    if (dataBuffer.length < dataLength) return false; // Need more data
+                }
+
+                // Step 3: Read payload bytes if present (this is binary)
+                if (payloadLength > 0 && payloadBuffer.length < payloadLength) {
+                    const needed = payloadLength - payloadBuffer.length;
+                    const available = Math.min(needed, this.buffer.length);
+                    payloadBuffer = Buffer.concat([payloadBuffer, this.buffer.slice(0, available)]);
+                    this.buffer = this.buffer.slice(available);
+                    
+                    if (payloadBuffer.length < payloadLength) return false; // Need more data
+                }
+
+                // All data received
+                clearTimeout(timeoutId);
+                this.socket.removeListener('data', onData);
+                
+                // Parse data if present
+                let parsedData = header.data || {};
+                if (dataLength > 0) {
+                    try {
+                        parsedData = JSON.parse(dataBuffer.toString('utf8'));
+                    } catch (e) {
+                        // Keep as-is if not valid JSON
+                        logger.warn('Failed to parse data as JSON', { error: e.message });
+                    }
+                }
+
+                resolve({
+                    type: header.type,
+                    data: parsedData,
+                    payload: payloadBuffer
+                });
+                return true;
+            };
+
+            const onData = (chunk) => {
+                this.buffer = Buffer.concat([this.buffer, chunk]);
+                processBuffer();
+            };
+
+            this.socket.on('data', onData);
+
+            // Try to process any existing buffer data first
+            if (this.buffer.length > 0) {
+                if (processBuffer()) return;
+            }
+        });
+    }
+
+    /**
+     * Read events until a specific type is received
+     */
+    async readUntil(stopType) {
+        const events = [];
+        while (true) {
+            const event = await this.readEvent();
+            events.push(event);
+            if (event.type === stopType) {
+                break;
+            }
+        }
+        return events;
+    }
 }
 
+class VoiceService {
+    constructor() {
+        // Parse Whisper URL (STT)
+        const whisperUrl = process.env.WHISPER_BASE_URL || 'http://localhost:10300';
+        const whisperParsed = this.parseUrl(whisperUrl);
+        this.whisperHost = whisperParsed.host;
+        this.whisperPort = whisperParsed.port;
+
+        // Parse Piper URL (TTS)
+        const piperUrl = process.env.PIPER_BASE_URL || 'http://localhost:10200';
+        const piperParsed = this.parseUrl(piperUrl);
+        this.piperHost = piperParsed.host;
+        this.piperPort = piperParsed.port;
+
+        // Default TTS voice
+        this.defaultVoice = process.env.PIPER_VOICE || 'en_US-amy-medium';
+
+        // Connection timeout
+        this.timeout = parseInt(process.env.VOICE_TIMEOUT) || 30000;
+
+        logger.info('VoiceService initialized with Wyoming Protocol', {
+            whisper: `${this.whisperHost}:${this.whisperPort}`,
+            piper: `${this.piperHost}:${this.piperPort}`,
+            defaultVoice: this.defaultVoice
+        });
+    }
+
+    /**
+     * Parse URL to extract host and port
+     */
+    parseUrl(url) {
+        try {
+            if (!url.includes('://')) {
+                url = `http://${url}`;
+            }
+            const parsed = new URL(url);
+            return {
+                host: parsed.hostname,
+                port: parseInt(parsed.port) || 80
+            };
+        } catch (error) {
+            logger.error('Failed to parse URL', { url, error: error.message });
+            return { host: 'localhost', port: 80 };
+        }
+    }
+
+    /**
+     * Get service info using describe -> info flow
+     */
+    async getServiceInfo(host, port, serviceName) {
+        const client = new WyomingClient(host, port, this.timeout);
+        
+        try {
+            await client.connect();
+            
+            // Send describe request
+            client.sendEvent('describe');
+            
+            // Read info response
+            const event = await client.readEvent();
+            
+            if (event.type !== 'info') {
+                throw new Error(`Expected 'info' response, got '${event.type}'`);
+            }
+
+            logger.debug(`${serviceName} service info retrieved`, {
+                asrCount: event.data.asr?.length || 0,
+                ttsCount: event.data.tts?.length || 0
+            });
+
+            return {
+                success: true,
+                info: event.data
+            };
+        } catch (error) {
+            logger.error(`${serviceName} service info failed`, { error: error.message });
+            return {
+                success: false,
+                error: error.message
+            };
+        } finally {
+            client.disconnect();
+        }
+    }
+
+    /**
+     * Check health of a Wyoming service
+     */
+    async checkHealth(host, port, serviceName) {
+        const result = await this.getServiceInfo(host, port, serviceName);
+        
+        if (result.success) {
+            return {
+                healthy: true,
+                services: {
+                    asr: result.info.asr || [],
+                    tts: result.info.tts || []
+                }
+            };
+        }
+        
+        return {
+            healthy: false,
+            error: result.error
+        };
+    }
+
+    /**
+     * Check health of both voice services
+     */
+    async checkAllHealth() {
+        const [whisperHealth, piperHealth] = await Promise.all([
+            this.checkHealth(this.whisperHost, this.whisperPort, 'Whisper'),
+            this.checkHealth(this.piperHost, this.piperPort, 'Piper')
+        ]);
+
+        return {
+            whisper: whisperHealth,
+            piper: piperHealth,
+            overall: whisperHealth.healthy && piperHealth.healthy
+        };
+    }
+
+    /**
+     * Speech-to-Text using Wyoming Protocol
+     * 
+     * Flow:
+     * 1. transcribe (with optional language/model)
+     * 2. audio-start
+     * 3. audio-chunk (one or more)
+     * 4. audio-stop
+     * 5. <- transcript
+     */
+    async speechToText(audioBuffer, options = {}) {
+        const {
+            language = 'en',
+            sampleRate = 16000,
+            channels = 1,
+            sampleWidth = 2
+        } = options;
+
+        logger.info('Starting speech-to-text', {
+            audioSize: audioBuffer.length,
+            language,
+            sampleRate
+        });
+
+        const client = new WyomingClient(this.whisperHost, this.whisperPort, this.timeout);
+
+        try {
+            await client.connect();
+
+            // 1. Send transcribe request
+            client.sendEvent('transcribe', { language });
+
+            // 2. Send audio-start
+            client.sendEvent('audio-start', {
+                rate: sampleRate,
+                width: sampleWidth,
+                channels: channels
+            });
+
+            // 3. Send audio data in chunks
+            const chunkSize = 8192;
+            for (let offset = 0; offset < audioBuffer.length; offset += chunkSize) {
+                const chunk = audioBuffer.slice(offset, Math.min(offset + chunkSize, audioBuffer.length));
+                
+                client.sendEventWithPayload('audio-chunk', {
+                    rate: sampleRate,
+                    width: sampleWidth,
+                    channels: channels
+                }, chunk);
+            }
+
+            // 4. Send audio-stop
+            client.sendEvent('audio-stop');
+
+            // 5. Wait for transcript response
+            const event = await client.readEvent();
+            
+            if (event.type !== 'transcript') {
+                throw new Error(`Expected 'transcript' response, got '${event.type}'`);
+            }
+
+            const text = event.data.text || '';
+            
+            logger.info('Speech-to-text completed', { 
+                textLength: text.length,
+                text: text.substring(0, 100) 
+            });
+
+            return {
+                success: true,
+                text,
+                language: event.data.language || language
+            };
+
+        } catch (error) {
+            logger.error('Speech-to-text failed', { error: error.message });
+            return {
+                success: false,
+                error: error.message
+            };
+        } finally {
+            client.disconnect();
+        }
+    }
+
+    /**
+     * Text-to-Speech using Wyoming Protocol
+     * 
+     * Flow:
+     * 1. synthesize (with text and voice)
+     * 2. <- audio-start
+     * 3. <- audio-chunk (one or more)
+     * 4. <- audio-stop
+     */
+    async textToSpeech(text, options = {}) {
+        const {
+            voice = this.defaultVoice,
+            speaker = null
+        } = options;
+
+        logger.info('Starting text-to-speech', {
+            textLength: text.length,
+            voice,
+            text: text.substring(0, 100)
+        });
+
+        const client = new WyomingClient(this.piperHost, this.piperPort, this.timeout);
+
+        try {
+            await client.connect();
+
+            // 1. Send synthesize request
+            const voiceData = { name: voice };
+            if (speaker) {
+                voiceData.speaker = speaker;
+            }
+            
+            client.sendEvent('synthesize', {
+                text,
+                voice: voiceData
+            });
+
+            // 2-4. Read audio events until audio-stop
+            const events = await client.readUntil('audio-stop');
+            
+            // Extract audio format from audio-start
+            const audioStart = events.find(e => e.type === 'audio-start');
+            const format = audioStart ? audioStart.data : {
+                rate: 22050,
+                width: 2,
+                channels: 1
+            };
+
+            // Combine audio chunks
+            const audioChunks = events
+                .filter(e => e.type === 'audio-chunk')
+                .map(e => e.payload);
+            
+            const audioBuffer = Buffer.concat(audioChunks);
+
+            logger.info('Text-to-speech completed', {
+                audioSize: audioBuffer.length,
+                format
+            });
+
+            return {
+                success: true,
+                audio: audioBuffer,
+                format,
+                contentType: 'audio/raw'
+            };
+
+        } catch (error) {
+            logger.error('Text-to-speech failed', { error: error.message });
+            return {
+                success: false,
+                error: error.message
+            };
+        } finally {
+            client.disconnect();
+        }
+    }
+
+    /**
+     * Get available voices from Piper
+     */
+    async getVoices() {
+        const result = await this.getServiceInfo(this.piperHost, this.piperPort, 'Piper');
+        
+        if (result.success) {
+            const voices = result.info.tts || [];
+            return {
+                success: true,
+                voices: voices.map(v => ({
+                    name: v.name,
+                    description: v.description,
+                    languages: v.languages || [],
+                    speakers: v.speakers || []
+                }))
+            };
+        }
+        
+        return {
+            success: false,
+            error: result.error,
+            voices: []
+        };
+    }
+
+    /**
+     * Get available ASR models from Whisper
+     */
+    async getModels() {
+        const result = await this.getServiceInfo(this.whisperHost, this.whisperPort, 'Whisper');
+        
+        if (result.success) {
+            const models = result.info.asr || [];
+            return {
+                success: true,
+                models: models.map(m => ({
+                    name: m.name,
+                    description: m.description,
+                    languages: m.languages || []
+                }))
+            };
+        }
+        
+        return {
+            success: false,
+            error: result.error,
+            models: []
+        };
+    }
+
+    /**
+     * Convert raw PCM audio to WAV format
+     */
+    rawToWav(rawBuffer, sampleRate = 22050, channels = 1, sampleWidth = 2) {
+        const dataLength = rawBuffer.length;
+        const wavHeader = Buffer.alloc(44);
+        
+        // RIFF header
+        wavHeader.write('RIFF', 0);
+        wavHeader.writeUInt32LE(36 + dataLength, 4);
+        wavHeader.write('WAVE', 8);
+        
+        // fmt chunk
+        wavHeader.write('fmt ', 12);
+        wavHeader.writeUInt32LE(16, 16);
+        wavHeader.writeUInt16LE(1, 20); // PCM format
+        wavHeader.writeUInt16LE(channels, 22);
+        wavHeader.writeUInt32LE(sampleRate, 24);
+        wavHeader.writeUInt32LE(sampleRate * channels * sampleWidth, 28);
+        wavHeader.writeUInt16LE(channels * sampleWidth, 32);
+        wavHeader.writeUInt16LE(sampleWidth * 8, 34);
+        
+        // data chunk
+        wavHeader.write('data', 36);
+        wavHeader.writeUInt32LE(dataLength, 40);
+        
+        return Buffer.concat([wavHeader, rawBuffer]);
+    }
+
+    /**
+     * Get service status (for controller compatibility)
+     */
+    async getStatus() {
+        const health = await this.checkAllHealth();
+        
+        return {
+            whisper: {
+                url: `${this.whisperHost}:${this.whisperPort}`,
+                status: health.whisper.healthy ? 'operational' : 'unavailable',
+                error: health.whisper.error
+            },
+            piper: {
+                url: `${this.piperHost}:${this.piperPort}`,
+                status: health.piper.healthy ? 'operational' : 'unavailable',
+                error: health.piper.error
+            },
+            overall: health.overall ? 'operational' : 'degraded'
+        };
+    }
+
+    /**
+     * Get available voices (for controller compatibility)
+     */
+    async getAvailableVoices() {
+        const result = await this.getVoices();
+        return result.voices || [];
+    }
+
+    /**
+     * Process a complete voice conversation
+     */
+    async processVoiceConversation(audioBuffer, filename, chatProcessor, options = {}) {
+        const startTime = Date.now();
+
+        // Step 1: Speech to Text
+        const sttResult = await this.speechToText(audioBuffer, {
+            language: options.inputLanguage,
+            sampleRate: 16000,
+            channels: 1,
+            sampleWidth: 2
+        });
+
+        if (!sttResult.success) {
+            throw new Error(`Speech-to-text failed: ${sttResult.error}`);
+        }
+
+        // Step 2: Process with chat
+        const chatResponse = await chatProcessor(sttResult.text, options.chatOptions);
+
+        // Step 3: Text to Speech
+        const ttsResult = await this.textToSpeech(chatResponse.response, {
+            voice: options.outputVoice || this.defaultVoice
+        });
+
+        if (!ttsResult.success) {
+            throw new Error(`Text-to-speech failed: ${ttsResult.error}`);
+        }
+
+        // Convert to WAV
+        const wavBuffer = this.rawToWav(
+            ttsResult.audio,
+            ttsResult.format.rate,
+            ttsResult.format.channels,
+            ttsResult.format.width
+        );
+
+        return {
+            transcription: {
+                text: sttResult.text,
+                language: sttResult.language,
+                confidence: 1.0
+            },
+            chatResponse,
+            synthesis: {
+                audioBuffer: wavBuffer,
+                contentType: 'audio/wav',
+                format: 'wav',
+                voice: options.outputVoice || this.defaultVoice
+            },
+            processingTime: Date.now() - startTime
+        };
+    }
+}
+
+// Export singleton instance
 module.exports = new VoiceService();

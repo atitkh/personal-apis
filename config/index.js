@@ -47,7 +47,7 @@ const configSchema = Joi.object({
     WHISPER_LANGUAGE: Joi.string().default('auto'),
     PIPER_HOST: Joi.string().default('localhost'),
     PIPER_PORT: Joi.number().default(9001),
-    PIPER_DEFAULT_VOICE: Joi.string().default('en_US-lessac-medium'),
+    PIPER_DEFAULT_VOICE: Joi.string().default('en_US-amy-medium'),
     
     // Logging
     LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),

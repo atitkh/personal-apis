@@ -31,6 +31,23 @@ class VoiceController {
     try {
       const status = await voiceService.getStatus();
       
+      // Add setup instructions if services are not available
+      if (status.overall !== 'operational') {
+        status.setup_instructions = {
+          message: "Voice services are not currently configured or running.",
+          steps: [
+            "1. Set up Whisper server: Install and run whisper-server on configured host/port",
+            "2. Set up Piper server: Install and run piper-tts on configured host/port", 
+            "3. Configure environment variables: WHISPER_HOST, WHISPER_PORT, PIPER_HOST, PIPER_PORT",
+            "4. Or run with Docker: docker run -p 9000:9000 whisper-server && docker run -p 9001:9001 piper-tts"
+          ],
+          current_config: {
+            whisper_url: status.whisper.url,
+            piper_url: status.piper.url
+          }
+        };
+      }
+      
       res.success(status, 'Voice service status retrieved');
     } catch (error) {
       logger.error('Voice status check failed', {
@@ -79,6 +96,12 @@ class VoiceController {
         userId: req.user?.id,
         error: error.message
       });
+      
+      // Handle voice service unavailable errors with better responses
+      if (error.message.includes('Voice services not configured') || error.message.includes('not available')) {
+        return res.error(error.message, 503); // Service Unavailable
+      }
+      
       next(error);
     }
   }
@@ -127,6 +150,12 @@ class VoiceController {
         userId: req.user?.id,
         error: error.message
       });
+      
+      // Handle voice service unavailable errors with better responses
+      if (error.message.includes('Voice services not configured') || error.message.includes('not available')) {
+        return res.error(error.message, 503); // Service Unavailable
+      }
+      
       next(error);
     }
   }
@@ -256,6 +285,12 @@ class VoiceController {
         userId: req.user?.id,
         error: error.message
       });
+      
+      // Handle voice service unavailable errors with better responses
+      if (error.message.includes('Voice services not configured') || error.message.includes('not available')) {
+        return res.error(error.message, 503); // Service Unavailable
+      }
+      
       next(error);
     }
   }

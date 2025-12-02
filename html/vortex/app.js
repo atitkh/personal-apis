@@ -670,7 +670,13 @@ class VortexDebugInterface {
             
         } catch (error) {
             console.error('Voice processing error:', error);
-            this.showVoiceStatus('Voice processing failed: ' + error.message, 'error');
+            
+            // Handle service unavailable errors
+            if (error.message.includes('503')) {
+                this.showVoiceStatus('Voice services not configured. Please set up Whisper and Piper servers first.', 'error');
+            } else {
+                this.showVoiceStatus('Voice processing failed: ' + error.message, 'error');
+            }
         }
     }
 
@@ -778,7 +784,13 @@ class VortexDebugInterface {
         } catch (error) {
             console.error('Voice test error:', error);
             this.testVoiceBtn.textContent = 'Test Voice';
-            this.showVoiceStatus('Voice test failed: ' + error.message, 'error');
+            
+            // Handle service unavailable errors
+            if (error.message.includes('503')) {
+                this.showVoiceStatus('Voice services not configured. Check voice status for setup instructions.', 'error');
+            } else {
+                this.showVoiceStatus('Voice test failed: ' + error.message, 'error');
+            }
         }
     }
 
@@ -816,7 +828,16 @@ class VortexDebugInterface {
                         this.updateVoiceOptions(status.piper.availableVoices);
                     }
                 } else {
-                    this.showVoiceStatus('Voice services partially available', 'error');
+                    this.showVoiceStatus('Voice services not configured - check debug panel for setup instructions', 'error');
+                    
+                    // Show setup instructions in debug output if available
+                    if (status.setup_instructions) {
+                        const setupInfo = {
+                            ...status,
+                            setup_guide: status.setup_instructions
+                        };
+                        this.debugOutput.textContent = JSON.stringify(setupInfo, null, 2);
+                    }
                 }
             } else {
                 throw new Error(data.message || 'Failed to get voice status');
@@ -848,7 +869,7 @@ class VortexDebugInterface {
     }
 
     formatVoiceName(voice) {
-        // Convert voice names like "en_US-lessac-medium" to "English (US) - Lessac"
+        // Convert voice names like "en_US-amy-medium" to "English (US) - Lessac"
         const parts = voice.split('-');
         const locale = parts[0];
         const speaker = parts[1];
