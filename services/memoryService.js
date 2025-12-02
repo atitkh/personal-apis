@@ -550,7 +550,8 @@ class MemoryService {
 
       const results = await collection.get({
         where: whereClause,
-        limit: limit
+        limit: limit,
+        include: ['documents', 'metadatas']
       });
 
       const memories = [];
@@ -643,7 +644,8 @@ class MemoryService {
         
         results = await this.collections.conversations.get({
           where: whereClause,
-          limit: limit
+          limit: limit,
+          include: ['documents', 'metadatas']
         });
       } catch (getError) {
         logger.error('ChromaDB get conversation failed, trying without where clause', {
@@ -656,7 +658,8 @@ class MemoryService {
         // Try to get all documents and filter manually
         try {
           const allResults = await this.collections.conversations.get({
-            limit: limit * 3 // Get more to filter from
+            limit: limit * 3, // Get more to filter from
+            include: ['documents', 'metadatas']
           });
           
           logger.debug('Get without where clause successful', {

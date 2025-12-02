@@ -166,7 +166,7 @@ class VortexController {
           count: recentMessages.length,
           messages: recentMessages.map(msg => ({
             role: msg.metadata?.role,
-            content: msg.content?.substring(0, 100) + '...',
+            content: msg.content || msg.document || '[no content]',
             timestamp: msg.metadata?.timestamp,
             conversation_id: msg.metadata?.conversation_id
           }))
@@ -175,7 +175,7 @@ class VortexController {
           count: relevantMemories.length,
           memories: relevantMemories.map(mem => ({
             type: mem.type,
-            content: mem.content?.substring(0, 100) + '...',
+            content: mem.content || mem.document || '[no content]',
             conversation_id: mem.metadata?.conversation_id,
             distance: mem.distance
           }))
@@ -184,7 +184,7 @@ class VortexController {
           count: allUserMemories.length,
           memories: allUserMemories.slice(0, 5).map(mem => ({
             type: mem.type,
-            content: mem.content?.substring(0, 100) + '...',
+            content: mem.content || mem.document || '[no content]',
             conversation_id: mem.metadata?.conversation_id,
             user_id: mem.metadata?.user_id,
             distance: mem.distance

@@ -13,11 +13,6 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - CHROMADB_URL=http://chromadb:8000
-      - WHISPER_BASE_URL=${WHISPER_BASE_URL:-http://voltex-ubuntu:10300}
-      - PIPER_BASE_URL=${PIPER_BASE_URL:-http://voltex-ubuntu:10200}
-      - PIPER_VOICE=${PIPER_VOICE:-en_US-amy-medium}
-    extra_hosts:
-      - "voltex-ubuntu:${VOLTEX_UBUNTU_IP:-host-gateway}"
     ports:
       - "3000:3000"
     volumes:

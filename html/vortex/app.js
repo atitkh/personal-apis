@@ -637,12 +637,18 @@ class VortexDebugInterface {
             
             const data = await response.json();
             
+            console.log('Voice chat response:', JSON.stringify(data, null, 2));
+            
             if (data.success) {
                 const result = data.data;
                 
+                console.log('Transcription result:', result.transcription);
+                console.log('AI response:', result.response);
+                
                 // Display transcription and response
-                this.addMessage('user', result.transcription.text, true);
-                this.addMessage('assistant', result.response);
+                const userText = result.transcription?.text || '[transcription empty]';
+                this.addMessage('user', userText, true);
+                this.addMessage('assistant', result.response || '[no response]');
                 
                 // Store audio response for playback
                 this.lastAudioResponse = {

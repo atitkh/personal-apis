@@ -256,6 +256,13 @@ class VoiceController {
 
       // Define chat processor function
       const chatProcessor = async (transcribedText, chatOptions) => {
+        logger.info('Chat processor called with transcribed text', {
+          correlationId: req.correlationId,
+          transcribedText,
+          transcribedTextLength: transcribedText?.length || 0,
+          chatOptions: JSON.stringify(chatOptions)
+        });
+        
         return await vortexService.processChat({
           userId,
           message: transcribedText,

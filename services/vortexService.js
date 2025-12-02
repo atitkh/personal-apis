@@ -29,26 +29,42 @@ class VortexService {
         conversationId = `conv_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
       }
 
-      // Store the user message in memory
-      await memoryService.storeConversation({
+      // Validate message content
+      const messageContent = message?.trim() || '';
+      if (!messageContent) {
+        logger.warn('Empty message received in processChat', { userId, conversationId, source: context.source });
+      }
+
+      logger.debug('Processing chat message', {
         userId,
         conversationId,
-        role: 'user',
-        content: message,
-        context
+        messageLength: messageContent.length,
+        messagePreview: messageContent.substring(0, 100),
+        source: context.source
       });
+
+      // Store the user message in memory (only if not empty)
+      if (messageContent) {
+        await memoryService.storeConversation({
+          userId,
+          conversationId,
+          role: 'user',
+          content: messageContent,
+          context
+        });
+      }
 
       // Retrieve relevant context from memory
       const relevantMemories = await memoryService.getRelevantContext({
         userId,
-        query: message,
+        query: messageContent || 'general conversation',
         conversationId,
         limit: 5 // Reduced to prevent information overload
       });
 
       // Build conversation context for LLM
       const conversationContext = await this.buildConversationContext({
-        currentMessage: message,
+        currentMessage: messageContent,
         conversationId,
         relevantMemories,
         userContext: context
