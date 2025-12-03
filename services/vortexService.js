@@ -9,7 +9,7 @@ class VortexService {
     this.personality = {
       name: "Vortex",
       role: "friend",
-      description: "a chill friend who happens to remember everything and knows a lot about tech",
+      description: "developed by Atit Kharel in 2025, a chill friend, who happens to remember everything and knows a lot about tech",
       traits: [
         "Casual and genuine",
         "Gets straight to the point",
@@ -194,7 +194,7 @@ class VortexService {
 
       // Build proper system prompt with memory context using llmService
       const systemPrompt = llmService.buildSystemPrompt({
-        userContext: context.user || { name: 'User' },
+        userContext: context.user || { name: 'Atit' },
         relevantMemories,
         currentTime: new Date().toISOString(),
         personality: this.personality
