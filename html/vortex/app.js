@@ -5,6 +5,7 @@ class VortexDebugInterface {
         this.user = null;
         this.conversationId = 'debug-' + Date.now();
         this.lastMemoryIntelligence = null;
+        this.debugMode = true; // Debug mode enabled by default
         
         console.log('Token from localStorage:', this.token ? 'exists' : 'not found');
         
@@ -31,6 +32,7 @@ class VortexDebugInterface {
         this.conversationIdInput = document.getElementById('conversationId');
         this.debugOutput = document.getElementById('debugOutput');
         this.debugBtn = document.getElementById('debugBtn');
+        this.debugToggle = document.getElementById('debugToggle');
         this.newConversationBtn = document.getElementById('newConversationBtn');
         this.clearChatBtn = document.getElementById('clearChatBtn');
         this.debugTokenBtn = document.getElementById('debugTokenBtn');
@@ -106,6 +108,7 @@ class VortexDebugInterface {
         });
         
         // Debug events
+        if (this.debugToggle) this.debugToggle.addEventListener('click', () => this.toggleDebugMode());
         if (this.debugBtn) this.debugBtn.addEventListener('click', () => this.debugConversation());
         if (this.newConversationBtn) this.newConversationBtn.addEventListener('click', () => this.newConversation());
         if (this.clearChatBtn) this.clearChatBtn.addEventListener('click', () => this.clearChat());
@@ -256,7 +259,7 @@ class VortexDebugInterface {
         this.sendBtn.disabled = true;
 
         try {
-            const response = await fetch('/api/v1/vortex/chat', {
+            const response = await fetch(`/api/v1/vortex/chat?debug=${this.debugMode}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.token}`,
@@ -431,12 +434,82 @@ class VortexDebugInterface {
     }
 
     updateDebugOutput(debugData) {
-        const formattedDebug = {
-            timestamp: new Date().toISOString(),
-            conversation_id: this.conversationId,
-            debug_info: debugData
-        };
-        this.debugOutput.textContent = JSON.stringify(formattedDebug, null, 2);
+        // Format LLM request/response nicely if present
+        let formattedText = `=== Debug Info (${new Date().toISOString()}) ===\n`;
+        formattedText += `Conversation ID: ${this.conversationId}\n\n`;
+        
+        // LLM Request
+        if (debugData.llm_request) {
+            formattedText += `${'='.repeat(60)}\n`;
+            formattedText += `📤 LLM REQUEST\n`;
+            formattedText += `${'='.repeat(60)}\n\n`;
+            
+            formattedText += `--- SYSTEM PROMPT ---\n`;
+            formattedText += `${debugData.llm_request.system_prompt || 'N/A'}\n\n`;
+            
+            formattedText += `--- CONVERSATION CONTEXT (${debugData.llm_request.messages?.length || 0} messages) ---\n`;
+            if (debugData.llm_request.messages) {
+                debugData.llm_request.messages.forEach((msg, i) => {
+                    formattedText += `[${i + 1}] ${msg.role.toUpperCase()}:\n${msg.content}\n\n`;
+                });
+            }
+            
+            formattedText += `Temperature: ${debugData.llm_request.temperature}\n`;
+            formattedText += `Max Tokens: ${debugData.llm_request.max_tokens}\n\n`;
+        }
+        
+        // LLM Response
+        if (debugData.llm_response) {
+            formattedText += `${'='.repeat(60)}\n`;
+            formattedText += `📥 LLM RESPONSE\n`;
+            formattedText += `${'='.repeat(60)}\n\n`;
+            
+            formattedText += `Model: ${debugData.llm_response.model || 'N/A'}\n`;
+            formattedText += `Tokens Used: ${debugData.llm_response.tokens_used || 'N/A'}\n`;
+            formattedText += `Response Length: ${debugData.llm_response.response_chars || 0} chars\n`;
+            formattedText += `Actions Detected: ${debugData.llm_response.actions_detected || 0}\n\n`;
+            
+            formattedText += `--- FULL RESPONSE ---\n`;
+            formattedText += `${debugData.llm_response.full_response || 'N/A'}\n\n`;
+            
+            if (debugData.llm_response.actions && debugData.llm_response.actions.length > 0) {
+                formattedText += `--- ACTIONS ---\n`;
+                debugData.llm_response.actions.forEach((action, i) => {
+                    formattedText += `[${i + 1}] ${action.type}: ${action.content}\n`;
+                });
+                formattedText += '\n';
+            }
+        }
+        
+        // Memory Intelligence Summary
+        if (debugData.memory_intelligence) {
+            formattedText += `${'='.repeat(60)}\n`;
+            formattedText += `🧠 MEMORY INTELLIGENCE\n`;
+            formattedText += `${'='.repeat(60)}\n\n`;
+            formattedText += JSON.stringify(debugData.memory_intelligence, null, 2) + '\n\n';
+        }
+        
+        // Memory Summary
+        if (debugData.memory) {
+            formattedText += `${'='.repeat(60)}\n`;
+            formattedText += `💾 MEMORY RETRIEVED\n`;
+            formattedText += `${'='.repeat(60)}\n\n`;
+            formattedText += JSON.stringify(debugData.memory, null, 2) + '\n\n';
+        }
+        
+        // Any remaining debug data
+        const shown = ['llm_request', 'llm_response', 'memory_intelligence', 'memory', 'prompt'];
+        const remaining = Object.keys(debugData).filter(k => !shown.includes(k));
+        if (remaining.length > 0) {
+            formattedText += `${'='.repeat(60)}\n`;
+            formattedText += `📋 OTHER DEBUG INFO\n`;
+            formattedText += `${'='.repeat(60)}\n\n`;
+            const otherData = {};
+            remaining.forEach(k => otherData[k] = debugData[k]);
+            formattedText += JSON.stringify(otherData, null, 2);
+        }
+        
+        this.debugOutput.textContent = formattedText;
     }
 
     debugToken() {
@@ -948,11 +1021,13 @@ class VortexDebugInterface {
             
             if (data.success) {
                 const status = data.data;
+                const voiceCount = status.piper?.availableVoices?.length || 0;
+                
                 let statusText = `Voice Services Status:\n`;
-                statusText += `Overall: ${status.overall}\n`;
-                statusText += `Whisper: ${status.whisper.status} (${status.whisper.url})\n`;
-                statusText += `Piper: ${status.piper.status} (${status.piper.url})\n`;
-                statusText += `Available Voices: ${status.piper.availableVoices.length}`;
+                statusText += `Overall: ${status.overall || 'unknown'}\n`;
+                statusText += `Whisper: ${status.whisper?.status || 'unknown'} (${status.whisper?.url || 'not configured'})\n`;
+                statusText += `Piper: ${status.piper?.status || 'unknown'} (${status.piper?.url || 'not configured'})\n`;
+                statusText += `Available Voices: ${voiceCount}`;
                 
                 this.debugOutput.textContent = JSON.stringify(status, null, 2);
                 
@@ -960,7 +1035,7 @@ class VortexDebugInterface {
                     this.showVoiceStatus('Voice services are operational', 'success');
                     
                     // Update voice options if available
-                    if (status.piper.availableVoices && status.piper.availableVoices.length > 0) {
+                    if (status.piper?.availableVoices && status.piper.availableVoices.length > 0) {
                         this.updateVoiceOptions(status.piper.availableVoices);
                     }
                 } else {
@@ -1153,6 +1228,16 @@ class VortexDebugInterface {
     }
 
     // ========== NEW ACTION METHODS ==========
+
+    toggleDebugMode() {
+        this.debugMode = !this.debugMode;
+        if (this.debugToggle) {
+            this.debugToggle.classList.toggle('active', this.debugMode);
+            this.debugToggle.title = this.debugMode ? 'Debug mode ON - Click to disable' : 'Debug mode OFF - Click to enable';
+        }
+        this.addMessage('system', `🐛 Debug mode ${this.debugMode ? 'enabled' : 'disabled'}`);
+        console.log('Debug mode:', this.debugMode);
+    }
 
     clearDebugOutput() {
         if (this.debugOutput) {

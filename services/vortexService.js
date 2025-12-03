@@ -349,10 +349,27 @@ class VortexService {
             storageDecisions.push({ type: 'conversation', importance, usedSummary: !!summary, stored: true });
           }
         }
-        // LOW IMPORTANCE (1-3): Skip storage entirely
+        // LOW IMPORTANCE (1-3): Still store in conversations for working memory continuity
+        // This ensures the AI can follow the conversation flow even for casual messages
         else {
-          storageDecisions.push({ type: 'skipped', importance, reason: 'low importance' });
-          logger.debug('Skipping storage for low importance message', { importance, category });
+          const result = await memoryService.storeConversation({
+            userId,
+            conversationId,
+            role: 'user',
+            content: messageContent, // Store original, no summary needed for simple messages
+            context: {
+              ...context,
+              importance,
+              category,
+              isLowPriority: true // Mark as low priority for potential cleanup later
+            }
+          });
+          if (result.skipped) {
+            storageDecisions.push({ type: 'conversation', importance, skipped: true, reason: 'duplicate' });
+          } else {
+            storageDecisions.push({ type: 'conversation', importance, stored: true, note: 'working memory only' });
+          }
+          logger.debug('Stored low importance message for working memory', { importance, category });
         }
         
         // Log storage decisions
@@ -384,10 +401,20 @@ class VortexService {
 
       // Add LLM response to debug info if debug mode is enabled
       if (debug && debugInfo) {
+        debugInfo.llm_request = {
+          system_prompt: systemPrompt,
+          messages: conversationContext.map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          temperature: 0.3,
+          max_tokens: 500
+        };
         debugInfo.llm_response = {
           model: llmResponse.model,
           tokens_used: llmResponse.usage?.total_tokens,
           response_chars: llmResponse.content.length,
+          full_response: llmResponse.content,
           actions_detected: detectedActions.length,
           actions: detectedActions.map(a => ({ type: a.type, content: a.content?.substring(0, 50) + '...' }))
         };

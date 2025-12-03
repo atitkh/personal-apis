@@ -8,7 +8,9 @@ class VortexController {
    */
   async chat(req, res, next) {
     try {
-      const { message, conversation_id, context, debug } = req.body;
+      const { message, conversation_id, context } = req.body;
+      // Check both body and query param for debug flag
+      const debug = req.body.debug || req.query.debug === 'true';
       const userId = req.user._id || req.user.id; // Handle both _id and id formats
 
       logger.info('Vortex chat request - user details', {
@@ -46,7 +48,8 @@ class VortexController {
       const responseData = {
         response: result.response,
         conversation_id: result.conversation_id,
-        metadata: result.metadata
+        metadata: result.metadata,
+        memory_intelligence: result.memory_intelligence
       };
 
       // Include debug information if requested

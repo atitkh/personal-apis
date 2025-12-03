@@ -296,6 +296,35 @@ body {
     animation: pulse 1s infinite;
 }
 
+/* Debug Toggle Button */
+.debug-toggle {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.5;
+}
+
+.debug-toggle:hover {
+    background: var(--accent-secondary);
+    border-color: var(--accent-secondary);
+    opacity: 1;
+}
+
+.debug-toggle.active {
+    background: var(--success);
+    border-color: var(--success);
+    opacity: 1;
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
