@@ -374,6 +374,68 @@ class VortexController {
       next(error);
     }
   }
+
+  /**
+   * Summarize a conversation and extract key information
+   */
+  async summarizeConversation(req, res, next) {
+    try {
+      const { conversation_id } = req.params;
+      const userId = req.user._id || req.user.id;
+      const { forceRegenerate } = req.body || {};
+
+      logger.info('Summarize conversation request', {
+        correlationId: req.correlationId,
+        userId,
+        conversationId: conversation_id,
+        forceRegenerate
+      });
+
+      const result = await vortexService.summarizeAndCompactConversation({
+        userId: userId?.toString(),
+        conversationId: conversation_id,
+        forceRegenerate: forceRegenerate || false
+      });
+
+      if (result.skipped) {
+        res.success(result, 'Summarization skipped');
+      } else if (result.success) {
+        res.success(result, 'Conversation summarized successfully');
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error,
+          message: 'Summarization failed'
+        });
+      }
+
+    } catch (error) {
+      logger.error('Summarize conversation error', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Get memory intelligence status
+   */
+  async getMemoryIntelligenceStatus(req, res, next) {
+    try {
+      const status = await vortexService.getMemoryIntelligenceStatus();
+      
+      res.success(status, 'Memory intelligence status retrieved');
+
+    } catch (error) {
+      logger.error('Memory intelligence status error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
 }
 
 module.exports = new VortexController();

@@ -236,6 +236,73 @@ router.post('/memory/search', authenticate, vortexController.searchMemories);
 
 /**
  * @swagger
+ * /api/v1/vortex/conversation/{conversation_id}/summarize:
+ *   post:
+ *     summary: Summarize a conversation and extract key information
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: conversation_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the conversation to summarize
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               forceRegenerate:
+ *                 type: boolean
+ *                 description: Force regeneration of summary even if one exists
+ *     responses:
+ *       200:
+ *         description: Conversation summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 summary:
+ *                   type: string
+ *                 facts:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 preferences:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 topics:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ */
+router.post('/conversation/:conversation_id/summarize', authenticate, vortexController.summarizeConversation);
+
+/**
+ * @swagger
+ * /api/v1/vortex/memory/intelligence/status:
+ *   get:
+ *     summary: Get memory intelligence system status
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     responses:
+ *       200:
+ *         description: Memory intelligence status
+ */
+router.get('/memory/intelligence/status', authenticate, vortexController.getMemoryIntelligenceStatus);
+
+/**
+ * @swagger
  * /api/v1/vortex/status:
  *   get:
  *     summary: Get Vortex system status

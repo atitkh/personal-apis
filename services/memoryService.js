@@ -97,6 +97,19 @@ class MemoryService {
         ...prefCollectionConfig
       });
 
+      // Facts collection - for concrete facts about the user
+      const factsCollectionConfig = {
+        metadata: { description: 'User facts - name, location, relationships, etc.' }
+      };
+      if (embeddingFunction) {
+        factsCollectionConfig.embeddingFunction = embeddingFunction;
+      }
+
+      this.collections.facts = await this.client.getOrCreateCollection({
+        name: 'vortex_facts',
+        ...factsCollectionConfig
+      });
+
       const contextCollectionConfig = {
         metadata: { description: 'Session and contextual information' }
       };
@@ -128,12 +141,31 @@ class MemoryService {
   }
 
   /**
-   * Store a conversation message
+   * Store a conversation message (with deduplication for user messages)
    */
   async storeConversation({ userId, conversationId, role, content, context = {} }) {
     await this.ensureInitialized();
 
     try {
+      // Check for duplicates only for user messages (assistant messages are always unique responses)
+      if (role === 'user') {
+        const dupCheck = await this.checkDuplicate(
+          this.collections.conversations,
+          content,
+          userId,
+          0.1 // Threshold for conversations
+        );
+        
+        if (dupCheck.isDuplicate) {
+          console.log('⏭️ SKIPPED DUPLICATE CONVERSATION:', content.substring(0, 50));
+          logger.debug('Skipping duplicate conversation message', {
+            content: content.substring(0, 50),
+            existingContent: dupCheck.existingContent?.substring(0, 50)
+          });
+          return { skipped: true, reason: 'duplicate', existingContent: dupCheck.existingContent };
+        }
+      }
+
       const id = `${conversationId}_${role}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       
       const metadata = {
@@ -151,6 +183,8 @@ class MemoryService {
       // Add safe context fields only
       if (context.userAgent) metadata.user_agent = context.userAgent;
       if (context.ip) metadata.ip_address = context.ip;
+      if (context.importance) metadata.importance = context.importance;
+      if (context.category) metadata.category = context.category;
 
       // Debug log the data being sent to ChromaDB
       logger.debug('Storing conversation in ChromaDB', {
@@ -171,13 +205,14 @@ class MemoryService {
         metadatas: [metadata]
       });
 
+      console.log('✅ STORED CONVERSATION:', role, '-', content.substring(0, 50));
       logger.info('Conversation stored successfully', { 
         id, 
         role, 
         userId: userId?.toString(), 
         conversationId 
       });
-      return id;
+      return { id, skipped: false };
 
     } catch (error) {
       logger.error('Failed to store conversation', { 
@@ -191,15 +226,32 @@ class MemoryService {
   }
 
   /**
-   * Store an event memory
+   * Store an event memory (with deduplication)
    */
   async storeEvent({ userId, eventType, domain, userIntent, systemResponse, context = {} }) {
     await this.ensureInitialized();
 
     try {
-      const id = `event_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      
       const document = `Event: ${eventType} in ${domain}. User: "${userIntent}" System: "${systemResponse}"`;
+      
+      // Check for duplicates
+      const dupCheck = await this.checkDuplicate(
+        this.collections.events,
+        userIntent, // Check based on user intent, not the full document
+        userId,
+        0.12
+      );
+      
+      if (dupCheck.isDuplicate) {
+        console.log('⏭️ SKIPPED DUPLICATE EVENT:', userIntent.substring(0, 50));
+        logger.debug('Skipping duplicate event', {
+          userIntent: userIntent.substring(0, 50),
+          existingContent: dupCheck.existingContent?.substring(0, 50)
+        });
+        return { skipped: true, reason: 'duplicate', existingContent: dupCheck.existingContent };
+      }
+
+      const id = `event_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       
       const metadata = {
         schema_version: '1.0',
@@ -217,6 +269,7 @@ class MemoryService {
       // Add safe context fields only
       if (context.confidence) metadata.confidence = context.confidence;
       if (context.model_used) metadata.model_used = context.model_used;
+      if (context.importance) metadata.importance = context.importance;
 
       await this.collections.events.add({
         ids: [id],
@@ -224,14 +277,195 @@ class MemoryService {
         metadatas: [metadata]
       });
 
+      console.log('✅ STORED EVENT:', eventType, '-', userIntent.substring(0, 50));
       logger.debug('Event stored', { id, eventType, domain, userId });
-      return id;
+      return { id, skipped: false };
 
     } catch (error) {
       logger.error('Failed to store event', { 
         userId, 
         eventType, 
         domain, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Check if similar content already exists in a collection
+   * @returns {boolean} true if duplicate exists
+   */
+  async checkDuplicate(collection, content, userId, similarityThreshold = 0.15) {
+    try {
+      // Query for similar content
+      const results = await collection.query({
+        queryTexts: [content],
+        nResults: 3,
+        where: { user_id: userId?.toString() || userId },
+        include: ['documents', 'distances']
+      });
+
+      if (results.documents && results.documents[0] && results.documents[0].length > 0) {
+        // Check if any result is very similar (low distance = high similarity)
+        for (let i = 0; i < results.distances[0].length; i++) {
+          const distance = results.distances[0][i];
+          const existingDoc = results.documents[0][i];
+          
+          // If distance is very low, it's likely a duplicate
+          if (distance < similarityThreshold) {
+            logger.debug('Duplicate detected', {
+              newContent: content.substring(0, 50),
+              existingContent: existingDoc?.substring(0, 50),
+              distance,
+              threshold: similarityThreshold
+            });
+            return { isDuplicate: true, existingContent: existingDoc, distance };
+          }
+          
+          // Also check for exact or near-exact text match
+          if (existingDoc && this.textSimilarity(content, existingDoc) > 0.9) {
+            logger.debug('Text similarity duplicate detected', {
+              newContent: content.substring(0, 50),
+              existingContent: existingDoc?.substring(0, 50)
+            });
+            return { isDuplicate: true, existingContent: existingDoc, distance };
+          }
+        }
+      }
+      
+      return { isDuplicate: false };
+    } catch (error) {
+      logger.warn('Duplicate check failed, proceeding with storage', { error: error.message });
+      return { isDuplicate: false };
+    }
+  }
+
+  /**
+   * Simple text similarity check (Jaccard similarity on words)
+   */
+  textSimilarity(text1, text2) {
+    const words1 = new Set(text1.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    const words2 = new Set(text2.toLowerCase().split(/\s+/).filter(w => w.length > 2));
+    
+    const intersection = new Set([...words1].filter(x => words2.has(x)));
+    const union = new Set([...words1, ...words2]);
+    
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+
+  /**
+   * Store a user preference or important fact (with deduplication)
+   */
+  async storePreference({ userId, category, preference, context = {} }) {
+    await this.ensureInitialized();
+
+    try {
+      // Check for duplicates first
+      const dupCheck = await this.checkDuplicate(
+        this.collections.preferences,
+        preference,
+        userId,
+        0.12 // Stricter threshold for preferences
+      );
+      
+      if (dupCheck.isDuplicate) {
+        console.log('⏭️ SKIPPED DUPLICATE PREFERENCE:', preference.substring(0, 50));
+        logger.debug('Skipping duplicate preference', {
+          preference: preference.substring(0, 50),
+          existingContent: dupCheck.existingContent?.substring(0, 50)
+        });
+        return { skipped: true, reason: 'duplicate', existingContent: dupCheck.existingContent };
+      }
+
+      const id = `pref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      
+      const metadata = {
+        schema_version: '1.0',
+        memory_type: 'preference',
+        timestamp: new Date().toISOString(),
+        user_id: userId?.toString() || userId,
+        source: context.source || 'extracted',
+        category: category,
+        importance: context.importance || 5
+      };
+
+      // Add optional context fields
+      if (context.extractedFrom) metadata.extracted_from = context.extractedFrom;
+
+      await this.collections.preferences.add({
+        ids: [id],
+        documents: [preference],
+        metadatas: [metadata]
+      });
+
+      console.log('✅ STORED PREFERENCE:', preference.substring(0, 50));
+      logger.debug('Preference stored', { id, category, userId, preference: preference.substring(0, 50) });
+      return { id, skipped: false };
+
+    } catch (error) {
+      logger.error('Failed to store preference', { 
+        userId, 
+        category, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Store a user fact (name, location, relationships, etc.) with deduplication
+   */
+  async storeFact({ userId, fact, category, context = {} }) {
+    await this.ensureInitialized();
+
+    try {
+      // Check for duplicates first
+      const dupCheck = await this.checkDuplicate(
+        this.collections.facts,
+        fact,
+        userId,
+        0.10 // Very strict threshold for facts - they should be unique
+      );
+      
+      if (dupCheck.isDuplicate) {
+        console.log('⏭️ SKIPPED DUPLICATE FACT:', fact.substring(0, 50));
+        logger.debug('Skipping duplicate fact', {
+          fact: fact.substring(0, 50),
+          existingContent: dupCheck.existingContent?.substring(0, 50)
+        });
+        return { skipped: true, reason: 'duplicate', existingContent: dupCheck.existingContent };
+      }
+
+      const id = `fact_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      
+      const metadata = {
+        schema_version: '1.0',
+        memory_type: 'fact',
+        timestamp: new Date().toISOString(),
+        user_id: userId?.toString() || userId,
+        source: context.source || 'extracted',
+        category: category || 'general',
+        importance: context.importance || 8 // Facts are generally high importance
+      };
+
+      // Add optional context fields
+      if (context.extractedFrom) metadata.extracted_from = context.extractedFrom;
+
+      await this.collections.facts.add({
+        ids: [id],
+        documents: [fact],
+        metadatas: [metadata]
+      });
+
+      console.log('✅ STORED FACT:', fact.substring(0, 50));
+      logger.debug('Fact stored', { id, category, userId, fact: fact.substring(0, 50) });
+      return { id, skipped: false };
+
+    } catch (error) {
+      logger.error('Failed to store fact', { 
+        userId, 
+        category, 
         error: error.message 
       });
       throw error;
@@ -306,7 +540,7 @@ class MemoryService {
 
       logger.debug('ChromaDB semantic search query parameters', {
         queryTexts: [query],
-        nResults: Math.floor(limit * 0.7),
+        nResults: Math.floor(limit * 0.4),
         where: conversationWhere,
         userIdType: typeof conversationWhere.user_id,
         conversationIdType: typeof conversationWhere.conversation_id
@@ -323,7 +557,7 @@ class MemoryService {
         
         conversationResults = await this.collections.conversations.query({
           queryTexts: [query],
-          nResults: Math.floor(limit * 0.7), // 70% from conversations
+          nResults: Math.floor(limit * 0.4), // 40% from conversations
           where: conversationWhere,
           include: ['metadatas', 'documents', 'distances']
         });
@@ -338,7 +572,7 @@ class MemoryService {
         try {
           const allResults = await this.collections.conversations.query({
             queryTexts: [query],
-            nResults: Math.floor(limit * 0.7),
+            nResults: Math.floor(limit * 0.4),
             include: ['metadatas', 'documents', 'distances']
           });
           
@@ -419,7 +653,7 @@ class MemoryService {
         // Perform semantic search on events
         eventResults = await this.collections.events.query({
           queryTexts: [query],
-          nResults: Math.floor(limit * 0.3), // 30% from events  
+          nResults: Math.floor(limit * 0.2), // 20% from events  
           where: eventWhere,
           include: ['metadatas', 'documents', 'distances']
         });
@@ -428,6 +662,44 @@ class MemoryService {
           documentsCount: eventResults.documents?.[0]?.length || 0,
           avgDistance: eventResults.distances?.[0]?.reduce((a, b) => a + b, 0) / (eventResults.distances?.[0]?.length || 1)
         });
+      }
+
+      // Search facts for relevant context
+      let factsResults = { documents: [[]], metadatas: [[]], ids: [[]], distances: [[]] };
+      if (this.collections.facts && eventUserIdStr) {
+        try {
+          factsResults = await this.collections.facts.query({
+            queryTexts: [query],
+            nResults: Math.floor(limit * 0.2), // 20% from facts
+            where: { user_id: eventUserIdStr },
+            include: ['metadatas', 'documents', 'distances']
+          });
+          
+          logger.debug('Facts semantic search results', {
+            documentsCount: factsResults.documents?.[0]?.length || 0
+          });
+        } catch (factsError) {
+          logger.debug('Facts query failed (collection may be new)', { error: factsError.message });
+        }
+      }
+
+      // Search preferences for relevant context
+      let prefsResults = { documents: [[]], metadatas: [[]], ids: [[]], distances: [[]] };
+      if (this.collections.preferences && eventUserIdStr) {
+        try {
+          prefsResults = await this.collections.preferences.query({
+            queryTexts: [query],
+            nResults: Math.floor(limit * 0.2), // 20% from preferences
+            where: { user_id: eventUserIdStr },
+            include: ['metadatas', 'documents', 'distances']
+          });
+          
+          logger.debug('Preferences semantic search results', {
+            documentsCount: prefsResults.documents?.[0]?.length || 0
+          });
+        } catch (prefsError) {
+          logger.debug('Preferences query failed', { error: prefsError.message });
+        }
       }
 
       // Combine and format results
@@ -453,6 +725,30 @@ class MemoryService {
             content: doc,
             metadata: eventResults.metadatas[0][index],
             distance: eventResults.distances[0][index]
+          });
+        });
+      }
+
+      // Add fact memories
+      if (factsResults.documents && factsResults.documents[0]) {
+        factsResults.documents[0].forEach((doc, index) => {
+          relevantMemories.push({
+            type: 'fact',
+            content: doc,
+            metadata: factsResults.metadatas[0][index],
+            distance: factsResults.distances[0][index]
+          });
+        });
+      }
+
+      // Add preference memories
+      if (prefsResults.documents && prefsResults.documents[0]) {
+        prefsResults.documents[0].forEach((doc, index) => {
+          relevantMemories.push({
+            type: 'preference',
+            content: doc,
+            metadata: prefsResults.metadatas[0][index],
+            distance: prefsResults.distances[0][index]
           });
         });
       }
@@ -576,7 +872,7 @@ class MemoryService {
   /**
    * Get recent conversation messages for context building
    */
-  async getRecentConversation({ userId, conversationId, limit = 6 }) {
+  async getRecentConversation({ userId, conversationId, limit = 12 }) {
     await this.ensureInitialized();
 
     try {

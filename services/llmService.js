@@ -282,65 +282,88 @@ class LLMService {
       memoryPreview: relevantMemories.slice(0, 2).map(m => m.content?.substring(0, 50) + '...')
     });
 
-    return `You are Vortex, ${personality.description}
+    return `You're Vortex - ${personality.description}.
 
-PERSONALITY TRAITS:
+How you talk:
 ${personality.traits.map(trait => `- ${trait}`).join('\n')}
 
-CURRENT CONTEXT:
-- Time: ${currentTime}
-- User: ${userContext.name || 'User'}
-- Location: ${userContext.location || 'Unknown'}
+Context:
+- It's ${currentTime}
+- Talking to: ${userContext.name || 'someone'}
+${userContext.location ? `- They're in ${userContext.location}` : ''}
 
-RELEVANT MEMORIES:
+What you know from past chats:
 ${memoryContext}
 
-RESPONSE GUIDELINES:
-1. Be helpful, personal, and engaging
-2. **IMPORTANT**: Always reference and use the relevant memories above when answering questions about the user's background, preferences, or past conversations
-3. If you have relevant memories, use them naturally in your responses without saying "I remember" or "based on our conversation"
-4. If no relevant memories are provided, be honest about not having that specific information
-5. Maintain context across conversations using the memory information
-6. Ask clarifying questions when needed
-7. Stay in character as a personal AI assistant
+Rules:
+- Just answer the question. Don't add filler like "That's a great question!" or "I'd be happy to help!"
+- Use what you know from past chats naturally - don't announce that you're remembering things
+- Keep it short and real
+- Skip the formalities - no need for greetings or sign-offs unless it makes sense
+- Don't explain what you're doing ("Let me help you with that..." - just help)
+- If you don't know something, just say so casually
+- Match the vibe of how they're talking to you
 
-Communication Guidelines:
-- Be concise and natural - avoid unnecessary verbose responses
-- Don't mention remembering conversations unless specifically relevant
-- Don't say "nice to talk to you again" or similar repetitive greetings
-- Use previous context naturally without explicitly calling attention to it
-- Keep responses focused and to the point
-- Only reference past conversations when directly relevant to the current question
-- Avoid meta-commentary about memory or conversation history
-
-AVAILABLE ACTIONS:
-- Remember important information
-- Set reminders or notes
-- Search previous conversations
-- Connect related topics
-- Suggest improvements or optimizations
-
-Always respond as Vortex, your personal AI assistant.`;
+You're having a normal conversation, not giving a presentation.`;
   }
 
   /**
    * Format memory context for system prompt
    */
   formatMemoryContext(memories) {
-    return memories.map(memory => {
-      const timestamp = new Date(memory.metadata.timestamp).toLocaleString();
-      const type = memory.type.toUpperCase();
-      
-      if (memory.type === 'conversation') {
-        const role = memory.metadata.role?.toUpperCase() || 'UNKNOWN';
-        return `[${timestamp}] ${type} - ${role}: "${memory.content}"`;
-      } else if (memory.type === 'event') {
-        const eventType = memory.metadata.event_type || 'unknown';
-        return `[${timestamp}] ${type} - ${eventType}: ${memory.content}`;
+    if (!memories || memories.length === 0) {
+      return 'No relevant memories found.';
+    }
+
+    // Group memories by type for better organization
+    const grouped = {
+      preference: [],
+      fact: [],
+      event: [],
+      conversation: []
+    };
+
+    memories.forEach(memory => {
+      const type = memory.type || memory.metadata?.type || 'conversation';
+      if (grouped[type]) {
+        grouped[type].push(memory);
       } else {
-        return `[${timestamp}] ${type}: ${memory.content}`;
+        grouped.conversation.push(memory);
       }
-    }).join('\n');
+    });
+
+    const sections = [];
+
+    // Format preferences/facts (most important for context)
+    if (grouped.preference.length > 0) {
+      const prefs = grouped.preference.map(m => `- ${m.content}`).join('\n');
+      sections.push(`Preferences:\n${prefs}`);
+    }
+
+    if (grouped.fact.length > 0) {
+      const facts = grouped.fact.map(m => `- ${m.content}`).join('\n');
+      sections.push(`Known facts:\n${facts}`);
+    }
+
+    if (grouped.event.length > 0) {
+      const events = grouped.event.map(m => {
+        const time = new Date(m.metadata?.timestamp).toLocaleDateString();
+        return `- [${time}] ${m.content}`;
+      }).join('\n');
+      sections.push(`Past events:\n${events}`);
+    }
+
+    // Format conversation snippets (less prominent)
+    if (grouped.conversation.length > 0) {
+      const convos = grouped.conversation.map(m => {
+        const time = new Date(m.metadata?.timestamp).toLocaleDateString();
+        const role = m.metadata?.role || 'user';
+        return `- [${time}] ${role}: "${m.content?.substring(0, 150)}${m.content?.length > 150 ? '...' : ''}"`;
+      }).join('\n');
+      sections.push(`Related past conversations:\n${convos}`);
+    }
+
+    return sections.join('\n\n');
   }
 
   /**

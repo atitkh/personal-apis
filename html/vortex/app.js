@@ -234,6 +234,47 @@ class VortexDebugInterface {
                 // Handle both direct and wrapped response formats
                 const aiResponse = data.data?.response || data.response;
                 const debugInfo = data.data?.debug || data.debug;
+                const memoryIntelligence = data.data?.memory_intelligence || data.memory_intelligence;
+                
+                // Log memory intelligence to browser console for debugging
+                if (memoryIntelligence) {
+                    console.log('%c========== MEMORY INTELLIGENCE DEBUG ==========', 'color: #00ff00; font-weight: bold; font-size: 14px');
+                    console.log('%c📊 User Message Evaluation:', 'color: #00bfff; font-weight: bold');
+                    if (memoryIntelligence.user_evaluation) {
+                        console.log('   Importance:', memoryIntelligence.user_evaluation.importance);
+                        console.log('   Category:', memoryIntelligence.user_evaluation.category);
+                        console.log('   Should Store:', memoryIntelligence.user_evaluation.shouldStore);
+                        console.log('   Storage Type:', memoryIntelligence.user_evaluation.storageType);
+                        console.log('   Key Facts:', memoryIntelligence.user_evaluation.keyFacts);
+                        console.log('   Summary:', memoryIntelligence.user_evaluation.summary);
+                        console.log('   Reasoning:', memoryIntelligence.user_evaluation.reasoning);
+                    } else {
+                        console.log('   (No evaluation available)');
+                    }
+                    console.log('%c📦 Storage Decisions:', 'color: #ff6b6b; font-weight: bold');
+                    if (memoryIntelligence.storage_decisions && memoryIntelligence.storage_decisions.length > 0) {
+                        memoryIntelligence.storage_decisions.forEach((decision, i) => {
+                            let status = decision.stored ? '✅' : (decision.skipped ? '⏭️' : '❌');
+                            let details = `Type: ${decision.type}, Importance: ${decision.importance}`;
+                            if (decision.skipped) details += `, SKIPPED: ${decision.reason}`;
+                            if (decision.stored) details += ', STORED';
+                            if (decision.content) details += `, Content: "${decision.content}"`;
+                            if (decision.usedSummary) details += ', Used Summary';
+                            console.log(`   ${status} [${i + 1}] ${details}`);
+                        });
+                    } else {
+                        console.log('   (No storage decisions)');
+                    }
+                    console.log('%c🔍 Query Enhancement:', 'color: #ff9500; font-weight: bold');
+                    if (memoryIntelligence.query_enhancement) {
+                        console.log('   Queries Used:', memoryIntelligence.query_enhancement.queries_used);
+                        console.log('   Categories:', memoryIntelligence.query_enhancement.categories);
+                    } else {
+                        console.log('   (No enhancement available)');
+                    }
+                    console.log('%c================================================', 'color: #00ff00; font-weight: bold');
+                    console.log('Full memory_intelligence object:', memoryIntelligence);
+                }
                 
                 if (aiResponse) {
                     this.addMessage('assistant', aiResponse);
@@ -644,6 +685,47 @@ class VortexDebugInterface {
                 
                 console.log('Transcription result:', result.transcription);
                 console.log('AI response:', result.response);
+                
+                // Log memory intelligence to browser console for debugging
+                const memoryIntelligence = result.memory_intelligence;
+                if (memoryIntelligence) {
+                    console.log('%c========== MEMORY INTELLIGENCE DEBUG (VOICE) ==========', 'color: #00ff00; font-weight: bold; font-size: 14px');
+                    console.log('%c📊 User Message Evaluation:', 'color: #00bfff; font-weight: bold');
+                    if (memoryIntelligence.user_evaluation) {
+                        console.log('   Importance:', memoryIntelligence.user_evaluation.importance);
+                        console.log('   Category:', memoryIntelligence.user_evaluation.category);
+                        console.log('   Should Store:', memoryIntelligence.user_evaluation.shouldStore);
+                        console.log('   Storage Type:', memoryIntelligence.user_evaluation.storageType);
+                        console.log('   Key Facts:', memoryIntelligence.user_evaluation.keyFacts);
+                        console.log('   Summary:', memoryIntelligence.user_evaluation.summary);
+                        console.log('   Reasoning:', memoryIntelligence.user_evaluation.reasoning);
+                    } else {
+                        console.log('   (No evaluation available)');
+                    }
+                    console.log('%c📦 Storage Decisions:', 'color: #ff6b6b; font-weight: bold');
+                    if (memoryIntelligence.storage_decisions && memoryIntelligence.storage_decisions.length > 0) {
+                        memoryIntelligence.storage_decisions.forEach((decision, i) => {
+                            let status = decision.stored ? '✅' : (decision.skipped ? '⏭️' : '❌');
+                            let details = `Type: ${decision.type}, Importance: ${decision.importance}`;
+                            if (decision.skipped) details += `, SKIPPED: ${decision.reason}`;
+                            if (decision.stored) details += ', STORED';
+                            if (decision.content) details += `, Content: "${decision.content}"`;
+                            if (decision.usedSummary) details += ', Used Summary';
+                            console.log(`   ${status} [${i + 1}] ${details}`);
+                        });
+                    } else {
+                        console.log('   (No storage decisions)');
+                    }
+                    console.log('%c🔍 Query Enhancement:', 'color: #ff9500; font-weight: bold');
+                    if (memoryIntelligence.query_enhancement) {
+                        console.log('   Queries Used:', memoryIntelligence.query_enhancement.queries_used);
+                        console.log('   Categories:', memoryIntelligence.query_enhancement.categories);
+                    } else {
+                        console.log('   (No enhancement available)');
+                    }
+                    console.log('%c=========================================================', 'color: #00ff00; font-weight: bold');
+                    console.log('Full memory_intelligence object:', memoryIntelligence);
+                }
                 
                 // Display transcription and response
                 const userText = result.transcription?.text || '[transcription empty]';
