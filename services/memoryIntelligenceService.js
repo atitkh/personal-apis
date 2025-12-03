@@ -175,7 +175,7 @@ Your job is to analyze messages and determine:
    - question: Questions without lasting value
    - context: Situational context
 
-3. SUMMARY: For importance >= 5, provide a concise summary. Otherwise null.
+3. SUMMARY: For importance >= 5, provide a concise, detailed summary. Otherwise null.
 
 4. KEY_FACTS: Extract any concrete facts (names, dates, preferences, etc.)
 

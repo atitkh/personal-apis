@@ -109,9 +109,10 @@ class VortexService {
         }
 
         // RELEVANCE THRESHOLD FILTER - Industry standard approach
-        // Only include memories that are actually relevant (distance < 0.7)
-        // Distance: 0 = perfect match, 1 = unrelated
-        const RELEVANCE_THRESHOLD = 0.7;
+        // Only include memories that are actually relevant (distance < 1.4)
+        // Distance: 0 = perfect match, 1 = unrelated, >1 = very different
+        // Using 1.4 while memory is building up - can tighten later
+        const RELEVANCE_THRESHOLD = 1.4;
         const relevantOnly = allMemories.filter(m => {
           const distance = m.distance || 1;
           return distance < RELEVANCE_THRESHOLD;
@@ -180,7 +181,7 @@ class VortexService {
           limit: 10
         });
         // Apply relevance threshold even in fallback
-        relevantMemories = relevantMemories.filter(m => (m.distance || 1) < 0.7);
+        relevantMemories = relevantMemories.filter(m => (m.distance || 1) < 1.4);
       }
 
       // Build conversation context for LLM
@@ -310,7 +311,7 @@ class VortexService {
             }
           }
           
-          // Also store in conversations with summary
+          // Store in conversations - use summary as content if available, keep raw for reference
           const convResult = await memoryService.storeConversation({
             userId,
             conversationId,
@@ -320,13 +321,13 @@ class VortexService {
               ...context,
               importance,
               category,
-              isSummary: !!summary
+              ...(summary && summary !== messageContent ? { rawMessage: messageContent } : {})
             }
           });
           if (convResult.skipped) {
             storageDecisions.push({ type: 'conversation', importance, skipped: true, reason: 'duplicate' });
           } else {
-            storageDecisions.push({ type: 'conversation', importance, usedSummary: !!summary, stored: true });
+            storageDecisions.push({ type: 'conversation', importance, stored: true, hasSummary: !!summary });
           }
         }
         // MEDIUM IMPORTANCE (4-6): Store in conversations
@@ -340,13 +341,13 @@ class VortexService {
               ...context,
               importance,
               category,
-              isSummary: !!summary
+              ...(summary && summary !== messageContent ? { rawMessage: messageContent } : {})
             }
           });
           if (result.skipped) {
             storageDecisions.push({ type: 'conversation', importance, skipped: true, reason: 'duplicate' });
           } else {
-            storageDecisions.push({ type: 'conversation', importance, usedSummary: !!summary, stored: true });
+            storageDecisions.push({ type: 'conversation', importance, stored: true, hasSummary: !!summary });
           }
         }
         // LOW IMPORTANCE (1-3): Still store in conversations for working memory continuity
