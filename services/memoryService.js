@@ -938,9 +938,10 @@ class MemoryService {
           limit: limit
         });
         
+        // Get more than needed, then sort and slice - ChromaDB get() doesn't guarantee order
         results = await this.collections.conversations.get({
           where: whereClause,
-          limit: limit,
+          limit: limit * 3, // Get 3x to ensure we have enough after sorting
           include: ['documents', 'metadatas']
         });
       } catch (getError) {

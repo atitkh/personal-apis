@@ -279,7 +279,7 @@ class LLMService {
     this.safeLog('debug', 'Building system prompt with memories', {
       memoryCount: relevantMemories.length,
       memoryTypes: relevantMemories.map(m => m.type),
-      memoryPreview: relevantMemories.slice(0, 2).map(m => m.content?.substring(0, 50) + '...')
+      memoryPreview: relevantMemories.slice(0, 2).map(m => (m.content || m.document)?.substring(0, 50) + '...')
     });
 
     return `You're Vortex - ${personality.description}.
@@ -336,19 +336,19 @@ You're having a normal conversation, not giving a presentation.`;
 
     // Format preferences/facts (most important for context)
     if (grouped.preference.length > 0) {
-      const prefs = grouped.preference.map(m => `- ${m.content}`).join('\n');
+      const prefs = grouped.preference.map(m => `- ${m.content || m.document}`).join('\n');
       sections.push(`Preferences:\n${prefs}`);
     }
 
     if (grouped.fact.length > 0) {
-      const facts = grouped.fact.map(m => `- ${m.content}`).join('\n');
+      const facts = grouped.fact.map(m => `- ${m.content || m.document}`).join('\n');
       sections.push(`Known facts:\n${facts}`);
     }
 
     if (grouped.event.length > 0) {
       const events = grouped.event.map(m => {
         const time = new Date(m.metadata?.timestamp).toLocaleDateString();
-        return `- [${time}] ${m.content}`;
+        return `- [${time}] ${m.content || m.document}`;
       }).join('\n');
       sections.push(`Past events:\n${events}`);
     }
@@ -358,7 +358,8 @@ You're having a normal conversation, not giving a presentation.`;
       const convos = grouped.conversation.map(m => {
         const time = new Date(m.metadata?.timestamp).toLocaleDateString();
         const role = m.metadata?.role || 'user';
-        return `- [${time}] ${role}: "${m.content?.substring(0, 150)}${m.content?.length > 150 ? '...' : ''}"`;
+        const text = m.content || m.document || '';
+        return `- [${time}] ${role}: "${text.substring(0, 150)}${text.length > 150 ? '...' : ''}"`;
       }).join('\n');
       sections.push(`Related past conversations:\n${convos}`);
     }

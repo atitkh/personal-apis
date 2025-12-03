@@ -213,8 +213,8 @@ class VortexService {
           memory: {
             relevant_memories_count: relevantMemories.length,
             memories: relevantMemories.map(m => ({
-              type: m.metadata?.type,
-              content_preview: m.document?.substring(0, 100) + '...',
+              type: m.type || m.metadata?.type,
+              content_preview: (m.content || m.document)?.substring(0, 100) + '...',
               distance: m.distance
             }))
           },
