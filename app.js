@@ -210,8 +210,6 @@ app.get('/api', (req, res) => {
             health: '/health',
             auth: '/auth',
             v1: {
-                courses: '/api/v1/courses',
-                posts: '/api/v1/posts',
                 nft: '/api/v1/nft',
                 valorant: '/api/v1/valorant',
                 smartHome: '/api/v1/smarthome',
@@ -222,8 +220,6 @@ app.get('/api', (req, res) => {
             },
             legacy: {
                 note: 'Legacy endpoints maintained for backward compatibility',
-                courses: '/courses',
-                posts: '/posts',
                 nft: '/nft',
                 valorant: '/valorant',
                 smartHome: '/smarthome',

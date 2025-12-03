@@ -4,6 +4,7 @@ class VortexDebugInterface {
         this.token = localStorage.getItem('vortex_token');
         this.user = null;
         this.conversationId = 'debug-' + Date.now();
+        this.lastMemoryIntelligence = null;
         
         console.log('Token from localStorage:', this.token ? 'exists' : 'not found');
         
@@ -35,6 +36,20 @@ class VortexDebugInterface {
         this.debugTokenBtn = document.getElementById('debugTokenBtn');
         this.testMessageBtn = document.getElementById('testMessageBtn');
         
+        // Memory Intelligence display elements
+        this.evalImportance = document.getElementById('evalImportance');
+        this.evalCategory = document.getElementById('evalCategory');
+        this.evalStorageType = document.getElementById('evalStorageType');
+        this.evalShouldStore = document.getElementById('evalShouldStore');
+        this.evalKeyFacts = document.getElementById('evalKeyFacts');
+        this.evalReasoning = document.getElementById('evalReasoning');
+        this.storageDecisions = document.getElementById('storageDecisions');
+        
+        // Context stats
+        this.workingMemoryCount = document.getElementById('workingMemoryCount');
+        this.semanticMemoryCount = document.getElementById('semanticMemoryCount');
+        this.tokenEstimate = document.getElementById('tokenEstimate');
+        
         // Memory exploration elements
         this.memoryType = document.getElementById('memoryType');
         this.memorySearch = document.getElementById('memorySearch');
@@ -52,6 +67,15 @@ class VortexDebugInterface {
         this.testVoiceBtn = document.getElementById('testVoiceBtn');
         this.voiceStatusBtn = document.getElementById('voiceStatusBtn');
         
+        // New buttons
+        this.clearOutputBtn = document.getElementById('clearOutputBtn');
+        this.summarizeBtn = document.getElementById('summarizeBtn');
+        this.exportChatBtn = document.getElementById('exportChatBtn');
+        this.checkLLMBtn = document.getElementById('checkLLMBtn');
+        this.checkMemoryBtn = document.getElementById('checkMemoryBtn');
+        this.checkVoiceSvcBtn = document.getElementById('checkVoiceSvcBtn');
+        this.clearAllMemoriesBtn = document.getElementById('clearAllMemoriesBtn');
+        
         // Voice-related properties
         this.mediaRecorder = null;
         this.audioChunks = [];
@@ -60,7 +84,9 @@ class VortexDebugInterface {
         this.currentAudio = null;
         
         // Set initial conversation ID
-        this.conversationIdInput.value = this.conversationId;
+        if (this.conversationIdInput) {
+            this.conversationIdInput.value = this.conversationId;
+        }
     }
 
     bindEvents() {
@@ -74,30 +100,46 @@ class VortexDebugInterface {
         });
         this.logoutBtn.addEventListener('click', () => this.logout());
         
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+        });
+        
         // Debug events
-        this.debugBtn.addEventListener('click', () => this.debugConversation());
-        this.newConversationBtn.addEventListener('click', () => this.newConversation());
-        this.clearChatBtn.addEventListener('click', () => this.clearChat());
-        this.debugTokenBtn.addEventListener('click', () => this.debugToken());
-        this.testMessageBtn.addEventListener('click', () => this.testMessageDisplay());
+        if (this.debugBtn) this.debugBtn.addEventListener('click', () => this.debugConversation());
+        if (this.newConversationBtn) this.newConversationBtn.addEventListener('click', () => this.newConversation());
+        if (this.clearChatBtn) this.clearChatBtn.addEventListener('click', () => this.clearChat());
+        if (this.debugTokenBtn) this.debugTokenBtn.addEventListener('click', () => this.debugToken());
+        if (this.testMessageBtn) this.testMessageBtn.addEventListener('click', () => this.testMessageDisplay());
+        if (this.clearOutputBtn) this.clearOutputBtn.addEventListener('click', () => this.clearDebugOutput());
+        
+        // New action buttons
+        if (this.summarizeBtn) this.summarizeBtn.addEventListener('click', () => this.summarizeConversation());
+        if (this.exportChatBtn) this.exportChatBtn.addEventListener('click', () => this.exportChat());
+        if (this.checkLLMBtn) this.checkLLMBtn.addEventListener('click', () => this.checkLLMStatus());
+        if (this.checkMemoryBtn) this.checkMemoryBtn.addEventListener('click', () => this.checkMemoryStatus());
+        if (this.checkVoiceSvcBtn) this.checkVoiceSvcBtn.addEventListener('click', () => this.checkVoiceStatus());
+        if (this.clearAllMemoriesBtn) this.clearAllMemoriesBtn.addEventListener('click', () => this.clearAllMemories());
         
         // Memory exploration events
-        this.browseMemoriesBtn.addEventListener('click', () => this.browseMemories());
-        this.searchMemoriesBtn.addEventListener('click', () => this.searchMemories());
-        this.memorySearch.addEventListener('keypress', (e) => {
+        if (this.browseMemoriesBtn) this.browseMemoriesBtn.addEventListener('click', () => this.browseMemories());
+        if (this.searchMemoriesBtn) this.searchMemoriesBtn.addEventListener('click', () => this.searchMemories());
+        if (this.memorySearch) this.memorySearch.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.searchMemories();
         });
-        this.conversationIdInput.addEventListener('change', (e) => {
+        if (this.conversationIdInput) this.conversationIdInput.addEventListener('change', (e) => {
             this.conversationId = e.target.value;
         });
         
         // Voice events
-        this.recordBtn.addEventListener('mousedown', () => this.startRecording());
-        this.recordBtn.addEventListener('mouseup', () => this.stopRecording());
-        this.recordBtn.addEventListener('mouseleave', () => this.stopRecording());
-        this.playLastBtn.addEventListener('click', () => this.playLastResponse());
-        this.testVoiceBtn.addEventListener('click', () => this.testVoice());
-        this.voiceStatusBtn.addEventListener('click', () => this.checkVoiceStatus());
+        if (this.recordBtn) {
+            this.recordBtn.addEventListener('mousedown', () => this.startRecording());
+            this.recordBtn.addEventListener('mouseup', () => this.stopRecording());
+            this.recordBtn.addEventListener('mouseleave', () => this.stopRecording());
+        }
+        if (this.playLastBtn) this.playLastBtn.addEventListener('click', () => this.playLastResponse());
+        if (this.testVoiceBtn) this.testVoiceBtn.addEventListener('click', () => this.testVoice());
+        if (this.voiceStatusBtn) this.voiceStatusBtn.addEventListener('click', () => this.checkVoiceStatus());
         this.speechSpeed.addEventListener('input', (e) => {
             this.speedValue.textContent = e.target.value + 'x';
         });
@@ -274,6 +316,9 @@ class VortexDebugInterface {
                     }
                     console.log('%c================================================', 'color: #00ff00; font-weight: bold');
                     console.log('Full memory_intelligence object:', memoryIntelligence);
+                    
+                    // Update the UI panel with memory intelligence
+                    this.updateMemoryIntelligencePanel(memoryIntelligence);
                 }
                 
                 if (aiResponse) {
@@ -725,6 +770,9 @@ class VortexDebugInterface {
                     }
                     console.log('%c=========================================================', 'color: #00ff00; font-weight: bold');
                     console.log('Full memory_intelligence object:', memoryIntelligence);
+                    
+                    // Update the UI panel with memory intelligence
+                    this.updateMemoryIntelligencePanel(memoryIntelligence);
                 }
                 
                 // Display transcription and response
@@ -994,7 +1042,267 @@ class VortexDebugInterface {
         }
     }
 
+    // ========== TAB SWITCHING ==========
 
+    switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+        
+        // Update tab panels - the HTML uses id="tab-{name}" format
+        document.querySelectorAll('.tab-content').forEach(panel => {
+            panel.classList.toggle('active', panel.id === 'tab-' + tabName);
+        });
+    }
+
+    // ========== MEMORY INTELLIGENCE DISPLAY ==========
+
+    updateMemoryIntelligencePanel(memoryIntelligence) {
+        if (!memoryIntelligence) {
+            console.log('No memory intelligence data received');
+            return;
+        }
+        
+        console.log('Updating memory intelligence panel:', memoryIntelligence);
+        this.lastMemoryIntelligence = memoryIntelligence;
+        
+        // Update User Evaluation section
+        const userEval = memoryIntelligence.user_evaluation;
+        console.log('User evaluation:', userEval);
+        
+        if (userEval) {
+            // Importance with color coding
+            if (this.evalImportance) {
+                const importance = userEval.importance || 0;
+                this.evalImportance.textContent = importance;
+                const importanceClass = importance >= 7 ? 'high' : importance >= 4 ? 'medium' : 'low';
+                this.evalImportance.className = `eval-value importance-badge importance-${importanceClass}`;
+            }
+            
+            // Category
+            if (this.evalCategory) {
+                this.evalCategory.textContent = userEval.category || 'unknown';
+            }
+            
+            // Storage Type
+            if (this.evalStorageType) {
+                this.evalStorageType.textContent = userEval.storageType || 'none';
+            }
+            
+            // Should Store
+            if (this.evalShouldStore) {
+                const shouldStore = userEval.shouldStore;
+                this.evalShouldStore.textContent = shouldStore ? 'YES' : 'NO';
+                this.evalShouldStore.className = `stat-value ${shouldStore ? 'store-yes' : 'store-no'}`;
+            }
+            
+            // Key Facts
+            if (this.evalKeyFacts) {
+                const keyFacts = userEval.keyFacts || [];
+                if (keyFacts.length > 0) {
+                    this.evalKeyFacts.textContent = keyFacts.join(', ');
+                } else {
+                    this.evalKeyFacts.textContent = '-';
+                }
+            }
+            
+            // Reasoning
+            if (this.evalReasoning) {
+                this.evalReasoning.textContent = userEval.reasoning || 'No reasoning provided';
+            }
+        }
+        
+        // Update Storage Decisions section
+        if (this.storageDecisions) {
+            const decisions = memoryIntelligence.storage_decisions || [];
+            if (decisions.length > 0) {
+                this.storageDecisions.innerHTML = decisions.map(decision => {
+                    const statusIcon = decision.stored ? '✅' : (decision.skipped ? '⏭️' : '❌');
+                    const statusClass = decision.stored ? 'stored' : (decision.skipped ? 'skipped' : 'failed');
+                    
+                    return `
+                        <div class="storage-decision ${statusClass}">
+                            <span class="decision-icon">${statusIcon}</span>
+                            <div class="decision-details">
+                                <span class="decision-type">${decision.type}</span>
+                                <span class="decision-importance">Importance: ${decision.importance}</span>
+                                ${decision.reason ? `<span class="decision-reason">${decision.reason}</span>` : ''}
+                                ${decision.content ? `<span class="decision-content">"${this.escapeHtml(decision.content.substring(0, 50))}..."</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                this.storageDecisions.innerHTML = '<div class="no-data">No storage decisions yet</div>';
+            }
+        }
+        
+        // Update Context Stats section from query_enhancement
+        if (memoryIntelligence.query_enhancement) {
+            const qe = memoryIntelligence.query_enhancement;
+            if (this.workingMemoryCount) this.workingMemoryCount.textContent = qe.queries_used || 0;
+            if (this.semanticMemoryCount) this.semanticMemoryCount.textContent = (qe.categories || []).length;
+        }
+        
+        // Update storage decisions count
+        const decisionsCount = (memoryIntelligence.storage_decisions || []).length;
+        if (this.tokenEstimate) {
+            this.tokenEstimate.textContent = decisionsCount;
+        }
+    }
+
+    // ========== NEW ACTION METHODS ==========
+
+    clearDebugOutput() {
+        if (this.debugOutput) {
+            this.debugOutput.textContent = '';
+        }
+    }
+
+    async summarizeConversation() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = 'Generating conversation summary...';
+            
+            const response = await fetch(`/api/v1/vortex/conversation/${this.conversationId}/summary`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.debugOutput.textContent = JSON.stringify(data, null, 2);
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to summarize'}`;
+            }
+        } catch (error) {
+            console.error('Summarize error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+        }
+    }
+
+    exportChat() {
+        const messages = [];
+        const messageElements = this.chatMessages.querySelectorAll('.message');
+        
+        messageElements.forEach(msgEl => {
+            const role = msgEl.querySelector('.role')?.textContent || 'unknown';
+            const content = msgEl.querySelector('.message-content')?.textContent || '';
+            const timestamp = msgEl.querySelector('.timestamp')?.textContent || '';
+            messages.push({ role, content, timestamp });
+        });
+
+        const exportData = {
+            conversation_id: this.conversationId,
+            exported_at: new Date().toISOString(),
+            message_count: messages.length,
+            messages
+        };
+
+        // Download as JSON file
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vortex-chat-${this.conversationId}-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        this.addMessage('system', `📤 Chat exported (${messages.length} messages)`);
+    }
+
+    async checkLLMStatus() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = 'Checking LLM status...';
+            
+            const response = await fetch('/api/v1/vortex/status/llm', {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            this.debugOutput.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+            console.error('LLM status error:', error);
+            this.debugOutput.textContent = `LLM Status Check Failed:\n${error.message}`;
+        }
+    }
+
+    async checkMemoryStatus() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = 'Checking memory service status...';
+            
+            const response = await fetch('/api/v1/vortex/status/memory', {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            this.debugOutput.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+            console.error('Memory status error:', error);
+            this.debugOutput.textContent = `Memory Status Check Failed:\n${error.message}`;
+        }
+    }
+
+    async clearAllMemories() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        if (!confirm('⚠️ This will delete ALL your memories. Are you sure?')) {
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = 'Clearing all memories...';
+            
+            const response = await fetch('/api/v1/vortex/memory/clear', {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.debugOutput.textContent = JSON.stringify(data, null, 2);
+                this.addMessage('system', '🗑️ All memories cleared');
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to clear memories'}`;
+            }
+        } catch (error) {
+            console.error('Clear memories error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+        }
+    }
 }
 
 // Initialize the interface when the page loads
