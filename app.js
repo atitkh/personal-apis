@@ -257,12 +257,24 @@ app.use('*', (req, res) => {
 
 //Connect to DB
 if (!config.isTest()) {
-    databaseManager.connect().catch(err => {
-        console.error('Failed to start application:', err);
-        if (config.isProduction()) {
-            process.exit(1);
-        }
-    });
+    databaseManager.connect()
+        .then(async () => {
+            // Initialize MCP service after database connection
+            try {
+                const mcpService = require('./services/mcpService');
+                await mcpService.initialize();
+                console.log('✅ MCP Service initialized');
+            } catch (mcpError) {
+                console.warn('⚠️ MCP Service initialization failed:', mcpError.message);
+                // Continue without MCP - non-critical
+            }
+        })
+        .catch(err => {
+            console.error('Failed to start application:', err);
+            if (config.isProduction()) {
+                process.exit(1);
+            }
+        });
 }
 
 //listen

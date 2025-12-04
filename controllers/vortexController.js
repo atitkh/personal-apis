@@ -439,6 +439,163 @@ class VortexController {
       next(error);
     }
   }
+
+  /**
+   * Get all knowledge documents
+   */
+  async browseKnowledge(req, res, next) {
+    try {
+      const { limit, category } = req.query;
+
+      logger.info('Browse knowledge request', {
+        correlationId: req.correlationId,
+        limit,
+        category
+      });
+
+      const result = await memoryService.browseKnowledge({
+        limit: limit ? parseInt(limit) : 100,
+        category: category || null
+      });
+
+      res.success(result, 'Knowledge documents retrieved');
+
+    } catch (error) {
+      logger.error('Browse knowledge error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Add a knowledge document
+   */
+  async addKnowledge(req, res, next) {
+    try {
+      const { content, title, category, source, metadata } = req.body;
+
+      if (!content || !title) {
+        return res.status(400).json({
+          success: false,
+          error: 'Content and title are required'
+        });
+      }
+
+      logger.info('Add knowledge request', {
+        correlationId: req.correlationId,
+        title,
+        category,
+        contentLength: content.length
+      });
+
+      const result = await memoryService.storeKnowledge({
+        content,
+        title,
+        category: category || 'general',
+        source: source || 'manual',
+        metadata: metadata || {}
+      });
+
+      if (result.skipped) {
+        res.success(result, 'Knowledge document skipped (duplicate)');
+      } else {
+        res.success(result, 'Knowledge document added successfully');
+      }
+
+    } catch (error) {
+      logger.error('Add knowledge error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Delete a knowledge document
+   */
+  async deleteKnowledge(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Knowledge document ID is required'
+        });
+      }
+
+      logger.info('Delete knowledge request', {
+        correlationId: req.correlationId,
+        id
+      });
+
+      const result = await memoryService.deleteKnowledge(id);
+
+      res.success(result, 'Knowledge document deleted successfully');
+
+    } catch (error) {
+      logger.error('Delete knowledge error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Search knowledge documents
+   */
+  async searchKnowledge(req, res, next) {
+    try {
+      const { query, limit } = req.query;
+
+      if (!query) {
+        return res.status(400).json({
+          success: false,
+          error: 'Search query is required'
+        });
+      }
+
+      logger.info('Search knowledge request', {
+        correlationId: req.correlationId,
+        query,
+        limit
+      });
+
+      await memoryService.ensureInitialized();
+      
+      const results = await memoryService.collections.knowledge.query({
+        queryTexts: [query],
+        nResults: limit ? parseInt(limit) : 10,
+        include: ['metadatas', 'documents', 'distances']
+      });
+
+      const documents = [];
+      if (results.documents?.[0]) {
+        results.documents[0].forEach((doc, index) => {
+          documents.push({
+            id: results.ids[0][index],
+            content: doc,
+            metadata: results.metadatas?.[0]?.[index] || {},
+            distance: results.distances?.[0]?.[index],
+            title: results.metadatas?.[0]?.[index]?.title || 'Untitled'
+          });
+        });
+      }
+
+      res.success({ documents, count: documents.length, query }, 'Knowledge search completed');
+
+    } catch (error) {
+      logger.error('Search knowledge error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
 }
 
 module.exports = new VortexController();

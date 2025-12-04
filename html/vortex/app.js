@@ -78,6 +78,18 @@ class VortexDebugInterface {
         this.checkVoiceSvcBtn = document.getElementById('checkVoiceSvcBtn');
         this.clearAllMemoriesBtn = document.getElementById('clearAllMemoriesBtn');
         
+        // Knowledge base elements
+        this.knowledgeTitle = document.getElementById('knowledgeTitle');
+        this.knowledgeCategory = document.getElementById('knowledgeCategory');
+        this.knowledgeContent = document.getElementById('knowledgeContent');
+        this.addKnowledgeBtn = document.getElementById('addKnowledgeBtn');
+        this.knowledgeFilterCategory = document.getElementById('knowledgeFilterCategory');
+        this.knowledgeSearchQuery = document.getElementById('knowledgeSearchQuery');
+        this.browseKnowledgeBtn = document.getElementById('browseKnowledgeBtn');
+        this.searchKnowledgeBtn = document.getElementById('searchKnowledgeBtn');
+        this.knowledgeList = document.getElementById('knowledgeList');
+        this.knowledgeCount = document.getElementById('knowledgeCount');
+        
         // Voice-related properties
         this.mediaRecorder = null;
         this.audioChunks = [];
@@ -123,6 +135,14 @@ class VortexDebugInterface {
         if (this.checkMemoryBtn) this.checkMemoryBtn.addEventListener('click', () => this.checkMemoryStatus());
         if (this.checkVoiceSvcBtn) this.checkVoiceSvcBtn.addEventListener('click', () => this.checkVoiceStatus());
         if (this.clearAllMemoriesBtn) this.clearAllMemoriesBtn.addEventListener('click', () => this.clearAllMemories());
+        
+        // Knowledge base events
+        if (this.addKnowledgeBtn) this.addKnowledgeBtn.addEventListener('click', () => this.addKnowledge());
+        if (this.browseKnowledgeBtn) this.browseKnowledgeBtn.addEventListener('click', () => this.browseKnowledge());
+        if (this.searchKnowledgeBtn) this.searchKnowledgeBtn.addEventListener('click', () => this.searchKnowledge());
+        if (this.knowledgeSearchQuery) this.knowledgeSearchQuery.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.searchKnowledge();
+        });
         
         // Memory exploration events
         if (this.browseMemoriesBtn) this.browseMemoriesBtn.addEventListener('click', () => this.browseMemories());
@@ -489,6 +509,73 @@ class VortexDebugInterface {
             formattedText += JSON.stringify(debugData.memory_intelligence, null, 2) + '\n\n';
         }
         
+        // MCP / Tools Summary
+        if (debugData.mcp) {
+            formattedText += `${'='.repeat(60)}\n`;
+            formattedText += `🔧 MCP / TOOLS\n`;
+            formattedText += `${'='.repeat(60)}\n\n`;
+            
+            // First, show raw response for debugging
+            formattedText += `--- RAW MCP RESPONSE ---\n`;
+            formattedText += JSON.stringify(debugData.mcp, null, 2) + '\n\n';
+            
+            formattedText += `--- PARSED INFO ---\n`;
+            formattedText += `Needs Tools: ${debugData.mcp.needsTools || false}\n`;
+            
+            // Show reason if tools were not needed
+            if (!debugData.mcp.needsTools && debugData.mcp.reason) {
+                formattedText += `Reason: ${debugData.mcp.reason}\n`;
+                if (debugData.mcp.serversConfigured !== undefined) {
+                    formattedText += `Servers Configured: ${debugData.mcp.serversConfigured}\n`;
+                    formattedText += `Servers Enabled: ${debugData.mcp.serversEnabled}\n`;
+                }
+                if (debugData.mcp.availableCategories) {
+                    formattedText += `Available Categories: ${JSON.stringify(debugData.mcp.availableCategories)}\n`;
+                }
+            }
+            
+            // Show intent classification if available
+            if (debugData.mcp.intent) {
+                formattedText += `\n--- INTENT CLASSIFICATION ---\n`;
+                formattedText += `Categories: ${JSON.stringify(debugData.mcp.intent.categories || [])}\n`;
+                formattedText += `Confidence: ${debugData.mcp.intent.confidence || 'N/A'}\n`;
+                formattedText += `Reasoning: ${debugData.mcp.intent.reasoning || 'N/A'}\n`;
+            }
+            
+            if (debugData.mcp.toolsUsed && debugData.mcp.toolsUsed.length > 0) {
+                formattedText += `\n--- TOOLS USED ---\n`;
+                debugData.mcp.toolsUsed.forEach((tool, i) => {
+                    formattedText += `[${i + 1}] ${tool}\n`;
+                });
+            }
+            if (debugData.mcp.toolResults && debugData.mcp.toolResults.length > 0) {
+                formattedText += `\n--- TOOL RESULTS ---\n`;
+                debugData.mcp.toolResults.forEach((result, i) => {
+                    formattedText += `[${i + 1}] ${result.tool}: ${result.success ? '✅' : '❌'}\n`;
+                    if (result.result) {
+                        const resultStr = typeof result.result === 'object' 
+                            ? JSON.stringify(result.result, null, 2).split('\n').map(l => '    ' + l).join('\n')
+                            : '    ' + result.result;
+                        formattedText += `${resultStr}\n`;
+                    }
+                    if (result.error) {
+                        formattedText += `    Error: ${result.error}\n`;
+                    }
+                });
+            }
+            
+            // Show context that was injected into LLM
+            if (debugData.mcp.contextForLLM) {
+                formattedText += `\n--- CONTEXT INJECTED TO LLM ---\n`;
+                formattedText += `${debugData.mcp.contextForLLM}\n`;
+            }
+            
+            if (debugData.mcp.error) {
+                formattedText += `\n⚠️ MCP Error: ${debugData.mcp.error}\n`;
+            }
+            formattedText += '\n';
+        }
+        
         // Memory Summary
         if (debugData.memory) {
             formattedText += `${'='.repeat(60)}\n`;
@@ -498,7 +585,7 @@ class VortexDebugInterface {
         }
         
         // Any remaining debug data
-        const shown = ['llm_request', 'llm_response', 'memory_intelligence', 'memory', 'prompt'];
+        const shown = ['llm_request', 'llm_response', 'memory_intelligence', 'mcp', 'memory', 'prompt'];
         const remaining = Object.keys(debugData).filter(k => !shown.includes(k));
         if (remaining.length > 0) {
             formattedText += `${'='.repeat(60)}\n`;
@@ -1387,6 +1474,246 @@ class VortexDebugInterface {
             console.error('Clear memories error:', error);
             this.debugOutput.textContent = `Network error: ${error.message}`;
         }
+    }
+
+    // ========================================
+    // Knowledge Base Methods
+    // ========================================
+
+    async addKnowledge() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        const title = this.knowledgeTitle?.value?.trim();
+        const content = this.knowledgeContent?.value?.trim();
+        const category = this.knowledgeCategory?.value || 'general';
+
+        if (!title || !content) {
+            this.debugOutput.textContent = 'Error: Title and content are required.';
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = 'Adding knowledge document...';
+            
+            const response = await fetch('/api/v1/vortex/knowledge', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title,
+                    content,
+                    category,
+                    source: 'manual'
+                })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.debugOutput.textContent = JSON.stringify(data, null, 2);
+                
+                if (data.data?.skipped) {
+                    this.addMessage('system', `⏭️ Knowledge skipped (duplicate): ${title}`);
+                } else {
+                    this.addMessage('system', `✅ Knowledge added: ${title}`);
+                    // Clear inputs after successful add
+                    this.knowledgeTitle.value = '';
+                    this.knowledgeContent.value = '';
+                    // Refresh the list
+                    this.browseKnowledge();
+                }
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to add knowledge'}`;
+            }
+        } catch (error) {
+            console.error('Add knowledge error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+        }
+    }
+
+    async browseKnowledge() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = 'Loading knowledge documents...';
+            
+            const category = this.knowledgeFilterCategory?.value || '';
+            const url = category 
+                ? `/api/v1/vortex/knowledge?category=${encodeURIComponent(category)}`
+                : '/api/v1/vortex/knowledge';
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.debugOutput.textContent = JSON.stringify(data, null, 2);
+                this.renderKnowledgeList(data.data?.documents || []);
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Failed to load knowledge'}`;
+                this.knowledgeList.innerHTML = '<span class="placeholder">Failed to load documents</span>';
+            }
+        } catch (error) {
+            console.error('Browse knowledge error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+            this.knowledgeList.innerHTML = '<span class="placeholder">Network error</span>';
+        }
+    }
+
+    async searchKnowledge() {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        const query = this.knowledgeSearchQuery?.value?.trim();
+        if (!query) {
+            this.debugOutput.textContent = 'Error: Search query is required.';
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = `Searching knowledge for: "${query}"...`;
+            
+            const response = await fetch(`/api/v1/vortex/knowledge/search?query=${encodeURIComponent(query)}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.debugOutput.textContent = JSON.stringify(data, null, 2);
+                this.renderKnowledgeList(data.data?.documents || [], true);
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Search failed'}`;
+            }
+        } catch (error) {
+            console.error('Search knowledge error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+        }
+    }
+
+    async deleteKnowledge(id, title) {
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        if (!confirm(`Delete knowledge document: "${title}"?`)) {
+            return;
+        }
+
+        try {
+            this.debugOutput.textContent = `Deleting: ${title}...`;
+            
+            const response = await fetch(`/api/v1/vortex/knowledge/${encodeURIComponent(id)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.debugOutput.textContent = JSON.stringify(data, null, 2);
+                this.addMessage('system', `🗑️ Deleted: ${title}`);
+                // Refresh the list
+                this.browseKnowledge();
+            } else {
+                this.debugOutput.textContent = `Error (${response.status}): ${data.message || 'Delete failed'}`;
+            }
+        } catch (error) {
+            console.error('Delete knowledge error:', error);
+            this.debugOutput.textContent = `Network error: ${error.message}`;
+        }
+    }
+
+    renderKnowledgeList(documents, isSearch = false) {
+        if (!this.knowledgeList) return;
+        
+        // Update count badge
+        if (this.knowledgeCount) {
+            this.knowledgeCount.textContent = documents.length;
+        }
+
+        if (!documents || documents.length === 0) {
+            this.knowledgeList.innerHTML = `<span class="placeholder">${isSearch ? 'No matching documents found' : 'No documents in knowledge base'}</span>`;
+            return;
+        }
+
+        const getCategoryEmoji = (category) => {
+            const emojis = {
+                'general': '📁',
+                'documentation': '📖',
+                'reference': '📋',
+                'guide': '📝',
+                'personal': '👤',
+                'technical': '⚙️'
+            };
+            return emojis[category] || '📄';
+        };
+
+        const html = documents.map(doc => {
+            const preview = doc.content?.substring(0, 150) + (doc.content?.length > 150 ? '...' : '');
+            const category = doc.metadata?.category || 'general';
+            const distance = doc.distance !== undefined ? ` (${(1 - doc.distance).toFixed(2)} match)` : '';
+            const timestamp = doc.metadata?.timestamp ? new Date(doc.metadata.timestamp).toLocaleDateString() : '';
+            
+            return `
+                <div class="knowledge-item" data-id="${doc.id}">
+                    <div class="knowledge-header">
+                        <span class="knowledge-title">${getCategoryEmoji(category)} ${doc.title || doc.metadata?.title || 'Untitled'}</span>
+                        <button class="btn-tiny btn-danger delete-knowledge-btn" data-id="${doc.id}" data-title="${doc.title || doc.metadata?.title || 'Untitled'}">🗑️</button>
+                    </div>
+                    <div class="knowledge-meta">
+                        <span class="knowledge-category">${category}</span>
+                        ${timestamp ? `<span class="knowledge-date">${timestamp}</span>` : ''}
+                        ${distance ? `<span class="knowledge-distance">${distance}</span>` : ''}
+                    </div>
+                    <div class="knowledge-preview">${preview}</div>
+                </div>
+            `;
+        }).join('');
+
+        this.knowledgeList.innerHTML = html;
+
+        // Add delete event listeners
+        this.knowledgeList.querySelectorAll('.delete-knowledge-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const title = btn.dataset.title;
+                this.deleteKnowledge(id, title);
+            });
+        });
+
+        // Add click event to show full content
+        this.knowledgeList.querySelectorAll('.knowledge-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const doc = documents.find(d => d.id === item.dataset.id);
+                if (doc) {
+                    this.debugOutput.textContent = JSON.stringify(doc, null, 2);
+                }
+            });
+        });
     }
 }
 

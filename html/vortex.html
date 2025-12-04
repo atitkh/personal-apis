@@ -58,6 +58,7 @@
             <div class="debug-panel">
                 <div class="debug-tabs">
                     <button class="tab-btn active" data-tab="memory">🧠 Memory</button>
+                    <button class="tab-btn" data-tab="knowledge">📚 Knowledge</button>
                     <button class="tab-btn" data-tab="conversation">💬 Conv</button>
                     <button class="tab-btn" data-tab="voice">🎤 Voice</button>
                     <button class="tab-btn" data-tab="system">⚙️ System</button>
@@ -123,6 +124,67 @@
                         <div class="explorer-buttons">
                             <button id="browseMemoriesBtn" class="btn-small">Browse</button>
                             <button id="searchMemoriesBtn" class="btn-small">Search</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Knowledge Tab -->
+                <div class="tab-content" id="tab-knowledge">
+                    <h3>📚 Knowledge Base</h3>
+                    
+                    <!-- Add Knowledge -->
+                    <div class="debug-card">
+                        <h4>➕ Add Document</h4>
+                        <div class="input-group">
+                            <label for="knowledgeTitle">Title:</label>
+                            <input type="text" id="knowledgeTitle" placeholder="Document title...">
+                        </div>
+                        <div class="input-group">
+                            <label for="knowledgeCategory">Category:</label>
+                            <select id="knowledgeCategory">
+                                <option value="general">📁 General</option>
+                                <option value="documentation">📖 Documentation</option>
+                                <option value="reference">📋 Reference</option>
+                                <option value="guide">📝 Guide</option>
+                                <option value="personal">👤 Personal</option>
+                                <option value="technical">⚙️ Technical</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="knowledgeContent">Content:</label>
+                            <textarea id="knowledgeContent" rows="4" placeholder="Enter knowledge content..."></textarea>
+                        </div>
+                        <div class="button-row">
+                            <button id="addKnowledgeBtn" class="btn-small btn-primary">📤 Add Document</button>
+                        </div>
+                    </div>
+
+                    <!-- Browse/Search Knowledge -->
+                    <div class="debug-card">
+                        <h4>🔍 Browse & Search</h4>
+                        <div class="explorer-controls">
+                            <select id="knowledgeFilterCategory">
+                                <option value="">All Categories</option>
+                                <option value="general">📁 General</option>
+                                <option value="documentation">📖 Documentation</option>
+                                <option value="reference">📋 Reference</option>
+                                <option value="guide">📝 Guide</option>
+                                <option value="personal">👤 Personal</option>
+                                <option value="technical">⚙️ Technical</option>
+                            </select>
+                            <input type="text" id="knowledgeSearchQuery" placeholder="Search knowledge...">
+                        </div>
+                        <div class="explorer-buttons">
+                            <button id="browseKnowledgeBtn" class="btn-small">📋 Browse All</button>
+                            <button id="searchKnowledgeBtn" class="btn-small">🔍 Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Knowledge List -->
+                    <div class="debug-card knowledge-list-card">
+                        <h4>📄 Documents <span id="knowledgeCount" class="count-badge">0</span></h4>
+                        <div id="knowledgeList" class="knowledge-list">
+                            <span class="placeholder">No documents loaded. Click "Browse All" to view.</span>
                         </div>
                     </div>
                 </div>

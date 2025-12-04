@@ -179,12 +179,17 @@ Your job is to analyze messages and determine:
 
 4. KEY_FACTS: Extract any concrete facts (names, dates, preferences, etc.)
 
-5. EXPLICIT_ACTION: Detect if user explicitly requests memory actions:
+5. EXPLICIT_ACTION: Detect if user explicitly requests MEMORY-related actions:
    - "Remember that..." or "Don't forget..." → {"type": "remember", "content": "what to remember"}
    - "Remind me to..." or "Set a reminder..." → {"type": "remind", "content": "what to remind"}
    - "Note that..." or "Make a note..." → {"type": "note", "content": "what to note"}
-   - If no explicit request, set to null
-   - IMPORTANT: Questions like "What did I ask you to remember?" are NOT actions - set to null
+   
+   IMPORTANT - These are NOT explicit memory actions (set to null):
+   - Questions like "What did I ask you to remember?" 
+   - Device/tool commands like "turn on the light", "play music", "set temperature"
+   - General requests like "help me with...", "can you..."
+   
+   Only set explicit_action when user is explicitly asking to STORE something in memory.
 
 Respond ONLY with valid JSON. Be consistent and objective.`;
   }

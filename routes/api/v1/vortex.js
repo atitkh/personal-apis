@@ -303,6 +303,114 @@ router.get('/memory/intelligence/status', authenticate, vortexController.getMemo
 
 /**
  * @swagger
+ * /api/v1/vortex/knowledge:
+ *   get:
+ *     summary: Browse knowledge documents
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Maximum number of documents to return
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by category
+ *     responses:
+ *       200:
+ *         description: List of knowledge documents
+ */
+router.get('/knowledge', authenticate, vortexController.browseKnowledge);
+
+/**
+ * @swagger
+ * /api/v1/vortex/knowledge/search:
+ *   get:
+ *     summary: Search knowledge documents
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: query
+ *         name: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Search query
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Maximum number of results
+ *     responses:
+ *       200:
+ *         description: Search results
+ */
+router.get('/knowledge/search', authenticate, vortexController.searchKnowledge);
+
+/**
+ * @swagger
+ * /api/v1/vortex/knowledge:
+ *   post:
+ *     summary: Add a knowledge document
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *               - title
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: Document content
+ *               title:
+ *                 type: string
+ *                 description: Document title
+ *               category:
+ *                 type: string
+ *                 description: Document category
+ *               source:
+ *                 type: string
+ *                 description: Document source
+ *     responses:
+ *       200:
+ *         description: Document added successfully
+ */
+router.post('/knowledge', authenticate, vortexController.addKnowledge);
+
+/**
+ * @swagger
+ * /api/v1/vortex/knowledge/{id}:
+ *   delete:
+ *     summary: Delete a knowledge document
+ *     tags: [Vortex]
+ *     security:
+ *       - authToken: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Document ID to delete
+ *     responses:
+ *       200:
+ *         description: Document deleted successfully
+ */
+router.delete('/knowledge/:id', authenticate, vortexController.deleteKnowledge);
+
+/**
+ * @swagger
  * /api/v1/vortex/status:
  *   get:
  *     summary: Get Vortex system status

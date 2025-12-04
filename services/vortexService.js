@@ -1,6 +1,7 @@
 const memoryService = require('./memoryService');
 const llmService = require('./llmService');
 const memoryIntelligence = require('./memoryIntelligenceService');
+const mcpService = require('./mcpService');
 const { logger } = require('../utils/logger');
 const crypto = require('crypto');
 
@@ -9,13 +10,14 @@ class VortexService {
     this.personality = {
       name: "Vortex",
       role: "friend",
-      description: "created and developed by Atit Kharel in 2025, a chill friend, who happens to remember everything and knows a lot about tech",
+      description: "created and developed by Atit Kharel in 2025, a obedient and polite friend, who happens to remember everything and knows a lot about tech",
       traits: [
         "Casual and genuine",
         "Gets straight to the point",
         "Remembers past conversations naturally",
         "Knows tech stuff but doesn't show off",
-        "Talks like a real person, not a robot"
+        "Talks like a real person, not a robot",
+        "Helpful and friendly but professional not arrogant"
       ]
     };
   }
@@ -103,7 +105,7 @@ class VortexService {
             userId,
             query,
             conversationId,
-            limit: 10 // Increased from 5 - retrieve more, filter by relevance
+            limit: 20 // Retrieve more per query, filter by relevance later
           });
           allMemories.push(...memories);
         }
@@ -147,11 +149,11 @@ class VortexService {
         });
 
         // Re-rank memories for relevance (increased output limit)
-        if (uniqueMemories.length > 5) {
+        if (uniqueMemories.length > 8) {
           relevantMemories = await memoryIntelligence.rerankMemories(
             messageContent,
             uniqueMemories,
-            8 // Increased from 5 - more context for complex queries
+            12 // Include more context for complex queries
           );
         } else {
           relevantMemories = uniqueMemories;
@@ -232,6 +234,99 @@ class VortexService {
           },
           timestamp: new Date().toISOString()
         };
+      }
+
+      // STEP 3: Check if message requires tool/MCP execution
+      let mcpResult = null;
+      try {
+        // Get raw recent conversation for MCP (not filtered/deduplicated like conversationContext)
+        // This ensures we have the actual conversation flow for pronoun resolution
+        let recentForMCP = [];
+        try {
+          const rawRecentMessages = await memoryService.getRecentConversation({
+            userId,
+            conversationId,
+            limit: 10 // Last 10 messages (5 exchanges)
+          });
+          
+          // Take last 8 messages, but exclude the very last one if it matches current message
+          // (the current message is passed separately to MCP)
+          const currentMsgNormalized = messageContent?.toLowerCase().trim();
+          const lastMsg = rawRecentMessages[rawRecentMessages.length - 1];
+          const lastMsgContent = (lastMsg?.document || lastMsg?.content || '').toLowerCase().trim();
+          
+          // If the last message matches current, exclude it (it's the current message already stored)
+          const messagesToUse = lastMsgContent === currentMsgNormalized
+            ? rawRecentMessages.slice(0, -1)  // Exclude last
+            : rawRecentMessages;
+          
+          recentForMCP = messagesToUse
+            .slice(-8) // Last 8 messages (4 exchanges)
+            .map(msg => ({
+              role: msg.metadata?.role === 'assistant' ? 'assistant' : 'user',
+              content: msg.document || msg.content
+            }));
+        } catch (e) {
+          logger.debug('Could not get recent messages for MCP', { error: e.message });
+        }
+        
+        mcpResult = await mcpService.processMessage({
+          message: messageContent,
+          userId,
+          conversationId,
+          context,
+          recentMessages: recentForMCP
+        });
+
+        // If tools were used (or attempted), inject results into conversation context
+        if (mcpResult.needsTools) {
+          // Check if any tools failed
+          const failedTools = (mcpResult.toolResults || []).filter(r => !r.success);
+          const successfulTools = (mcpResult.toolResults || []).filter(r => r.success);
+          
+          let toolContext = '';
+          
+          if (mcpResult.contextForLLM) {
+            toolContext = mcpResult.contextForLLM;
+          }
+          
+          // If tools failed, add explicit failure context so LLM acknowledges it
+          if (failedTools.length > 0) {
+            toolContext += '\n\nIMPORTANT: Some tool actions FAILED. You MUST acknowledge this failure to the user.';
+            toolContext += '\nFailed actions:';
+            failedTools.forEach(f => {
+              toolContext += `\n- ${f.tool}: ${f.error || 'Unknown error'}`;
+            });
+            toolContext += '\n\nDo NOT say you cannot do the action. Say the action was ATTEMPTED but encountered an error.';
+          }
+          
+          if (toolContext) {
+            conversationContext.push({
+              role: 'system',
+              content: toolContext
+            });
+          }
+          
+          logger.debug('MCP tools executed', {
+            toolsUsed: mcpResult.toolsUsed,
+            successCount: successfulTools.length,
+            failCount: failedTools.length
+          });
+        }
+
+        // Add full MCP response to debug output - include RAW response
+        if (debug && debugInfo) {
+          debugInfo.mcp = mcpResult ? {
+            ...mcpResult,  // Spread entire response
+            _raw: JSON.stringify(mcpResult)  // Also include stringified version
+          } : { error: 'mcpResult was null/undefined' };
+        }
+      } catch (mcpError) {
+        logger.error('MCP processing failed', { error: mcpError.message });
+        // Continue without tools - don't break the chat
+        if (debug && debugInfo) {
+          debugInfo.mcp = { error: mcpError.message, stack: mcpError.stack };
+        }
       }
 
       // Get LLM response with focused parameters
@@ -391,13 +486,24 @@ class VortexService {
       });
 
       // Use explicit action from evaluation (merged - no separate LLM call needed)
-      const detectedActions = userMessageEvaluation?.explicitAction 
-        ? [userMessageEvaluation.explicitAction] 
-        : [];
-      
-      // Process detected actions
-      for (const action of detectedActions) {
-        await this.handleDetectedAction(action, llmResponse.content, userId, conversationId, context);
+      // BUT skip if MCP already handled tools - avoid duplicate action handling
+      let detectedActions = [];
+      if (mcpResult?.needsTools && mcpResult?.toolsUsed?.length > 0) {
+        // MCP already handled the action - convert tool results to action format for tracking
+        detectedActions = mcpResult.toolsUsed.map(tool => ({
+          type: 'tool_executed',
+          tool: tool,
+          handled_by: 'mcp',
+          results: mcpResult.toolResults?.find(r => r.tool === tool)
+        }));
+        logger.debug('Actions handled by MCP, skipping explicit action detection', { toolsUsed: mcpResult.toolsUsed });
+      } else if (userMessageEvaluation?.explicitAction) {
+        // No MCP tools used, check for explicit memory actions (remember/remind/note)
+        detectedActions = [userMessageEvaluation.explicitAction];
+        // Process detected actions
+        for (const action of detectedActions) {
+          await this.handleDetectedAction(action, llmResponse.content, userId, conversationId, context);
+        }
       }
 
       // Add LLM response to debug info if debug mode is enabled

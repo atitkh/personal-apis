@@ -833,6 +833,126 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 /* ========================================
+   Knowledge Base Tab Styles
+   ======================================== */
+
+.knowledge-list-card {
+    flex: 1;
+    min-height: 200px;
+    max-height: 400px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.knowledge-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px;
+}
+
+.knowledge-item {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.knowledge-item:hover {
+    border-color: var(--accent-primary);
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.knowledge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.knowledge-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.knowledge-meta {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.knowledge-category {
+    font-size: 10px;
+    padding: 2px 8px;
+    background: var(--accent-primary);
+    color: white;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.knowledge-date {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.knowledge-distance {
+    font-size: 10px;
+    color: var(--accent-teal);
+}
+
+.knowledge-preview {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.count-badge {
+    display: inline-block;
+    background: var(--accent-primary);
+    color: white;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
+
+textarea#knowledgeContent {
+    width: 100%;
+    resize: vertical;
+    min-height: 80px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+}
+
+textarea#knowledgeContent:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+    color: white !important;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+/* ========================================
    Responsive Design
    ======================================== */
 
