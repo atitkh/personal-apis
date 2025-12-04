@@ -110,32 +110,27 @@ class VortexService {
           allMemories.push(...memories);
         }
 
-        // RELEVANCE THRESHOLD FILTER - Industry standard approach
-        // Only include memories that are actually relevant (distance < 1.4)
-        // Distance: 0 = perfect match, 1 = unrelated, >1 = very different
-        // Using 1.4 while memory is building up - can tighten later
-        const RELEVANCE_THRESHOLD = 1.4;
-        const relevantOnly = allMemories.filter(m => {
-          const distance = m.distance || 1;
-          return distance < RELEVANCE_THRESHOLD;
-        });
+        // SMART RELEVANCE FILTER - Hybrid adaptive approach
+        // Combines static thresholds with dynamic adaptation based on result quality
+        const relevantOnly = this.smartFilterMemories(allMemories);
 
         // Console log for debugging
-        console.log('\n🔍 RELEVANCE FILTER:');
+        console.log('\n🔍 SMART RELEVANCE FILTER:');
         console.log(`  Retrieved: ${allMemories.length} memories`);
-        console.log(`  After threshold (< ${RELEVANCE_THRESHOLD}): ${relevantOnly.length} memories`);
+        console.log(`  After smart filter: ${relevantOnly.length} memories`);
         console.log(`  Filtered out: ${allMemories.length - relevantOnly.length} irrelevant memories`);
         if (allMemories.length > 0) {
+          const distances = allMemories.map(m => m.distance || 1);
           console.log('  Distance range:', {
-            min: Math.min(...allMemories.map(m => m.distance || 1)).toFixed(3),
-            max: Math.max(...allMemories.map(m => m.distance || 1)).toFixed(3)
+            min: Math.min(...distances).toFixed(3),
+            max: Math.max(...distances).toFixed(3),
+            kept_max: relevantOnly.length > 0 ? Math.max(...relevantOnly.map(m => m.distance || 1)).toFixed(3) : 'N/A'
           });
         }
 
-        logger.debug('Relevance filtering', {
+        logger.debug('Smart relevance filtering', {
           before: allMemories.length,
           after: relevantOnly.length,
-          threshold: RELEVANCE_THRESHOLD,
           filtered: allMemories.length - relevantOnly.length
         });
 
@@ -941,6 +936,88 @@ class VortexService {
         summarization: true
       }
     };
+  }
+
+  /**
+   * Smart memory filtering with hybrid adaptive approach
+   * Combines static thresholds with dynamic adaptation based on result quality
+   * 
+   * Strategy:
+   * 1. Always include top results if under strict quality threshold
+   * 2. Dynamically adapt based on distance range (min/max)
+   * 3. Stop at relevance cliffs (large gaps in distance)
+   * 4. Enforce min/max result limits
+   */
+  smartFilterMemories(memories) {
+    if (!memories || memories.length === 0) return [];
+
+    // Sort by distance (lower = more relevant)
+    const sorted = [...memories].sort((a, b) => (a.distance || 1) - (b.distance || 1));
+    
+    const distances = sorted.map(m => m.distance || 1);
+    const min = distances[0];
+    const max = distances[distances.length - 1];
+
+    // Configuration
+    const config = {
+      strictThreshold: 1.3,      // Always include if distance < this
+      looseThreshold: 1.8,       // Never include if distance > this
+      minResults: 3,             // Try to return at least this many
+      maxResults: 20,            // Never return more than this
+      dynamicPercentile: 0.4,    // Keep within 40% of distance range
+      gapMultiplier: 1.3         // Stop if next result is 30%+ farther (relevance cliff)
+    };
+
+    // Calculate dynamic threshold based on actual result distribution
+    const dynamicThreshold = min + (max - min) * config.dynamicPercentile;
+    const effectiveThreshold = Math.max(
+      Math.min(config.strictThreshold, dynamicThreshold),
+      min * 1.2  // At minimum, allow 20% above best result
+    );
+
+    const filtered = [];
+    let prevDistance = 0;
+
+    for (const memory of sorted) {
+      const distance = memory.distance || 1;
+
+      // Always try to include minimum results if under strict threshold
+      if (filtered.length < config.minResults && distance < config.strictThreshold) {
+        filtered.push(memory);
+        prevDistance = distance;
+        continue;
+      }
+
+      // Stop if we hit max results
+      if (filtered.length >= config.maxResults) break;
+
+      // Stop if beyond loose threshold (never include very poor matches)
+      if (distance > config.looseThreshold) break;
+
+      // Stop if beyond effective threshold
+      if (distance > effectiveThreshold) break;
+
+      // Gap detection: Stop if there's a relevance cliff
+      // (next result is significantly farther than previous)
+      if (prevDistance > 0 && distance / prevDistance > config.gapMultiplier) {
+        // Only stop at gap if we have minimum results
+        if (filtered.length >= config.minResults) break;
+      }
+
+      filtered.push(memory);
+      prevDistance = distance;
+    }
+
+    logger.debug('Smart filter applied', {
+      input: memories.length,
+      output: filtered.length,
+      minDistance: min.toFixed(3),
+      maxDistance: max.toFixed(3),
+      effectiveThreshold: effectiveThreshold.toFixed(3),
+      dynamicThreshold: dynamicThreshold.toFixed(3)
+    });
+
+    return filtered;
   }
 }
 
