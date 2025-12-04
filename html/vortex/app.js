@@ -1721,6 +1721,8 @@ class VortexDebugInterface {
             const category = doc.metadata?.category || 'general';
             const distance = doc.distance !== undefined ? ` (${(1 - doc.distance).toFixed(2)} match)` : '';
             const timestamp = doc.metadata?.timestamp ? new Date(doc.metadata.timestamp).toLocaleDateString() : '';
+            const chunkCount = doc.chunkCount || doc.metadata?.total_chunks || 1;
+            const contentLength = doc.metadata?.content_length || doc.content?.length || 0;
             
             return `
                 <div class="knowledge-item" data-id="${doc.id}">
@@ -1730,6 +1732,8 @@ class VortexDebugInterface {
                     </div>
                     <div class="knowledge-meta">
                         <span class="knowledge-category">${category}</span>
+                        <span class="knowledge-chunks">${chunkCount} chunk${chunkCount > 1 ? 's' : ''}</span>
+                        <span class="knowledge-size">${this.formatFileSize(contentLength)}</span>
                         ${timestamp ? `<span class="knowledge-date">${timestamp}</span>` : ''}
                         ${distance ? `<span class="knowledge-distance">${distance}</span>` : ''}
                     </div>

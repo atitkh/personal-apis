@@ -412,6 +412,7 @@ You're having a normal conversation, not giving a presentation.`;
       preference: [],
       fact: [],
       event: [],
+      knowledge: [],
       conversation: []
     };
 
@@ -425,6 +426,16 @@ You're having a normal conversation, not giving a presentation.`;
     });
 
     const sections = [];
+
+    // Format knowledge base entries (highest priority - full content)
+    if (grouped.knowledge.length > 0) {
+      const knowledge = grouped.knowledge.map(m => {
+        const title = m.metadata?.title || 'Document';
+        const content = m.content || m.document || '';
+        return `### ${title}\n${content}`;
+      }).join('\n\n');
+      sections.push(`Reference Knowledge:\n${knowledge}`);
+    }
 
     // Format preferences/facts (most important for context)
     if (grouped.preference.length > 0) {

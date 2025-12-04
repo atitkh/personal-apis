@@ -488,6 +488,7 @@ class MemoryService {
   /**
    * Store knowledge base document (for RAG retrieval)
    * Unlike other stores, knowledge is global (not user-specific)
+   * Documents are automatically chunked for better retrieval
    * @param {Object} options
    * @param {string} options.content - The document content to store
    * @param {string} options.title - Document title for identification
@@ -499,51 +500,84 @@ class MemoryService {
     await this.ensureInitialized();
 
     try {
-      // Check for duplicates based on content similarity
+      // Generate a unique document ID for all chunks
+      const documentId = `doc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      
+      // Check for duplicates based on title (exact match)
       if (this.collections.knowledge) {
         try {
-          const existingDocs = await this.collections.knowledge.query({
-            queryTexts: [content],
-            nResults: 1,
-            include: ['metadatas', 'documents', 'distances']
+          const existingDocs = await this.collections.knowledge.get({
+            where: { title: title },
+            limit: 1
           });
           
-          if (existingDocs.distances?.[0]?.[0] !== undefined && existingDocs.distances[0][0] < 0.1) {
-            console.log('⏭️ SKIPPED DUPLICATE KNOWLEDGE:', title);
-            logger.debug('Skipping duplicate knowledge', {
-              title,
-              existingTitle: existingDocs.metadatas?.[0]?.[0]?.title,
-              distance: existingDocs.distances[0][0]
-            });
-            return { skipped: true, reason: 'duplicate', existingTitle: existingDocs.metadatas?.[0]?.[0]?.title };
+          if (existingDocs.ids && existingDocs.ids.length > 0) {
+            console.log('⏭️ SKIPPED DUPLICATE KNOWLEDGE (same title):', title);
+            logger.debug('Skipping duplicate knowledge by title', { title });
+            return { skipped: true, reason: 'duplicate', existingTitle: title };
           }
         } catch (dupError) {
           logger.debug('Duplicate check failed, proceeding with store', { error: dupError.message });
         }
       }
 
-      const id = `knowledge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      
-      const docMetadata = {
-        schema_version: '1.0',
-        memory_type: 'knowledge',
-        timestamp: new Date().toISOString(),
-        title: title,
-        category: category,
-        source: source,
-        content_length: content.length,
-        ...metadata
-      };
-
-      await this.collections.knowledge.add({
-        ids: [id],
-        documents: [content],
-        metadatas: [docMetadata]
+      // Chunk the content
+      const chunks = this.chunkText(content, {
+        chunkSize: 500,      // ~500 tokens per chunk
+        chunkOverlap: 50     // 50 token overlap for context continuity
       });
 
-      console.log('✅ STORED KNOWLEDGE:', title);
-      logger.info('Knowledge document stored', { id, title, category, source, contentLength: content.length });
-      return { id, skipped: false, title };
+      logger.info('Chunking document', { 
+        title, 
+        contentLength: content.length, 
+        chunkCount: chunks.length 
+      });
+
+      // Store each chunk with metadata linking to parent document
+      const chunkIds = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const chunkId = `${documentId}_chunk_${i}`;
+        chunkIds.push(chunkId);
+        
+        const chunkMetadata = {
+          schema_version: '1.0',
+          memory_type: 'knowledge',
+          timestamp: new Date().toISOString(),
+          title: title,
+          category: category,
+          source: source,
+          document_id: documentId,
+          chunk_index: i,
+          total_chunks: chunks.length,
+          content_length: content.length,
+          chunk_length: chunks[i].length,
+          ...metadata
+        };
+
+        await this.collections.knowledge.add({
+          ids: [chunkId],
+          documents: [chunks[i]],
+          metadatas: [chunkMetadata]
+        });
+      }
+
+      console.log(`✅ STORED KNOWLEDGE: ${title} (${chunks.length} chunks)`);
+      logger.info('Knowledge document stored', { 
+        documentId, 
+        title, 
+        category, 
+        source, 
+        contentLength: content.length,
+        chunkCount: chunks.length 
+      });
+      
+      return { 
+        id: documentId, 
+        skipped: false, 
+        title, 
+        chunkCount: chunks.length,
+        chunkIds 
+      };
 
     } catch (error) {
       logger.error('Failed to store knowledge', { 
@@ -556,7 +590,78 @@ class MemoryService {
   }
 
   /**
+   * Split text into overlapping chunks for better retrieval
+   * @param {string} text - Text to chunk
+   * @param {Object} options - Chunking options
+   * @returns {string[]} Array of text chunks
+   */
+  chunkText(text, { chunkSize = 500, chunkOverlap = 50 } = {}) {
+    if (!text || text.length === 0) {
+      return [text];
+    }
+
+    // Approximate tokens as words (rough estimate: 1 token ≈ 4 chars or ~0.75 words)
+    // We'll use character-based chunking with ~2000 chars per chunk (~500 tokens)
+    const charsPerChunk = chunkSize * 4;
+    const overlapChars = chunkOverlap * 4;
+
+    // If content is small enough, return as single chunk
+    if (text.length <= charsPerChunk) {
+      return [text];
+    }
+
+    const chunks = [];
+    let startIndex = 0;
+
+    while (startIndex < text.length) {
+      let endIndex = startIndex + charsPerChunk;
+      
+      // Try to break at a natural boundary (paragraph, sentence, or word)
+      if (endIndex < text.length) {
+        // Look for paragraph break first
+        const paragraphBreak = text.lastIndexOf('\n\n', endIndex);
+        if (paragraphBreak > startIndex + charsPerChunk * 0.5) {
+          endIndex = paragraphBreak + 2;
+        } else {
+          // Look for sentence break
+          const sentenceBreak = text.lastIndexOf('. ', endIndex);
+          if (sentenceBreak > startIndex + charsPerChunk * 0.5) {
+            endIndex = sentenceBreak + 2;
+          } else {
+            // Look for word break
+            const wordBreak = text.lastIndexOf(' ', endIndex);
+            if (wordBreak > startIndex + charsPerChunk * 0.5) {
+              endIndex = wordBreak + 1;
+            }
+          }
+        }
+      }
+
+      chunks.push(text.slice(startIndex, endIndex).trim());
+      
+      // Move start with overlap
+      startIndex = endIndex - overlapChars;
+      
+      // Prevent infinite loop
+      if (startIndex >= text.length - overlapChars) {
+        break;
+      }
+    }
+
+    // Handle any remaining text
+    if (startIndex < text.length && chunks.length > 0) {
+      const lastChunk = text.slice(startIndex).trim();
+      if (lastChunk.length > overlapChars) {
+        chunks.push(lastChunk);
+      }
+    }
+
+    return chunks.filter(chunk => chunk.length > 0);
+  }
+
+  /**
    * Get all knowledge documents (for browsing/management)
+   * Aggregates chunks back into documents for display
    */
   async browseKnowledge({ limit = 100, category = null } = {}) {
     await this.ensureInitialized();
@@ -567,7 +672,7 @@ class MemoryService {
       }
 
       const options = {
-        limit: limit,
+        limit: limit * 10, // Get more to account for chunks
         include: ['metadatas', 'documents']
       };
 
@@ -577,19 +682,65 @@ class MemoryService {
 
       const results = await this.collections.knowledge.get(options);
       
-      const documents = [];
+      // Aggregate chunks by document_id
+      const documentMap = new Map();
+      
       if (results.documents && results.ids) {
         results.documents.forEach((doc, index) => {
-          documents.push({
-            id: results.ids[index],
+          const meta = results.metadatas?.[index] || {};
+          const docId = meta.document_id || results.ids[index];
+          
+          if (!documentMap.has(docId)) {
+            documentMap.set(docId, {
+              id: docId,
+              title: meta.title || 'Untitled',
+              category: meta.category || 'general',
+              source: meta.source || 'unknown',
+              timestamp: meta.timestamp,
+              totalChunks: meta.total_chunks || 1,
+              contentLength: meta.content_length || doc.length,
+              chunks: []
+            });
+          }
+          
+          documentMap.get(docId).chunks.push({
+            index: meta.chunk_index || 0,
             content: doc,
-            metadata: results.metadatas?.[index] || {},
-            title: results.metadatas?.[index]?.title || 'Untitled'
+            chunkId: results.ids[index]
           });
         });
       }
 
-      return { documents, count: documents.length };
+      // Sort chunks and reconstruct content preview
+      const documents = [];
+      documentMap.forEach((doc, docId) => {
+        doc.chunks.sort((a, b) => a.index - b.index);
+        const fullContent = doc.chunks.map(c => c.content).join(' ');
+        documents.push({
+          id: docId,
+          content: fullContent.substring(0, 500) + (fullContent.length > 500 ? '...' : ''),
+          fullContent: fullContent,
+          metadata: {
+            title: doc.title,
+            category: doc.category,
+            source: doc.source,
+            timestamp: doc.timestamp,
+            total_chunks: doc.totalChunks,
+            content_length: doc.contentLength
+          },
+          title: doc.title,
+          chunkCount: doc.chunks.length,
+          chunkIds: doc.chunks.map(c => c.chunkId)
+        });
+      });
+
+      // Sort by timestamp (newest first) and limit
+      documents.sort((a, b) => new Date(b.metadata.timestamp) - new Date(a.metadata.timestamp));
+      
+      return { 
+        documents: documents.slice(0, limit), 
+        count: documents.length 
+      };
 
     } catch (error) {
       logger.error('Failed to browse knowledge', { error: error.message });
@@ -598,18 +749,34 @@ class MemoryService {
   }
 
   /**
-   * Delete a knowledge document by ID
+   * Delete a knowledge document and all its chunks
    */
   async deleteKnowledge(id) {
     await this.ensureInitialized();
 
     try {
+      // First, find all chunks belonging to this document
+      const results = await this.collections.knowledge.get({
+        where: { document_id: id },
+        include: ['metadatas']
+      });
+
+      let idsToDelete = [];
+      
+      if (results.ids && results.ids.length > 0) {
+        // Found chunks by document_id
+        idsToDelete = results.ids;
+      } else {
+        // Maybe it's a legacy single-chunk document or direct chunk ID
+        idsToDelete = [id];
+      }
+
       await this.collections.knowledge.delete({
-        ids: [id]
+        ids: idsToDelete
       });
       
-      logger.info('Knowledge document deleted', { id });
-      return { deleted: true, id };
+      logger.info('Knowledge document deleted', { id, chunksDeleted: idsToDelete.length });
+      return { deleted: true, id, chunksDeleted: idsToDelete.length };
 
     } catch (error) {
       logger.error('Failed to delete knowledge', { id, error: error.message });
