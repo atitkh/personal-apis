@@ -219,7 +219,8 @@ class LLMService {
       contents: `${fullPrompt}`
     });
     
-    const text = response.text();
+    // response.text is a property, not a function
+    const text = response.text;
 
     return {
       content: text,
