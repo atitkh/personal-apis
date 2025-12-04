@@ -247,6 +247,7 @@ class LLMService {
       model: this.model,
       prompt: fullPrompt,
       stream: false,
+      think: false, // Disable thinking/reasoning traces
       options: {
         temperature: temperature,
         top_p: 0.9,
@@ -257,13 +258,98 @@ class LLMService {
 
     return {
       content: response.data.response,
-      functionCall: null, // Ollama models would need custom function calling implementation
+      functionCall: null,
       usage: {
         prompt_tokens: fullPrompt.length / 4, // Rough estimate
         completion_tokens: response.data.response.length / 4,
         total_tokens: (fullPrompt.length + response.data.response.length) / 4
       },
       model: this.model
+    };
+  }
+
+  /**
+   * Generate response using Ollama API with native tool calling
+   * Uses /api/chat endpoint with tools parameter
+   */
+  async generateOllamaWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
+    const axios = require('axios');
+    
+    if (!this.client) {
+      await this.initialize();
+    }
+
+    // Format messages for Ollama chat API
+    const ollamaMessages = [];
+    
+    if (systemPrompt) {
+      ollamaMessages.push({ role: 'system', content: systemPrompt });
+    }
+    
+    for (const msg of messages) {
+      ollamaMessages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+
+    // Check if tools are already in Ollama format (have type: 'function' and function property)
+    // or need conversion from MCP format
+    console.log('\n========== TOOLS INPUT DEBUG ==========');
+    console.log('Input tools count:', tools.length);
+    if (tools.length > 0) {
+      console.log('First tool sample:', JSON.stringify(tools[0], null, 2));
+    }
+    console.log('========================================\n');
+    
+    const ollamaTools = tools.map(tool => {
+      // Already in Ollama format
+      if (tool.type === 'function' && tool.function) {
+        return tool;
+      }
+      // Convert from MCP/raw format
+      return {
+        type: 'function',
+        function: {
+          name: tool.fullName || tool.name,
+          description: tool.description || '',
+          parameters: tool.inputSchema || {
+            type: 'object',
+            properties: {},
+            required: []
+          }
+        }
+      };
+    });
+
+    console.log('\n========== OLLAMA TOOL CALL REQUEST ==========');
+    console.log('Model:', this.model);
+    console.log('Messages:', JSON.stringify(ollamaMessages, null, 2));
+    console.log('Tools:', JSON.stringify(ollamaTools, null, 2));
+    console.log('===============================================\n');
+
+    const response = await axios.post(`${this.client.baseURL}/api/chat`, {
+      model: this.model,
+      messages: ollamaMessages,
+      tools: ollamaTools.length > 0 ? ollamaTools : undefined,
+      stream: false,
+    });
+
+    console.log('\n========== OLLAMA TOOL CALL RESPONSE ==========');
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+    console.log('================================================\n');
+
+    const message = response.data.message;
+
+    return {
+      content: message.content || '',
+      toolCalls: message.tool_calls || [],
+      usage: {
+        prompt_tokens: response.data.prompt_eval_count || 0,
+        completion_tokens: response.data.eval_count || 0,
+        total_tokens: (response.data.prompt_eval_count || 0) + (response.data.eval_count || 0)
+      },
+      model: response.data.model
     };
   }
 
@@ -296,13 +382,19 @@ What you know from past chats:
 ${memoryContext}
 
 Rules:
-- Just answer the question. Don't add filler like "That's a great question!" or "I'd be happy to help!"
+- Just answer the question but never repeat what assistant said last. 
+- Don't add filler like "That's a great question!" or "I'd be happy to help!"
 - Use what you know from past chats naturally - don't announce that you're remembering things
 - Keep it short and real
 - Skip the formalities - no need for greetings or sign-offs unless it makes sense
 - Don't explain what you're doing ("Let me help you with that..." - just help)
 - If you don't know something, just say so casually
-- Match the vibe of how they're talking to you
+
+CRITICAL - Memory Honesty:
+- ONLY reference information that exists in "What you know from past chats" above
+- If the user asks about something NOT in your memories, honestly say "I don't recall that" or "I don't have any memory of that"
+- NEVER fabricate, invent, or guess details about the user's life, travels, experiences, or preferences
+- It's okay to not know things - just be honest about it
 
 You're having a normal conversation, not giving a presentation.`;
   }
@@ -384,12 +476,13 @@ AVAILABLE ACTIONS:
 1. "remember" - Store information for future reference
 2. "remind" - Set a reminder or note for later  
 3. "note" - Save a general note or observation
+4. "action" - Any other specific action to be performed possibly via mcp
 
 USER MESSAGE: "${message}"
 
 Respond with a JSON array of detected actions. Each action should have:
 {
-  "type": "remember|remind|note",
+  "type": "remember|remind|note|action",
   "content": "the specific content to act on",
   "confidence": 0.0-1.0
 }

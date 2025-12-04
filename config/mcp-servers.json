@@ -1,0 +1,26 @@
+{
+  "$schema": "./mcp-servers.schema.json",
+  "version": "1.0",
+  "description": "MCP Server Configuration for Vortex AI",
+  "settings": {
+    "enabled": true,
+    "toolExecutionTimeout": 30000,
+    "maxToolCallsPerMessage": 5,
+    "maxRetries": 4,
+    "storeActionsInMemory": true
+  },
+  "servers": [
+    {
+      "name": "homeassistant",
+      "description": "Home Assistant smart home control via MCP",
+      "type": "mcp",
+      "category": "smart_home",
+      "enabled": true,
+      "command": "mcp-proxy",
+      "args": ["--transport=streamablehttp", "--stateless", "${HA_URL}/api/mcp"],
+      "env": {
+        "API_ACCESS_TOKEN": "${HA_TOKEN}"
+      }
+    }
+  ]
+}

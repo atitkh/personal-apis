@@ -122,6 +122,19 @@ class MemoryService {
         ...contextCollectionConfig
       });
 
+      // Knowledge collection - for injected knowledge base documents
+      const knowledgeCollectionConfig = {
+        metadata: { description: 'Knowledge base documents - manually injected reference material' }
+      };
+      if (embeddingFunction) {
+        knowledgeCollectionConfig.embeddingFunction = embeddingFunction;
+      }
+
+      this.collections.knowledge = await this.client.getOrCreateCollection({
+        name: 'vortex_knowledge',
+        ...knowledgeCollectionConfig
+      });
+
       this.isInitialized = true;
       logger.info('MemoryService initialized successfully');
 
@@ -473,6 +486,138 @@ class MemoryService {
   }
 
   /**
+   * Store knowledge base document (for RAG retrieval)
+   * Unlike other stores, knowledge is global (not user-specific)
+   * @param {Object} options
+   * @param {string} options.content - The document content to store
+   * @param {string} options.title - Document title for identification
+   * @param {string} [options.category] - Category for organization (e.g., 'documentation', 'reference', 'guide')
+   * @param {string} [options.source] - Source of the document (e.g., 'manual', 'imported', 'file:path')
+   * @param {Object} [options.metadata] - Additional metadata to store
+   */
+  async storeKnowledge({ content, title, category = 'general', source = 'manual', metadata = {} }) {
+    await this.ensureInitialized();
+
+    try {
+      // Check for duplicates based on content similarity
+      if (this.collections.knowledge) {
+        try {
+          const existingDocs = await this.collections.knowledge.query({
+            queryTexts: [content],
+            nResults: 1,
+            include: ['metadatas', 'documents', 'distances']
+          });
+          
+          if (existingDocs.distances?.[0]?.[0] !== undefined && existingDocs.distances[0][0] < 0.1) {
+            console.log('⏭️ SKIPPED DUPLICATE KNOWLEDGE:', title);
+            logger.debug('Skipping duplicate knowledge', {
+              title,
+              existingTitle: existingDocs.metadatas?.[0]?.[0]?.title,
+              distance: existingDocs.distances[0][0]
+            });
+            return { skipped: true, reason: 'duplicate', existingTitle: existingDocs.metadatas?.[0]?.[0]?.title };
+          }
+        } catch (dupError) {
+          logger.debug('Duplicate check failed, proceeding with store', { error: dupError.message });
+        }
+      }
+
+      const id = `knowledge_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      
+      const docMetadata = {
+        schema_version: '1.0',
+        memory_type: 'knowledge',
+        timestamp: new Date().toISOString(),
+        title: title,
+        category: category,
+        source: source,
+        content_length: content.length,
+        ...metadata
+      };
+
+      await this.collections.knowledge.add({
+        ids: [id],
+        documents: [content],
+        metadatas: [docMetadata]
+      });
+
+      console.log('✅ STORED KNOWLEDGE:', title);
+      logger.info('Knowledge document stored', { id, title, category, source, contentLength: content.length });
+      return { id, skipped: false, title };
+
+    } catch (error) {
+      logger.error('Failed to store knowledge', { 
+        title, 
+        category, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all knowledge documents (for browsing/management)
+   */
+  async browseKnowledge({ limit = 100, category = null } = {}) {
+    await this.ensureInitialized();
+
+    try {
+      if (!this.collections.knowledge) {
+        return { documents: [], count: 0 };
+      }
+
+      const options = {
+        limit: limit,
+        include: ['metadatas', 'documents']
+      };
+
+      if (category) {
+        options.where = { category: category };
+      }
+
+      const results = await this.collections.knowledge.get(options);
+      
+      const documents = [];
+      if (results.documents && results.ids) {
+        results.documents.forEach((doc, index) => {
+          documents.push({
+            id: results.ids[index],
+            content: doc,
+            metadata: results.metadatas?.[index] || {},
+            title: results.metadatas?.[index]?.title || 'Untitled'
+          });
+        });
+      }
+
+      return { documents, count: documents.length };
+
+    } catch (error) {
+      logger.error('Failed to browse knowledge', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a knowledge document by ID
+   */
+  async deleteKnowledge(id) {
+    await this.ensureInitialized();
+
+    try {
+      await this.collections.knowledge.delete({
+        ids: [id]
+      });
+      
+      logger.info('Knowledge document deleted', { id });
+      return { deleted: true, id };
+
+    } catch (error) {
+      logger.error('Failed to delete knowledge', { id, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
    * Get relevant context for a query
    */
   async getRelevantContext({ userId, query, conversationId, limit = 10 }) {
@@ -557,7 +702,7 @@ class MemoryService {
         
         conversationResults = await this.collections.conversations.query({
           queryTexts: [query],
-          nResults: Math.floor(limit * 0.4), // 40% from conversations
+          nResults: Math.floor(limit * 0.5), // 50% from conversations
           where: conversationWhere,
           include: ['metadatas', 'documents', 'distances']
         });
@@ -653,7 +798,7 @@ class MemoryService {
         // Perform semantic search on events
         eventResults = await this.collections.events.query({
           queryTexts: [query],
-          nResults: Math.floor(limit * 0.2), // 20% from events  
+          nResults: Math.floor(limit * 0.25), // 25% from events  
           where: eventWhere,
           include: ['metadatas', 'documents', 'distances']
         });
@@ -670,7 +815,7 @@ class MemoryService {
         try {
           factsResults = await this.collections.facts.query({
             queryTexts: [query],
-            nResults: Math.floor(limit * 0.2), // 20% from facts
+            nResults: Math.floor(limit * 0.25), // 25% from facts
             where: { user_id: eventUserIdStr },
             include: ['metadatas', 'documents', 'distances']
           });
@@ -689,7 +834,7 @@ class MemoryService {
         try {
           prefsResults = await this.collections.preferences.query({
             queryTexts: [query],
-            nResults: Math.floor(limit * 0.2), // 20% from preferences
+            nResults: Math.floor(limit * 0.25), // 25% from preferences
             where: { user_id: eventUserIdStr },
             include: ['metadatas', 'documents', 'distances']
           });
@@ -699,6 +844,24 @@ class MemoryService {
           });
         } catch (prefsError) {
           logger.debug('Preferences query failed', { error: prefsError.message });
+        }
+      }
+
+      // Search knowledge base for relevant context (global knowledge, no user filter)
+      let knowledgeResults = { documents: [[]], metadatas: [[]], ids: [[]], distances: [[]] };
+      if (this.collections.knowledge) {
+        try {
+          knowledgeResults = await this.collections.knowledge.query({
+            queryTexts: [query],
+            nResults: Math.floor(limit * 0.3), // 30% from knowledge base
+            include: ['metadatas', 'documents', 'distances']
+          });
+          
+          logger.debug('Knowledge base semantic search results', {
+            documentsCount: knowledgeResults.documents?.[0]?.length || 0
+          });
+        } catch (knowledgeError) {
+          logger.debug('Knowledge query failed (collection may be empty)', { error: knowledgeError.message });
         }
       }
 
@@ -749,6 +912,18 @@ class MemoryService {
             content: doc,
             metadata: prefsResults.metadatas[0][index],
             distance: prefsResults.distances[0][index]
+          });
+        });
+      }
+
+      // Add knowledge base memories
+      if (knowledgeResults.documents && knowledgeResults.documents[0]) {
+        knowledgeResults.documents[0].forEach((doc, index) => {
+          relevantMemories.push({
+            type: 'knowledge',
+            content: doc,
+            metadata: knowledgeResults.metadatas[0][index],
+            distance: knowledgeResults.distances[0][index]
           });
         });
       }

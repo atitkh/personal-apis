@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Servers Configuration",
+  "description": "Configuration schema for MCP (Model Context Protocol) servers in Vortex AI",
+  "type": "object",
+  "required": ["version", "servers"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "version": {
+      "type": "string",
+      "description": "Configuration version",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of this configuration"
+    },
+    "settings": {
+      "type": "object",
+      "description": "Global MCP settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable MCP functionality globally",
+          "default": true
+        },
+        "intentClassificationModel": {
+          "type": ["string", "null"],
+          "description": "Specific model for intent classification (null = use default LLM)",
+          "default": null
+        },
+        "toolExecutionTimeout": {
+          "type": "integer",
+          "description": "Timeout for tool execution in milliseconds",
+          "default": 30000,
+          "minimum": 1000
+        },
+        "maxToolCallsPerMessage": {
+          "type": "integer",
+          "description": "Maximum number of tool calls allowed per user message",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 20
+        },
+        "storeActionsInMemory": {
+          "type": "boolean",
+          "description": "Store executed tool actions in memory for context",
+          "default": true
+        }
+      }
+    },
+    "categories": {
+      "type": "object",
+      "description": "Tool categories for intent classification",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "keywords"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of this category"
+          },
+          "keywords": {
+            "type": "array",
+            "description": "Keywords that indicate this category might be needed",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "servers": {
+      "type": "array",
+      "description": "List of MCP servers",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "category"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique identifier for this server",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable name for this server"
+          },
+          "type": {
+            "type": "string",
+            "description": "Server type",
+            "enum": ["mcp", "http", "internal"]
+          },
+          "category": {
+            "type": "string",
+            "description": "Category this server belongs to"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enable/disable this specific server",
+            "default": true
+          },
+          "command": {
+            "type": "string",
+            "description": "Command to spawn MCP server (for type: mcp)"
+          },
+          "args": {
+            "type": "array",
+            "description": "Arguments for the command",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "object",
+            "description": "Environment variables for the server",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "HTTP endpoint (for type: http)",
+            "format": "uri"
+          },
+          "module": {
+            "type": "string",
+            "description": "Path to internal module (for type: internal)"
+          },
+          "auth": {
+            "type": "object",
+            "description": "Authentication configuration",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["none", "api_key", "bearer", "oauth2", "basic"]
+              },
+              "envVar": {
+                "type": "string",
+                "description": "Environment variable containing the credential"
+              }
+            }
+          },
+          "tools": {
+            "type": "array",
+            "description": "Static tool definitions (for type: http/internal when dynamic discovery not available)",
+            "items": {
+              "type": "object",
+              "required": ["name", "description"],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "inputSchema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "type": { "const": "mcp" } }
+            },
+            "then": {
+              "required": ["command"]
+            }
+          },
+          {
+            "if": {
+              "properties": { "type": { "const": "http" } }
+            },
+            "then": {
+              "required": ["endpoint"]
+            }
+          },
+          {
+            "if": {
+              "properties": { "type": { "const": "internal" } }
+            },
+            "then": {
+              "required": ["module"]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
