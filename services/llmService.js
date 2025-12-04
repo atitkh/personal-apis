@@ -207,31 +207,42 @@ class LLMService {
   /**
    * Generate response using Google Gemini
    */
-  async generateGeminiResponse({ systemPrompt, messages }) {
-    
-    // Combine system prompt with conversation
-    const fullPrompt = `${systemPrompt}\n\nConversation:\n` + 
-      messages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + 
-      '\nassistant:';
+  async generateGeminiResponse({ systemPrompt, messages, temperature = 0.7, maxTokens = 1000 }) {
+    try {
+      // Combine system prompt with conversation
+      const fullPrompt = `${systemPrompt}\n\nConversation:\n` + 
+        messages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + 
+        '\nassistant:';
 
-    const response = await this.client.models.generateContent({
-      model: this.model,
-      contents: `${fullPrompt}`
-    });
-    
-    // response.text is a property, not a function
-    const text = response.text;
+      const response = await this.client.models.generateContent({
+        model: this.model,
+        contents: fullPrompt,
+        config: {
+          temperature: temperature,
+          maxOutputTokens: maxTokens
+        }
+      });
+      
+      // response.text is a property, not a function
+      const text = response.text || '';
 
-    return {
-      content: text,
-      functionCall: null, // Gemini function calling would need special handling
-      usage: {
-        prompt_tokens: fullPrompt.length / 4, // Rough estimate
-        completion_tokens: text.length / 4,
-        total_tokens: (fullPrompt.length + text.length) / 4
-      },
-      model: this.model
-    };
+      return {
+        content: text,
+        functionCall: null, // Gemini function calling would need special handling
+        usage: {
+          prompt_tokens: Math.ceil(fullPrompt.length / 4), // Rough estimate
+          completion_tokens: Math.ceil(text.length / 4),
+          total_tokens: Math.ceil((fullPrompt.length + text.length) / 4)
+        },
+        model: this.model
+      };
+    } catch (error) {
+      this.safeLog('error', 'Gemini generation failed', { 
+        error: error.message,
+        stack: error.stack 
+      });
+      throw error;
+    }
   }
 
   /**
@@ -273,7 +284,32 @@ class LLMService {
    * Generate response using Ollama API with native tool calling
    * Uses /api/chat endpoint with tools parameter
    */
-  async generateOllamaWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
+  /**
+   * Generate response with tool calling support
+   * Currently only Ollama supports true tool calling, others fall back to standard generation
+   */
+  async generateWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
+    if (!this.client) {
+      await this.initialize();
+    }
+
+    // For non-Ollama providers, use standard generateResponse (tools not fully supported yet)
+    if (this.provider !== 'ollama') {
+      this.safeLog('warn', `Tool calling with ${this.provider} provider - falling back to standard generation (tools not supported)`);
+      const response = await this.generateResponse({
+        systemPrompt,
+        messages,
+        temperature,
+        maxTokens
+      });
+      return {
+        content: response.content,
+        toolCalls: [],
+        usage: response.usage,
+        model: response.model
+      };
+    }
+
     const axios = require('axios');
     
     if (!this.client) {
@@ -532,10 +568,11 @@ Respond with only the JSON array, no other text.`;
         content = response.content[0].text.trim();
         
       } else if (this.provider === 'gemini') {
-        const model = this.client.getGenerativeModel({ model: this.model });
-        const result = await model.generateContent(classificationPrompt);
-        const response = await result.response;
-        content = response.text().trim();
+        const response = await this.client.models.generateContent({
+          model: this.model,
+          contents: classificationPrompt
+        });
+        content = response.text.trim();
         
       } else if (this.provider === 'ollama') {
         const axios = require('axios');
@@ -655,9 +692,8 @@ Respond with only the JSON array, no other text.`;
             status.connectionStatus = 'operational'; // Assume operational if client exists
             
           } else if (this.provider === 'gemini') {
-            // Quick test for Gemini
-            const model = this.client.getGenerativeModel({ model: this.model });
-            status.connectionStatus = 'operational'; // Assume operational if client exists
+            // Quick test for Gemini - client existence means operational
+            status.connectionStatus = 'operational';
             
           } else if (this.provider === 'ollama') {
             // Test Ollama connection
@@ -689,4 +725,7 @@ Respond with only the JSON array, no other text.`;
   }
 }
 
-module.exports = new LLMService();
+// Export both the singleton instance and the class
+const instance = new LLMService();
+module.exports = instance;
+module.exports.LLMService = LLMService;

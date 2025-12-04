@@ -218,7 +218,8 @@ class MCPService {
     if (mcpProvider || mcpModel) {
       // Use dedicated MCP LLM
       if (!this.mcpLLMService) {
-        const LLMService = require('./llmService').constructor;
+        // Import the LLMService class and create a new instance
+        const { LLMService } = require('./llmService');
         this.mcpLLMService = new LLMService();
         
         // Override with MCP-specific settings
@@ -232,7 +233,9 @@ class MCPService {
         
         logger.info('MCP using dedicated LLM', { 
           provider: this.mcpLLMService.provider, 
-          model: this.mcpLLMService.model 
+          model: this.mcpLLMService.model,
+          hasApiKey: !!this.mcpLLMService.apiKey,
+          apiKeyLength: this.mcpLLMService.apiKey ? this.mcpLLMService.apiKey.length : 0
         });
       }
       return this.mcpLLMService;
@@ -726,7 +729,7 @@ When you're done with all tool calls, respond naturally without calling more too
     }));
 
     try {
-      const response = await llm.generateOllamaWithTools({
+      const response = await llm.generateWithTools({
         systemPrompt,
         messages,
         tools: ollamaTools,
