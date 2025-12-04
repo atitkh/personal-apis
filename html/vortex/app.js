@@ -1810,6 +1810,12 @@ class VortexDebugInterface {
             return;
         }
 
+        // Check for empty file
+        if (file.size === 0) {
+            this.debugOutput.textContent = `Error: File "${file.name}" is empty (0 bytes). Please select a file with content.`;
+            return;
+        }
+
         const maxSize = 10 * 1024 * 1024; // 10MB limit
         if (file.size > maxSize) {
             this.debugOutput.textContent = `Error: File too large. Maximum size is 10MB.`;
