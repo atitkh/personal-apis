@@ -286,15 +286,20 @@ class LLMService {
    */
   /**
    * Generate response with tool calling support
-   * Currently only Ollama supports true tool calling, others fall back to standard generation
+   * Supports Ollama and Gemini native tool calling
    */
   async generateWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
     if (!this.client) {
       await this.initialize();
     }
 
-    // For non-Ollama providers, use standard generateResponse (tools not fully supported yet)
-    if (this.provider !== 'ollama') {
+    // Route to provider-specific tool calling implementation
+    if (this.provider === 'ollama') {
+      return this.generateOllamaWithTools({ systemPrompt, messages, tools, temperature, maxTokens });
+    } else if (this.provider === 'gemini') {
+      return this.generateGeminiWithTools({ systemPrompt, messages, tools, temperature, maxTokens });
+    } else {
+      // For other providers, fall back to standard generation (no tool support yet)
       this.safeLog('warn', `Tool calling with ${this.provider} provider - falling back to standard generation (tools not supported)`);
       const response = await this.generateResponse({
         systemPrompt,
@@ -309,7 +314,77 @@ class LLMService {
         model: response.model
       };
     }
+  }
 
+  /**
+   * Generate response using Gemini with native function calling
+   */
+  async generateGeminiWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
+    try {
+      // Convert tools to Gemini function declarations
+      const functionDeclarations = tools.map(tool => {
+        // Handle both Ollama format (type: 'function') and raw format
+        const func = tool.type === 'function' ? tool.function : tool;
+        
+        return {
+          name: func.name || func.fullName,
+          description: func.description || '',
+          parametersJsonSchema: func.parameters || func.inputSchema || {
+            type: 'object',
+            properties: {},
+            required: []
+          }
+        };
+      });
+
+      // Combine system prompt with conversation
+      const fullPrompt = `${systemPrompt}\n\nConversation:\n` + 
+        messages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+
+      const response = await this.client.models.generateContent({
+        model: this.model,
+        contents: fullPrompt,
+        config: {
+          temperature: temperature,
+          maxOutputTokens: maxTokens,
+          tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
+        }
+      });
+
+      const text = response.text || '';
+      const functionCalls = response.functionCalls || [];
+
+      // Convert Gemini function calls to Ollama format for consistency
+      const toolCalls = functionCalls.map(fc => ({
+        function: {
+          name: fc.name,
+          arguments: fc.args || {}
+        }
+      }));
+
+      return {
+        content: text,
+        toolCalls: toolCalls,
+        usage: {
+          prompt_tokens: Math.ceil(fullPrompt.length / 4),
+          completion_tokens: Math.ceil(text.length / 4),
+          total_tokens: Math.ceil((fullPrompt.length + text.length) / 4)
+        },
+        model: this.model
+      };
+    } catch (error) {
+      this.safeLog('error', 'Gemini tool calling failed', { 
+        error: error.message,
+        stack: error.stack 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Generate response using Ollama with native tool calling
+   */
+  async generateOllamaWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
     const axios = require('axios');
     
     if (!this.client) {
