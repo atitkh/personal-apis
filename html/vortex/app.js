@@ -90,6 +90,15 @@ class VortexDebugInterface {
         this.knowledgeList = document.getElementById('knowledgeList');
         this.knowledgeCount = document.getElementById('knowledgeCount');
         
+        // File upload elements
+        this.fileUploadArea = document.getElementById('fileUploadArea');
+        this.knowledgeFileInput = document.getElementById('knowledgeFileInput');
+        this.uploadProgress = document.getElementById('uploadProgress');
+        this.progressFill = document.getElementById('progressFill');
+        this.uploadStatus = document.getElementById('uploadStatus');
+        this.uploadCategory = document.getElementById('uploadCategory');
+        this.manualEntryHeader = document.getElementById('manualEntryHeader');
+        
         // Voice-related properties
         this.mediaRecorder = null;
         this.audioChunks = [];
@@ -137,12 +146,39 @@ class VortexDebugInterface {
         if (this.clearAllMemoriesBtn) this.clearAllMemoriesBtn.addEventListener('click', () => this.clearAllMemories());
         
         // Knowledge base events
-        if (this.addKnowledgeBtn) this.addKnowledgeBtn.addEventListener('click', () => this.addKnowledge());
+        if (this.addKnowledgeBtn) {
+            console.log('addKnowledgeBtn found, binding click event');
+            this.addKnowledgeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Add Knowledge button clicked');
+                this.addKnowledge();
+            });
+        } else {
+            console.warn('addKnowledgeBtn NOT found!');
+        }
         if (this.browseKnowledgeBtn) this.browseKnowledgeBtn.addEventListener('click', () => this.browseKnowledge());
         if (this.searchKnowledgeBtn) this.searchKnowledgeBtn.addEventListener('click', () => this.searchKnowledge());
         if (this.knowledgeSearchQuery) this.knowledgeSearchQuery.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.searchKnowledge();
         });
+        
+        // File upload events
+        if (this.knowledgeFileInput) this.knowledgeFileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        if (this.fileUploadArea) {
+            this.fileUploadArea.addEventListener('click', (e) => {
+                // Trigger file input when clicking the upload area
+                if (!e.target.closest('select') && !e.target.closest('button')) {
+                    this.knowledgeFileInput?.click();
+                }
+            });
+            this.fileUploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
+            this.fileUploadArea.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+            this.fileUploadArea.addEventListener('drop', (e) => this.handleFileDrop(e));
+        }
+        if (this.manualEntryHeader) {
+            this.manualEntryHeader.addEventListener('click', () => this.toggleManualEntry());
+        }
         
         // Memory exploration events
         if (this.browseMemoriesBtn) this.browseMemoriesBtn.addEventListener('click', () => this.browseMemories());
@@ -1481,6 +1517,11 @@ class VortexDebugInterface {
     // ========================================
 
     async addKnowledge() {
+        console.log('addKnowledge() called');
+        console.log('Token:', this.token ? 'exists' : 'missing');
+        console.log('Title element:', this.knowledgeTitle);
+        console.log('Content element:', this.knowledgeContent);
+        
         if (!this.token) {
             this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
             return;
@@ -1489,6 +1530,10 @@ class VortexDebugInterface {
         const title = this.knowledgeTitle?.value?.trim();
         const content = this.knowledgeContent?.value?.trim();
         const category = this.knowledgeCategory?.value || 'general';
+        
+        console.log('Title value:', title);
+        console.log('Content value:', content);
+        console.log('Category:', category);
 
         if (!title || !content) {
             this.debugOutput.textContent = 'Error: Title and content are required.';
@@ -1714,6 +1759,273 @@ class VortexDebugInterface {
                 }
             });
         });
+    }
+
+    // ========================================
+    // File Upload Methods
+    // ========================================
+
+    toggleManualEntry() {
+        const card = this.manualEntryHeader?.closest('.collapsible');
+        if (card) {
+            card.classList.toggle('collapsed');
+        }
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.fileUploadArea?.classList.add('drag-over');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.fileUploadArea?.classList.remove('drag-over');
+    }
+
+    handleFileDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.fileUploadArea?.classList.remove('drag-over');
+        
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) {
+            this.processFile(files[0]);
+        }
+    }
+
+    handleFileSelect(e) {
+        const files = e.target?.files;
+        if (files && files.length > 0) {
+            this.processFile(files[0]);
+        }
+    }
+
+    async processFile(file) {
+        console.log('processFile called with:', file.name, file.type, file.size);
+        
+        if (!this.token) {
+            this.debugOutput.textContent = 'Error: Not authenticated. Please login first.';
+            return;
+        }
+
+        const maxSize = 10 * 1024 * 1024; // 10MB limit
+        if (file.size > maxSize) {
+            this.debugOutput.textContent = `Error: File too large. Maximum size is 10MB.`;
+            return;
+        }
+
+        // Show progress
+        const uploadPrompt = this.fileUploadArea?.querySelector('.upload-prompt');
+        if (uploadPrompt) uploadPrompt.style.display = 'none';
+        if (this.uploadProgress) this.uploadProgress.style.display = 'flex';
+        if (this.progressFill) this.progressFill.style.width = '10%';
+        if (this.uploadStatus) this.uploadStatus.textContent = `Reading: ${file.name}...`;
+
+        try {
+            // Extract text content from file
+            console.log('Calling extractFileContent...');
+            const content = await this.extractFileContent(file);
+            console.log('extractFileContent returned, content length:', content?.length);
+            
+            if (this.progressFill) this.progressFill.style.width = '50%';
+            if (this.uploadStatus) this.uploadStatus.textContent = 'Uploading to knowledge base...';
+
+            if (!content || content.trim().length === 0) {
+                console.error('Content is empty after extraction');
+                throw new Error('Could not extract text content from file (empty result)');
+            }
+
+            // Get category
+            const category = this.uploadCategory?.value || 'documentation';
+            
+            // Upload to knowledge base
+            const response = await fetch('/api/v1/vortex/knowledge', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: file.name,
+                    content: content,
+                    category: category,
+                    source: `file:${file.name}`,
+                    metadata: {
+                        originalName: file.name,
+                        fileType: file.type,
+                        fileSize: file.size
+                    }
+                })
+            });
+
+            if (this.progressFill) this.progressFill.style.width = '90%';
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                if (this.progressFill) this.progressFill.style.width = '100%';
+                
+                if (data.data?.skipped) {
+                    if (this.uploadStatus) this.uploadStatus.textContent = `⏭️ Skipped (duplicate): ${file.name}`;
+                    this.addMessage('system', `⏭️ File skipped (duplicate): ${file.name}`);
+                } else {
+                    if (this.uploadStatus) this.uploadStatus.textContent = `✅ Uploaded: ${file.name}`;
+                    this.addMessage('system', `✅ File uploaded: ${file.name} (${this.formatFileSize(file.size)})`);
+                    // Refresh the list
+                    this.browseKnowledge();
+                }
+                
+                this.debugOutput.textContent = JSON.stringify(data, null, 2);
+            } else {
+                throw new Error(data.message || 'Upload failed');
+            }
+
+        } catch (error) {
+            console.error('File upload error:', error);
+            if (this.uploadStatus) this.uploadStatus.textContent = `❌ Error: ${error.message}`;
+            this.debugOutput.textContent = `File upload failed: ${error.message}`;
+        }
+
+        // Reset after 3 seconds
+        setTimeout(() => {
+            const uploadPrompt = this.fileUploadArea?.querySelector('.upload-prompt');
+            if (uploadPrompt) uploadPrompt.style.display = 'flex';
+            if (this.uploadProgress) this.uploadProgress.style.display = 'none';
+            if (this.progressFill) this.progressFill.style.width = '0%';
+            if (this.knowledgeFileInput) this.knowledgeFileInput.value = '';
+        }, 3000);
+    }
+
+    async extractFileContent(file) {
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        console.log('Extracting content from file:', file.name, 'extension:', extension, 'type:', file.type, 'size:', file.size);
+        
+        // For PDF files, we need special handling
+        if (extension === 'pdf') {
+            return await this.extractPdfContent(file);
+        }
+        
+        // For text-based files, read directly
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                let content = e.target?.result;
+                console.log('FileReader loaded, content length:', content?.length);
+                
+                if (!content) {
+                    console.error('FileReader returned empty content');
+                    reject(new Error('File appears to be empty'));
+                    return;
+                }
+                
+                // Handle JSON files - stringify if needed
+                if (extension === 'json') {
+                    try {
+                        const parsed = JSON.parse(content);
+                        content = JSON.stringify(parsed, null, 2);
+                    } catch (err) {
+                        // Keep as-is if not valid JSON
+                        console.log('JSON parse failed, keeping raw content');
+                    }
+                }
+                
+                // Handle CSV - convert to readable format
+                if (extension === 'csv') {
+                    content = this.csvToReadableText(content);
+                }
+                
+                console.log('Final content length:', content?.length);
+                resolve(content);
+            };
+            
+            reader.onerror = (e) => {
+                console.error('FileReader error:', e);
+                reject(new Error('Failed to read file: ' + (reader.error?.message || 'unknown error')));
+            };
+            
+            reader.readAsText(file);
+        });
+    }
+
+    async extractPdfContent(file) {
+        // Check if PDF.js is available
+        if (typeof pdfjsLib === 'undefined') {
+            // Try to load PDF.js dynamically
+            try {
+                await this.loadPdfJs();
+            } catch (err) {
+                // Fall back to uploading raw and letting backend handle it
+                return `[PDF Document: ${file.name}]\n\nNote: PDF text extraction not available in browser. Please convert to text format or install PDF.js.`;
+            }
+        }
+
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += `\n--- Page ${i} ---\n${pageText}\n`;
+            }
+            
+            return fullText.trim();
+        } catch (error) {
+            console.error('PDF extraction error:', error);
+            return `[PDF Document: ${file.name}]\n\nError extracting text: ${error.message}`;
+        }
+    }
+
+    async loadPdfJs() {
+        return new Promise((resolve, reject) => {
+            if (typeof pdfjsLib !== 'undefined') {
+                resolve();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+            script.onload = () => {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                resolve();
+            };
+            script.onerror = () => reject(new Error('Failed to load PDF.js'));
+            document.head.appendChild(script);
+        });
+    }
+
+    csvToReadableText(csvContent) {
+        const lines = csvContent.split('\n');
+        if (lines.length === 0) return csvContent;
+        
+        const headers = lines[0].split(',').map(h => h.trim());
+        let result = `CSV Data with columns: ${headers.join(', ')}\n\n`;
+        
+        for (let i = 1; i < Math.min(lines.length, 100); i++) { // Limit to 100 rows
+            const values = lines[i].split(',');
+            result += `Row ${i}:\n`;
+            headers.forEach((header, idx) => {
+                result += `  ${header}: ${values[idx]?.trim() || ''}\n`;
+            });
+            result += '\n';
+        }
+        
+        if (lines.length > 100) {
+            result += `\n... and ${lines.length - 100} more rows`;
+        }
+        
+        return result;
+    }
+
+    formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
 }
 

@@ -132,30 +132,60 @@
                 <div class="tab-content" id="tab-knowledge">
                     <h3>📚 Knowledge Base</h3>
                     
-                    <!-- Add Knowledge -->
+                    <!-- Upload File -->
                     <div class="debug-card">
-                        <h4>➕ Add Document</h4>
-                        <div class="input-group">
-                            <label for="knowledgeTitle">Title:</label>
-                            <input type="text" id="knowledgeTitle" placeholder="Document title...">
+                        <h4>📁 Upload File</h4>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <input type="file" id="knowledgeFileInput" accept=".txt,.md,.json,.csv,.pdf,.html,.xml,.log" style="display: none;">
+                            <div class="upload-prompt">
+                                <span class="upload-icon">📄</span>
+                                <span>Drop file here or click to browse</span>
+                                <span class="upload-hint">Supports: .txt, .md, .json, .csv, .pdf, .html, .xml</span>
+                            </div>
+                            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                                <span id="uploadStatus">Processing...</span>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label for="knowledgeCategory">Category:</label>
-                            <select id="knowledgeCategory">
-                                <option value="general">📁 General</option>
+                        <div class="input-group" style="margin-top: 10px;">
+                            <label for="uploadCategory">Category:</label>
+                            <select id="uploadCategory">
                                 <option value="documentation">📖 Documentation</option>
                                 <option value="reference">📋 Reference</option>
                                 <option value="guide">📝 Guide</option>
+                                <option value="general">📁 General</option>
                                 <option value="personal">👤 Personal</option>
                                 <option value="technical">⚙️ Technical</option>
                             </select>
                         </div>
-                        <div class="input-group">
-                            <label for="knowledgeContent">Content:</label>
-                            <textarea id="knowledgeContent" rows="4" placeholder="Enter knowledge content..."></textarea>
-                        </div>
-                        <div class="button-row">
-                            <button id="addKnowledgeBtn" class="btn-small btn-primary">📤 Add Document</button>
+                    </div>
+
+                    <!-- Add Knowledge Manually -->
+                    <div class="debug-card collapsible">
+                        <h4 class="collapsible-header" id="manualEntryHeader">✏️ Manual Entry <span class="collapse-icon">▼</span></h4>
+                        <div class="collapsible-content" id="manualEntryContent">
+                            <div class="input-group">
+                                <label for="knowledgeTitle">Title:</label>
+                                <input type="text" id="knowledgeTitle" placeholder="Document title...">
+                            </div>
+                            <div class="input-group">
+                                <label for="knowledgeCategory">Category:</label>
+                                <select id="knowledgeCategory">
+                                    <option value="general">📁 General</option>
+                                    <option value="documentation">📖 Documentation</option>
+                                    <option value="reference">📋 Reference</option>
+                                    <option value="guide">📝 Guide</option>
+                                    <option value="personal">👤 Personal</option>
+                                    <option value="technical">⚙️ Technical</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="knowledgeContent">Content:</label>
+                                <textarea id="knowledgeContent" rows="4" placeholder="Enter knowledge content..."></textarea>
+                            </div>
+                            <div class="button-row">
+                                <button id="addKnowledgeBtn" class="btn-small btn-primary">📤 Add Document</button>
+                            </div>
                         </div>
                     </div>
 
