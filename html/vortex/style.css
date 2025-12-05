@@ -1303,3 +1303,125 @@ textarea#knowledgeContent:focus {
     border-radius: 6px;
     border-left: 3px solid var(--success);
 }
+
+/* ========================================
+   ChromaDB Retrieval Stats
+   ======================================== */
+
+.retrieval-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 10px;
+    background: var(--bg-input);
+    border-radius: 6px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+}
+
+.stat-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.stat-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.stat-value.highlight {
+    color: var(--accent-teal);
+    font-size: 14px;
+}
+
+.retrieval-queries {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.retrieval-query {
+    background: var(--bg-input);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.retrieval-query.error {
+    border-left-color: var(--danger);
+}
+
+.query-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.query-number {
+    font-size: 11px;
+    color: var(--accent-teal);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.query-count {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.query-text {
+    font-size: 12px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.query-distance {
+    font-size: 10px;
+    color: var(--info);
+    margin-bottom: 6px;
+}
+
+.query-error {
+    font-size: 11px;
+    color: var(--danger);
+    margin-top: 6px;
+    padding: 6px;
+    background: rgba(255, 107, 107, 0.1);
+    border-radius: 4px;
+}
+
+.query-samples {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+}
+
+.sample-item {
+    margin-bottom: 8px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.sample-meta {
+    font-size: 10px;
+    color: var(--warning);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.sample-content {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}

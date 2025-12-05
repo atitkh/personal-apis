@@ -59,6 +59,15 @@ class VortexDebugInterface {
         this.mcpToolsList = document.getElementById('mcpToolsList');
         this.mcpSummary = document.getElementById('mcpSummary');
         
+        // ChromaDB Retrieval elements
+        this.retrievalQueriesCount = document.getElementById('retrievalQueriesCount');
+        this.retrievalTotalCount = document.getElementById('retrievalTotalCount');
+        this.retrievalFilteredCount = document.getElementById('retrievalFilteredCount');
+        this.retrievalDedupCount = document.getElementById('retrievalDedupCount');
+        this.retrievalReranked = document.getElementById('retrievalReranked');
+        this.retrievalFinalCount = document.getElementById('retrievalFinalCount');
+        this.retrievalQueriesList = document.getElementById('retrievalQueriesList');
+        
         // Context stats
         this.workingMemoryCount = document.getElementById('workingMemoryCount');
         this.semanticMemoryCount = document.getElementById('semanticMemoryCount');
@@ -356,7 +365,12 @@ class VortexDebugInterface {
                     this.updateUnifiedAnalysis({ debug: debugInfo, memory_intelligence: memoryIntelligence });
                 }
                 
-                // 2. Update memory intelligence panel
+                // 2. Update ChromaDB retrieval stats
+                if (debugInfo?.memory) {
+                    this.updateRetrievalStats(debugInfo.memory);
+                }
+                
+                // 3. Update memory intelligence panel
                 if (memoryIntelligence) {
                     console.log('%c========== MEMORY INTELLIGENCE DEBUG ==========', 'color: #00ff00; font-weight: bold; font-size: 14px');
                     console.log('%c📊 User Message Evaluation:', 'color: #00bfff; font-weight: bold');
@@ -637,12 +651,62 @@ class VortexDebugInterface {
             formattedText += '\n';
         }
         
-        // Memory Summary
+        // Memory Summary with enhanced retrieval details
         if (debugData.memory) {
             formattedText += `${'='.repeat(60)}\n`;
-            formattedText += `💾 MEMORY RETRIEVED\n`;
+            formattedText += `💾 MEMORY RETRIEVAL & FILTERING\n`;
             formattedText += `${'='.repeat(60)}\n\n`;
-            formattedText += JSON.stringify(debugData.memory, null, 2) + '\n\n';
+            
+            // Retrieval details per query
+            if (debugData.memory.retrieval_details && debugData.memory.retrieval_details.length > 0) {
+                formattedText += `--- CHROMADB QUERIES ---\n`;
+                debugData.memory.retrieval_details.forEach((detail, i) => {
+                    formattedText += `\n[Query ${i + 1}] ${detail.query}\n`;
+                    formattedText += `  Retrieved: ${detail.retrieved} memories\n`;
+                    if (detail.error) {
+                        formattedText += `  ⚠️ Error: ${detail.error}\n`;
+                    }
+                    if (detail.fallback) {
+                        formattedText += `  (Fallback query)\n`;
+                    }
+                    if (detail.distanceRange) {
+                        formattedText += `  Distance range: ${detail.distanceRange.min} - ${detail.distanceRange.max}\n`;
+                    }
+                    if (detail.samples && detail.samples.length > 0) {
+                        formattedText += `  Sample results:\n`;
+                        detail.samples.forEach((sample, j) => {
+                            formattedText += `    [${j + 1}] (distance: ${sample.distance}, type: ${sample.type})\n`;
+                            formattedText += `        ${sample.content}\n`;
+                        });
+                    }
+                });
+                formattedText += '\n';
+            }
+            
+            // Filtering pipeline
+            formattedText += `--- FILTERING PIPELINE ---\n`;
+            formattedText += `Total retrieved: ${debugData.memory.total_retrieved || 0}\n`;
+            formattedText += `After relevance filter: ${debugData.memory.after_relevance_filter || 0}\n`;
+            formattedText += `After deduplication: ${debugData.memory.after_deduplication || 0}\n`;
+            formattedText += `After re-ranking: ${debugData.memory.after_reranking || 0}\n`;
+            formattedText += `Re-ranked: ${debugData.memory.reranked ? 'YES' : 'NO'}\n`;
+            formattedText += `Final memories used: ${debugData.memory.final_memories_used || 0}\n\n`;
+            
+            // Final memories
+            if (debugData.memory.memories && debugData.memory.memories.length > 0) {
+                formattedText += `--- FINAL MEMORIES USED ---\n`;
+                debugData.memory.memories.forEach((mem, i) => {
+                    formattedText += `[${i + 1}] ${mem.type || 'unknown'} (distance: ${mem.distance?.toFixed(3) || 'N/A'})\n`;
+                    formattedText += `    ${mem.content_preview}\n`;
+                    if (mem.timestamp) {
+                        formattedText += `    Timestamp: ${mem.timestamp}\n`;
+                    }
+                });
+            } else {
+                formattedText += `--- NO MEMORIES USED ---\n`;
+            }
+            
+            formattedText += '\n';
         }
         
         // Any remaining debug data
@@ -1587,6 +1651,81 @@ class VortexDebugInterface {
             }
             if (this.mcpToolsList) this.mcpToolsList.style.display = 'none';
             if (this.mcpSummary) this.mcpSummary.style.display = 'none';
+        }
+    }
+
+    updateRetrievalStats(memoryData) {
+        console.log('Updating retrieval stats:', memoryData);
+        
+        if (!memoryData) return;
+        
+        // Update stats
+        if (this.retrievalQueriesCount) {
+            this.retrievalQueriesCount.textContent = memoryData.retrieval_details?.length || 0;
+        }
+        
+        if (this.retrievalTotalCount) {
+            this.retrievalTotalCount.textContent = memoryData.total_retrieved || 0;
+        }
+        
+        if (this.retrievalFilteredCount) {
+            this.retrievalFilteredCount.textContent = memoryData.after_relevance_filter || 0;
+        }
+        
+        if (this.retrievalDedupCount) {
+            this.retrievalDedupCount.textContent = memoryData.after_deduplication || 0;
+        }
+        
+        if (this.retrievalReranked) {
+            const reranked = memoryData.reranked || false;
+            this.retrievalReranked.textContent = reranked ? 'YES' : 'NO';
+            this.retrievalReranked.className = `stat-value badge ${reranked ? 'badge-yes' : 'badge-no'}`;
+        }
+        
+        if (this.retrievalFinalCount) {
+            this.retrievalFinalCount.textContent = memoryData.final_memories_used || 0;
+        }
+        
+        // Update queries list
+        if (this.retrievalQueriesList && memoryData.retrieval_details) {
+            const details = memoryData.retrieval_details;
+            
+            if (details.length > 0) {
+                this.retrievalQueriesList.innerHTML = details.map((detail, i) => {
+                    const hasError = detail.error ? 'error' : '';
+                    const isFallback = detail.fallback ? ' (Fallback)' : '';
+                    
+                    return `
+                        <div class="retrieval-query ${hasError}">
+                            <div class="query-header">
+                                <span class="query-number">Query ${i + 1}${isFallback}</span>
+                                <span class="query-count">${detail.retrieved} results</span>
+                            </div>
+                            <div class="query-text">${this.escapeHtml(detail.query)}</div>
+                            ${detail.distanceRange ? `
+                                <div class="query-distance">
+                                    Distance: ${detail.distanceRange.min} - ${detail.distanceRange.max}
+                                </div>
+                            ` : ''}
+                            ${detail.error ? `
+                                <div class="query-error">⚠️ ${this.escapeHtml(detail.error)}</div>
+                            ` : ''}
+                            ${detail.samples && detail.samples.length > 0 ? `
+                                <div class="query-samples">
+                                    ${detail.samples.map((sample, j) => `
+                                        <div class="sample-item">
+                                            <span class="sample-meta">${sample.type} · ${sample.distance}</span>
+                                            <div class="sample-content">${this.escapeHtml(sample.content)}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                this.retrievalQueriesList.innerHTML = '<span class="placeholder">No queries sent yet</span>';
+            }
         }
     }
 

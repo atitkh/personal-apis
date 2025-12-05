@@ -146,6 +146,40 @@
                         </div>
                     </div>
 
+                    <!-- ChromaDB Retrieval Stats -->
+                    <div class="debug-card" id="retrievalStatsCard">
+                        <h4>🔍 ChromaDB Retrieval</h4>
+                        <div class="retrieval-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">Queries Sent:</span>
+                                <span class="stat-value" id="retrievalQueriesCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Total Retrieved:</span>
+                                <span class="stat-value" id="retrievalTotalCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">After Filter:</span>
+                                <span class="stat-value" id="retrievalFilteredCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">After Dedup:</span>
+                                <span class="stat-value" id="retrievalDedupCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Re-ranked:</span>
+                                <span class="stat-value badge" id="retrievalReranked">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Final Used:</span>
+                                <span class="stat-value highlight" id="retrievalFinalCount">-</span>
+                            </div>
+                        </div>
+                        <div id="retrievalQueriesList" class="retrieval-queries">
+                            <span class="placeholder">No retrieval data yet</span>
+                        </div>
+                    </div>
+
                     <!-- Memory Explorer -->
                     <div class="debug-card">
                         <h4>💾 Memory Explorer</h4>
