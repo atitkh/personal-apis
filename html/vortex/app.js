@@ -1540,7 +1540,7 @@ class VortexDebugInterface {
                         return `
                             <div class="mcp-tool">
                                 <div class="tool-name">🔧 ${tool}</div>
-                                ${toolResult ? `<div class="tool-result">${this.escapeHtml(JSON.stringify(toolResult, null, 2).substring(0, 200))}${JSON.stringify(toolResult).length > 200 ? '...' : ''}</div>` : ''}
+                                ${toolResult ? `<div class="tool-result">${this.escapeHtml(JSON.stringify(toolResult, null, 2))}</div>` : ''}
                             </div>
                         `;
                     }).join('')}

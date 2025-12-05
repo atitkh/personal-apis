@@ -1251,6 +1251,11 @@ textarea#knowledgeContent:focus {
 .mcp-success .status-text { color: var(--success); }
 .mcp-error .status-text { color: var(--danger); }
 
+.mcp-tools-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
 .mcp-tools-list h5,
 .mcp-summary h5 {
     font-size: 11px;
@@ -1283,8 +1288,10 @@ textarea#knowledgeContent:focus {
     padding: 8px;
     border-radius: 4px;
     overflow-x: auto;
+    max-height: 300px;
+    overflow-y: auto;
     white-space: pre-wrap;
-    word-break: break-all;
+    word-break: break-word;
 }
 
 .summary-text {
