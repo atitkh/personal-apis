@@ -1081,12 +1081,12 @@ class VortexService {
 
     // Configuration
     const config = {
-      strictThreshold: 1.3,      // Always include if distance < this
-      looseThreshold: 1.8,       // Never include if distance > this
-      minResults: 3,             // Try to return at least this many
-      maxResults: 20,            // Never return more than this
-      dynamicPercentile: 0.4,    // Keep within 40% of distance range
-      gapMultiplier: 1.3         // Stop if next result is 30%+ farther (relevance cliff)
+      strictThreshold: 1.2,      // Always include if distance < this (tightened from 1.3)
+      looseThreshold: 1.6,       // Never include if distance > this (tightened from 1.8)
+      minResults: 2,             // Try to return at least this many (reduced from 3)
+      maxResults: 15,            // Never return more than this (reduced from 20)
+      dynamicPercentile: 0.35,   // Keep within 35% of distance range (tightened from 0.4)
+      gapMultiplier: 1.25        // Stop if next result is 25%+ farther (tightened from 1.3)
     };
 
     // Calculate dynamic threshold based on actual result distribution

@@ -590,6 +590,12 @@ CRITICAL - Information Sources:
 - Memories are for historical context
 - NEVER fabricate or guess - if you don't know, say so
 
+CRITICAL - Context Relevance:
+- Evaluate whether retrieved memories actually relate to the current question
+- Simple factual queries usually don't need past conversation context
+- Don't force connections between unrelated topics - if memories aren't relevant, just answer the question directly
+- Natural context switches happen - recognize when the conversation topic has changed
+
 You're having a normal conversation, not giving a presentation.`;
   }
 

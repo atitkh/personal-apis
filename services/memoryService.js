@@ -834,13 +834,31 @@ class MemoryService {
         
         if (conversationIdStr && conversationIdStr !== 'undefined' && conversationIdStr !== 'null' && conversationIdStr !== '') {
           // Try using $and operator for multiple conditions as per ChromaDB docs
+          // ALSO filter by role='user' to only retrieve user messages for context
           conversationWhere = {
             "$and": [
               { "user_id": userIdStr },
-              { "conversation_id": conversationIdStr }
+              { "conversation_id": conversationIdStr },
+              { "role": "user" }
+            ]
+          };
+        } else {
+          // No conversation ID, but still filter by role='user'
+          conversationWhere = {
+            "$and": [
+              { "user_id": userIdStr },
+              { "role": "user" }
             ]
           };
         }
+      } else {
+        // No conversation ID provided, filter by user and role
+        conversationWhere = {
+          "$and": [
+            { "user_id": userIdStr },
+            { "role": "user" }
+          ]
+        };
       }
       
       logger.debug('ChromaDB where clause constructed', {
@@ -897,9 +915,11 @@ class MemoryService {
           if (allResults.documents && allResults.documents[0] && allResults.documents[0].length > 0) {
             const filteredIndices = [];
             allResults.metadatas[0].forEach((metadata, index) => {
-              const matchesUser = metadata.user_id === conversationWhere.user_id;
-              const matchesConversation = !conversationWhere.conversation_id || metadata.conversation_id === conversationWhere.conversation_id;
-              if (matchesUser && matchesConversation) {
+              const matchesUser = metadata.user_id === conversationWhere.user_id || 
+                                  (conversationWhere.$and && metadata.user_id === conversationWhere.$and.find(c => c.user_id)?.user_id);
+              const matchesConversation = !conversationId || metadata.conversation_id === conversationId;
+              const matchesRole = metadata.role === 'user'; // Only retrieve user messages
+              if (matchesUser && matchesConversation && matchesRole) {
                 filteredIndices.push(index);
               }
             });
