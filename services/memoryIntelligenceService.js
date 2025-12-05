@@ -53,8 +53,288 @@ class MemoryIntelligenceService {
   }
 
   /**
+   * UNIFIED MESSAGE ANALYSIS
+   * Performs all message intelligence tasks in a single LLM call:
+   * - Message importance evaluation
+   * - Memory retrieval query generation
+   * - MCP tool intent detection
+   * 
+   * This is 3x faster than separate calls and provides better context-aware analysis.
+   * 
+   * @param {Object} params
+   * @param {string} params.message - The message to analyze
+   * @param {string} params.role - 'user' or 'assistant'
+   * @param {Object} params.context - Additional context
+   * @returns {Object} Unified analysis result
+   */
+  async analyzeMessage({ message, role, context = {} }) {
+    await this.ensureInitialized();
+
+    try {
+      const prompt = this.buildUnifiedAnalysisPrompt(message, role, context);
+      const systemPrompt = this.getUnifiedAnalysisSystemPrompt();
+      
+      console.log('\n========== UNIFIED MESSAGE ANALYSIS ==========');
+      console.log('📤 SENDING TO LLM (Single unified call - replaces 3 separate calls)');
+      console.log('Message:', message);
+      console.log('Role:', role);
+      if (context.previousMessage) {
+        console.log('Previous message:', context.previousMessage.substring(0, 100));
+      }
+      if (context.conversationSummary) {
+        console.log('Conversation summary:', context.conversationSummary.substring(0, 100));
+      }
+      console.log('System Prompt:', systemPrompt.substring(0, 200) + '...');
+      console.log('User Prompt:', prompt);
+      console.log('==============================================');
+      
+      const response = await this.llmService.generateResponse({
+        messages: [{ role: 'user', content: prompt }],
+        systemPrompt: systemPrompt,
+        temperature: 0.1,
+        maxTokens: 400
+      });
+
+      console.log('\n📥 RECEIVED FROM LLM:');
+      console.log('Raw Response:', response.content);
+      console.log('==============================================\n');
+
+      const analysis = this.parseUnifiedAnalysis(response.content, message);
+      
+      console.log('\n🎯 UNIFIED ANALYSIS RESULT:');
+      console.log('  EVALUATION:');
+      console.log('    Importance:', analysis.evaluation.importance);
+      console.log('    Category:', analysis.evaluation.category);
+      console.log('    Should Store:', analysis.evaluation.shouldStore);
+      console.log('    Storage Type:', analysis.evaluation.storageType);
+      console.log('    Summary:', analysis.evaluation.summary);
+      console.log('    Key Facts:', analysis.evaluation.keyFacts);
+      console.log('    Explicit Action:', analysis.evaluation.explicitAction || 'none');
+      console.log('    Reasoning:', analysis.evaluation.reasoning);
+      console.log('  RETRIEVAL:');
+      console.log('    Original Query:', message.substring(0, 100));
+      console.log('    Enhanced Queries:', analysis.retrieval.queries);
+      console.log('    Keywords:', analysis.retrieval.keywords);
+      console.log('    Categories:', analysis.retrieval.categories);
+      console.log('  MCP INTENT:');
+      console.log('    Needs Tools:', analysis.mcpIntent.needsTools);
+      console.log('    Confidence:', analysis.mcpIntent.confidence);
+      console.log('    Likely Tools:', analysis.mcpIntent.likelyTools);
+      console.log('    Intent Type:', analysis.mcpIntent.intentType);
+      console.log('    Reasoning:', analysis.mcpIntent.reasoning);
+      console.log('==============================================\n');
+
+      return analysis;
+
+    } catch (error) {
+      logger.error('Unified message analysis failed', { error: error.message });
+      return this.getDefaultAnalysis(message);
+    }
+  }
+
+  /**
+   * Build unified analysis prompt
+   */
+  buildUnifiedAnalysisPrompt(message, role, context) {
+    const roleContext = role === 'user' ? 'The user said' : 'The AI assistant responded';
+    
+    return `${roleContext}: "${message}"
+
+${context.previousMessage ? `Previous message: "${context.previousMessage}"` : ''}
+${context.conversationSummary ? `Conversation context: ${context.conversationSummary}` : ''}
+
+Analyze this message comprehensively and respond in JSON format:
+{
+  "evaluation": {
+    "importance": <1-10 score>,
+    "category": "<category>",
+    "summary": "<concise summary if important, otherwise null>",
+    "key_facts": [<list of extractable facts>],
+    "explicit_action": <null OR {"type": "remember|remind|note", "content": "..."} if user explicitly requests memory action>,
+    "reasoning": "<brief explanation>"
+  },
+  "retrieval": {
+    "queries": ["<best search query 1>", "<alternative search query 2>"],
+    "keywords": ["<key1>", "<key2>"],
+    "categories": ["<likely memory category 1>", "<category 2>"]
+  },
+  "mcp_intent": {
+    "needs_tools": <true/false>,
+    "confidence": <0.0-1.0>,
+    "likely_tools": ["<tool1>", "<tool2>"],
+    "intent_type": "<query|action|conversation>",
+    "reasoning": "<why tools are/aren't needed>"
+  }
+}`;
+  }
+
+  /**
+   * Get unified analysis system prompt
+   */
+  getUnifiedAnalysisSystemPrompt() {
+    return `You are a comprehensive message analyzer for Vortex, a personal AI assistant.
+
+Analyze messages in THREE dimensions simultaneously:
+
+═══════════════════════════════════════════════════════════════════
+1. EVALUATION - Message Importance & Storage
+═══════════════════════════════════════════════════════════════════
+IMPORTANCE (1-10):
+- 9-10: Critical personal info (name, birthday, family, major life events)
+- 7-8: Important preferences, recurring topics, significant requests
+- 5-6: Useful context, moderate preferences, task-related info
+- 3-4: General conversation, low-value context
+- 1-2: Chitchat, greetings, filler, acknowledgments
+
+CATEGORY: fact, preference, task, event, instruction, relationship, chitchat, question, context
+
+SUMMARY: Concise summary if importance >= 5, otherwise null
+
+KEY_FACTS: Extract concrete facts (names, dates, preferences)
+
+EXPLICIT_ACTION: Only set if user explicitly says "remember that...", "remind me to...", "note that..."
+- NOT for device commands ("turn on light")
+- NOT for questions ("what did I say?")
+- NOT for general requests ("help me with...")
+
+═══════════════════════════════════════════════════════════════════
+2. RETRIEVAL - Memory Search Queries
+═══════════════════════════════════════════════════════════════════
+Generate TWO context-aware search queries:
+1. Direct query matching user's intent
+2. Alternative phrasing or broader context
+
+Consider:
+- Synonyms and related terms
+- Different phrasings of same intent
+- Temporal context ("recent", "yesterday", etc.)
+- Related topics that might be relevant
+
+KEYWORDS: 2-4 key terms for filtering
+CATEGORIES: Likely memory categories to search
+
+═══════════════════════════════════════════════════════════════════
+3. MCP INTENT - Tool/Action Detection
+═══════════════════════════════════════════════════════════════════
+NEEDS_TOOLS: true if message requires external tool execution
+
+Example Set TRUE for:
+- Device control: "turn on/off X", "set temperature", "dim lights"
+- Home automation: "is X on?", "what's the temperature?"
+- System actions: "play music", "set timer", "create reminder"
+- Information retrieval requiring APIs: "weather", "calendar"
+
+Example Set FALSE for:
+- Pure conversation: "how are you?", "tell me about..."
+- Questions about past: "what did we discuss?", "do you remember..."
+- General knowledge: "explain X", "what is Y?"
+- Memory operations: "remember that...", "note this..."
+
+CONFIDENCE: 0.0-1.0 (how certain you are)
+LIKELY_TOOLS: Guess which tools might be needed (homeassistant.*, etc.)
+INTENT_TYPE: "action" (requires tools), "query" (information), or "conversation" (chat)
+REASONING: Brief explanation
+
+═══════════════════════════════════════════════════════════════════
+
+Respond ONLY with valid JSON. Be consistent and objective.`;
+  }
+
+  /**
+   * Parse unified analysis response
+   */
+  parseUnifiedAnalysis(response, originalMessage) {
+    try {
+      let jsonStr = response;
+      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) jsonStr = jsonMatch[1];
+      
+      const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (objectMatch) jsonStr = objectMatch[0];
+
+      const parsed = JSON.parse(jsonStr);
+      
+      // Parse evaluation
+      const importance = Math.min(10, Math.max(1, parseInt(parsed.evaluation?.importance) || 5));
+      const category = this.validateCategory(parsed.evaluation?.category);
+      
+      let explicitAction = null;
+      if (parsed.evaluation?.explicit_action?.type && parsed.evaluation?.explicit_action?.content) {
+        explicitAction = {
+          type: parsed.evaluation.explicit_action.type,
+          content: parsed.evaluation.explicit_action.content,
+          confidence: 0.9
+        };
+      }
+      
+      return {
+        evaluation: {
+          importance,
+          category,
+          summary: parsed.evaluation?.summary || null,
+          keyFacts: parsed.evaluation?.key_facts || [],
+          reasoning: parsed.evaluation?.reasoning || '',
+          shouldStore: importance >= this.thresholds.LOW,
+          storageType: this.determineStorageType(importance, category),
+          explicitAction
+        },
+        retrieval: {
+          queries: (parsed.retrieval?.queries || [originalMessage]).slice(0, 2),
+          keywords: parsed.retrieval?.keywords || [],
+          categories: parsed.retrieval?.categories || []
+        },
+        mcpIntent: {
+          needsTools: parsed.mcp_intent?.needs_tools || false,
+          confidence: Math.min(1.0, Math.max(0.0, parseFloat(parsed.mcp_intent?.confidence) || 0.5)),
+          likelyTools: parsed.mcp_intent?.likely_tools || [],
+          intentType: parsed.mcp_intent?.intent_type || 'conversation',
+          reasoning: parsed.mcp_intent?.reasoning || ''
+        }
+      };
+
+    } catch (error) {
+      logger.warn('Failed to parse unified analysis', { 
+        error: error.message,
+        response: response.substring(0, 200)
+      });
+      return this.getDefaultAnalysis(originalMessage);
+    }
+  }
+
+  /**
+   * Get default analysis on error
+   */
+  getDefaultAnalysis(message) {
+    return {
+      evaluation: {
+        importance: 5,
+        category: this.categories.CONTEXT,
+        summary: message.substring(0, 200),
+        keyFacts: [],
+        reasoning: 'Default - parse error',
+        shouldStore: true,
+        storageType: 'conversations',
+        explicitAction: null
+      },
+      retrieval: {
+        queries: [message],
+        keywords: [],
+        categories: []
+      },
+      mcpIntent: {
+        needsTools: false,
+        confidence: 0.5,
+        likelyTools: [],
+        intentType: 'conversation',
+        reasoning: 'Default - assuming conversation'
+      }
+    };
+  }
+
+  /**
    * Evaluate a message for memory importance and categorization
    * 
+   * @deprecated Use analyzeMessage() instead for better performance
    * @param {Object} params
    * @param {string} params.message - The message to evaluate
    * @param {string} params.role - 'user' or 'assistant'
@@ -62,199 +342,9 @@ class MemoryIntelligenceService {
    * @returns {Object} Evaluation result with importance, category, summary, shouldStore
    */
   async evaluateMessage({ message, role, context = {} }) {
-    await this.ensureInitialized();
-
-    try {
-      const prompt = this.buildEvaluationPrompt(message, role, context);
-      const systemPrompt = this.getEvaluationSystemPrompt();
-      
-      // Debug: Log what we're sending to LLM
-      console.log('\n========== MEMORY INTELLIGENCE: EVALUATE MESSAGE ==========');
-      console.log('📤 SENDING TO LLM:');
-      console.log('System Prompt:', systemPrompt.substring(0, 200) + '...');
-      console.log('User Prompt:', prompt);
-      console.log('============================================================');
-      
-      const response = await this.llmService.generateResponse({
-        messages: [{ role: 'user', content: prompt }],
-        systemPrompt: systemPrompt,
-        temperature: 0.1,  // Low temperature for consistent scoring
-        maxTokens: 300
-      });
-
-      // Debug: Log what we received from LLM
-      console.log('\n📥 RECEIVED FROM LLM:');
-      console.log('Raw Response:', response.content);
-      console.log('============================================================\n');
-
-      const evaluation = this.parseEvaluationResponse(response.content);
-      
-      // Debug: Log parsed evaluation result
-      console.log('\n🎯 PARSED EVALUATION RESULT:');
-      console.log('  Importance:', evaluation.importance);
-      console.log('  Category:', evaluation.category);
-      console.log('  Should Store:', evaluation.shouldStore);
-      console.log('  Storage Type:', evaluation.storageType);
-      console.log('  Summary:', evaluation.summary);
-      console.log('  Key Facts:', evaluation.keyFacts);
-      console.log('  Explicit Action:', evaluation.explicitAction || 'none');
-      console.log('  Reasoning:', evaluation.reasoning);
-      console.log('============================================================\n');
-
-      logger.debug('Message evaluated', {
-        role,
-        messagePreview: message.substring(0, 50),
-        importance: evaluation.importance,
-        category: evaluation.category,
-        shouldStore: evaluation.shouldStore,
-        hasExplicitAction: !!evaluation.explicitAction
-      });
-
-      return evaluation;
-
-    } catch (error) {
-      logger.error('Message evaluation failed', { error: error.message });
-      // Default to storing on error to avoid losing important info
-      return {
-        importance: 5,
-        category: this.categories.CONTEXT,
-        summary: message.substring(0, 200),
-        shouldStore: true,
-        storageType: 'conversations',
-        explicitAction: null,
-        error: error.message
-      };
-    }
-  }
-
-  /**
-   * Build the evaluation prompt
-   */
-  buildEvaluationPrompt(message, role, context) {
-    const roleContext = role === 'user' ? 'The user said' : 'The AI assistant responded';
-    
-    return `${roleContext}:
-"${message}"
-
-${context.previousMessage ? `Previous message: "${context.previousMessage}"` : ''}
-${context.conversationSummary ? `Conversation context: ${context.conversationSummary}` : ''}
-
-Analyze this message and respond in JSON format:
-{
-  "importance": <1-10 score>,
-  "category": "<category>",
-  "summary": "<concise summary if important, otherwise null>",
-  "key_facts": [<list of extractable facts, or empty array>],
-  "explicit_action": <null OR {"type": "remember|remind|note", "content": "what to remember/remind/note"} if user explicitly requests it>,
-  "reasoning": "<brief explanation>"
-}`;
-  }
-
-  /**
-   * Get the system prompt for evaluation
-   */
-  getEvaluationSystemPrompt() {
-    return `You are a memory importance evaluator for a personal AI assistant named Vortex.
-
-Your job is to analyze messages and determine:
-1. IMPORTANCE (1-10 scale):
-   - 9-10: Critical personal info (name, birthday, family, major life events)
-   - 7-8: Important preferences, recurring topics, significant requests
-   - 5-6: Useful context, moderate preferences, task-related info
-   - 3-4: General conversation, low-value context
-   - 1-2: Chitchat, greetings, filler, acknowledgments
-
-2. CATEGORY (one of):
-   - fact: Factual information about the user
-   - preference: User likes, dislikes, preferences
-   - task: Tasks, reminders, action items
-   - event: Significant events or experiences
-   - instruction: How user wants to be helped
-   - relationship: Information about people in user's life
-   - chitchat: Casual conversation, small talk
-   - question: Questions without lasting value
-   - context: Situational context
-
-3. SUMMARY: For importance >= 5, provide a concise, detailed summary. Otherwise null.
-
-4. KEY_FACTS: Extract any concrete facts (names, dates, preferences, etc.)
-
-5. EXPLICIT_ACTION: Detect if user explicitly requests MEMORY-related actions:
-   - "Remember that..." or "Don't forget..." → {"type": "remember", "content": "what to remember"}
-   - "Remind me to..." or "Set a reminder..." → {"type": "remind", "content": "what to remind"}
-   - "Note that..." or "Make a note..." → {"type": "note", "content": "what to note"}
-   
-   IMPORTANT - These are NOT explicit memory actions (set to null):
-   - Questions like "What did I ask you to remember?" 
-   - Device/tool commands like "turn on the light", "play music", "set temperature"
-   - General requests like "help me with...", "can you..."
-   
-   Only set explicit_action when user is explicitly asking to STORE something in memory.
-
-Respond ONLY with valid JSON. Be consistent and objective.`;
-  }
-
-  /**
-   * Parse the LLM evaluation response
-   */
-  parseEvaluationResponse(response) {
-    try {
-      // Extract JSON from response (handle markdown code blocks)
-      let jsonStr = response;
-      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1];
-      }
-      
-      // Try to find JSON object in response
-      const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (objectMatch) {
-        jsonStr = objectMatch[0];
-      }
-
-      const parsed = JSON.parse(jsonStr);
-      
-      const importance = Math.min(10, Math.max(1, parseInt(parsed.importance) || 5));
-      const category = this.validateCategory(parsed.category);
-      
-      // Parse explicit action if present
-      let explicitAction = null;
-      if (parsed.explicit_action && parsed.explicit_action.type && parsed.explicit_action.content) {
-        explicitAction = {
-          type: parsed.explicit_action.type,
-          content: parsed.explicit_action.content,
-          confidence: 0.9 // LLM-detected actions have high confidence
-        };
-      }
-      
-      return {
-        importance,
-        category,
-        summary: parsed.summary || null,
-        keyFacts: parsed.key_facts || [],
-        reasoning: parsed.reasoning || '',
-        shouldStore: importance >= this.thresholds.LOW,
-        storageType: this.determineStorageType(importance, category),
-        explicitAction
-      };
-
-    } catch (error) {
-      logger.warn('Failed to parse evaluation response', { 
-        error: error.message,
-        response: response.substring(0, 200)
-      });
-      
-      return {
-        importance: 5,
-        category: this.categories.CONTEXT,
-        summary: null,
-        keyFacts: [],
-        reasoning: 'Parse error - defaulting',
-        shouldStore: true,
-        storageType: 'conversations',
-        explicitAction: null
-      };
-    }
+    // Wrapper for backward compatibility - calls unified analysis
+    const analysis = await this.analyzeMessage({ message, role, context });
+    return analysis.evaluation;
   }
 
   /**
@@ -302,92 +392,25 @@ Respond ONLY with valid JSON. Be consistent and objective.`;
   /**
    * Enhance a retrieval query for better memory search
    * 
+   * @deprecated Use analyzeMessage() instead for better performance (includes query generation)
    * @param {string} query - Original query
    * @param {Object} context - Additional context
    * @returns {Object} Enhanced query data
    */
   async enhanceQuery(query, context = {}) {
-    await this.ensureInitialized();
-
-    try {
-      const prompt = `Given this user query: "${query}"
-
-Generate search variations to find relevant memories. Consider:
-- Synonyms and related terms
-- Different phrasings of the same intent
-- Related topics that might be relevant
-
-Respond in JSON:
-{
-  "queries": ["<query1>", "<query2>", "<query3>"],
-  "keywords": ["<keyword1>", "<keyword2>"],
-  "categories": ["<likely memory categories>"],
-  "timeframe": "<if temporal, e.g., 'recent', 'last week', null>"
-}`;
-
-      const systemPrompt = 'You are a search query optimizer. Generate alternative queries to improve memory retrieval. Respond only with JSON.';
-
-      // Debug: Log what we're sending to LLM
-      console.log('\n========== MEMORY INTELLIGENCE: ENHANCE QUERY ==========');
-      console.log('📤 SENDING TO LLM:');
-      console.log('System Prompt:', systemPrompt);
-      console.log('User Prompt:', prompt);
-      console.log('==========================================================');
-
-      const response = await this.llmService.generateResponse({
-        messages: [{ role: 'user', content: prompt }],
-        systemPrompt: systemPrompt,
-        temperature: 0.3,
-        maxTokens: 200
-      });
-
-      // Debug: Log what we received from LLM
-      console.log('\n📥 RECEIVED FROM LLM:');
-      console.log('Raw Response:', response.content);
-      console.log('==========================================================\n');
-
-      return this.parseQueryEnhancement(response.content, query);
-
-    } catch (error) {
-      logger.error('Query enhancement failed', { error: error.message });
-      return {
-        queries: [query],
-        keywords: [],
-        categories: [],
-        timeframe: null
-      };
-    }
-  }
-
-  /**
-   * Parse query enhancement response
-   */
-  parseQueryEnhancement(response, originalQuery) {
-    try {
-      let jsonStr = response;
-      const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) jsonStr = jsonMatch[1];
-      
-      const objectMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (objectMatch) jsonStr = objectMatch[0];
-
-      const parsed = JSON.parse(jsonStr);
-      
-      return {
-        queries: [originalQuery, ...(parsed.queries || [])].slice(0, 5),
-        keywords: parsed.keywords || [],
-        categories: parsed.categories || [],
-        timeframe: parsed.timeframe || null
-      };
-
-    } catch (error) {
-      return {
-        queries: [originalQuery],
-        keywords: [],
-        categories: [],
-        timeframe: null
-      };
-    }
+    // Wrapper for backward compatibility - calls unified analysis
+    const analysis = await this.analyzeMessage({ 
+      message: query, 
+      role: 'user', 
+      context 
+    });
+    
+    return {
+      queries: analysis.retrieval.queries,
+      keywords: analysis.retrieval.keywords,
+      categories: analysis.retrieval.categories,
+      timeframe: null
+    };
   }
 
   /**
