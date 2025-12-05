@@ -237,7 +237,7 @@ class VortexService {
       const systemPrompt = llmService.buildSystemPrompt({
         userContext: context.user || { name: 'Atit' },
         relevantMemories,
-        currentTime: new Date().toISOString(),
+        currentTime: new Date().toLocaleString(),
         personality: this.personality
       });
 
