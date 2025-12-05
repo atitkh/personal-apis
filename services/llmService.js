@@ -209,14 +209,40 @@ class LLMService {
    */
   async generateGeminiResponse({ systemPrompt, messages, temperature = 0.7, maxTokens = 1000 }) {
     try {
-      // Combine system prompt with conversation
-      const fullPrompt = `${systemPrompt}\n\nConversation:\n` + 
-        messages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + 
-        '\nassistant:';
+      // Convert to Gemini's structured conversation format for better context understanding
+      const geminiContents = [];
+      
+      // Add system prompt as first user message with model acknowledgment
+      if (systemPrompt) {
+        geminiContents.push({
+          role: 'user',
+          parts: [{ text: systemPrompt }]
+        });
+        geminiContents.push({
+          role: 'model',
+          parts: [{ text: 'Understood. I will follow these instructions.' }]
+        });
+      }
+      
+      // Convert conversation messages to Gemini format
+      for (const msg of messages) {
+        if (msg.role === 'user') {
+          geminiContents.push({
+            role: 'user',
+            parts: [{ text: msg.content }]
+          });
+        } else if (msg.role === 'assistant') {
+          geminiContents.push({
+            role: 'model',
+            parts: [{ text: msg.content }]
+          });
+        }
+        // Skip other roles (like 'system') as Gemini only supports 'user' and 'model'
+      }
 
       const response = await this.client.models.generateContent({
         model: this.model,
-        contents: fullPrompt,
+        contents: geminiContents,
         config: {
           temperature: temperature,
           maxOutputTokens: maxTokens
@@ -228,11 +254,11 @@ class LLMService {
 
       return {
         content: text,
-        functionCall: null, // Gemini function calling would need special handling
+        functionCall: null,
         usage: {
-          prompt_tokens: Math.ceil(fullPrompt.length / 4), // Rough estimate
+          prompt_tokens: Math.ceil(JSON.stringify(geminiContents).length / 4),
           completion_tokens: Math.ceil(text.length / 4),
-          total_tokens: Math.ceil((fullPrompt.length + text.length) / 4)
+          total_tokens: Math.ceil((JSON.stringify(geminiContents).length + text.length) / 4)
         },
         model: this.model
       };
