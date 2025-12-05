@@ -29,15 +29,37 @@ async function convertToPCM(inputBuffer, inputFormat = 'webm', options = {}) {
         sampleWidth = 2  // 16-bit = 2 bytes
     } = options;
 
+    // If input is already raw PCM with correct parameters, no conversion needed
+    if (inputFormat === 'pcm' || inputFormat === 's16le') {
+        logger.debug('Input is already PCM, skipping conversion', {
+            inputSize: inputBuffer.length,
+            sampleRate,
+            channels,
+            sampleWidth
+        });
+        return inputBuffer;
+    }
+
     return new Promise((resolve, reject) => {
-        const ffmpegArgs = [
+        const ffmpegArgs = [];
+        
+        // Add input format parameters for raw PCM input
+        if (inputFormat === 'raw' || inputFormat === 'pcm_s16le') {
+            ffmpegArgs.push(
+                '-f', 's16le',
+                '-ar', String(sampleRate),
+                '-ac', String(channels)
+            );
+        }
+        
+        ffmpegArgs.push(
             '-i', 'pipe:0',           // Read from stdin
             '-f', 's16le',            // Output format: signed 16-bit little-endian PCM
             '-acodec', 'pcm_s16le',   // Audio codec
             '-ar', String(sampleRate), // Sample rate
             '-ac', String(channels),   // Channels
             'pipe:1'                   // Output to stdout
-        ];
+        );
 
         logger.debug('Converting audio to PCM', {
             inputSize: inputBuffer.length,
@@ -743,11 +765,15 @@ class VoiceService {
         });
 
         // Step 1: Speech to Text
+        // Detect input format from filename
+        const inputFormat = filename ? filename.toLowerCase().split('.').pop() : 'webm';
+        
         const sttResult = await this.speechToText(audioBuffer, {
             language: options.inputLanguage,
             sampleRate: 16000,
             channels: 1,
-            sampleWidth: 2
+            sampleWidth: 2,
+            inputFormat
         });
 
         if (!sttResult.success) {

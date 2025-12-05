@@ -12,7 +12,7 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     // Check file extension
-    const allowedExtensions = ['.wav', '.mp3', '.ogg', '.flac', '.m4a', '.webm'];
+    const allowedExtensions = ['.wav', '.mp3', '.ogg', '.flac', '.m4a', '.webm', '.pcm'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
     
     if (allowedExtensions.includes(fileExtension)) {
@@ -83,12 +83,9 @@ class VoiceController {
         options
       });
 
-      // Get the audio buffer - if it's a WAV file, strip the header
+      // Get the audio buffer - use raw PCM directly
       let audioBuffer = req.file.buffer;
-      if (req.file.originalname?.toLowerCase().endsWith('.wav') && audioBuffer.length > 44) {
-        // Skip WAV header (44 bytes) to get raw PCM
-        audioBuffer = audioBuffer.slice(44);
-      }
+      // No need to strip WAV header - frontend sends raw PCM
 
       const result = await voiceService.speechToText(audioBuffer, options);
 

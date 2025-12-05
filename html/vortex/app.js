@@ -936,22 +936,37 @@ class VortexDebugInterface {
             });
             
             this.audioChunks = [];
-            this.mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus'
+            
+            // Use AudioWorklet for direct PCM capture (more efficient than MediaRecorder)
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 16000 // 16kHz is standard for speech recognition
             });
             
-            this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    this.audioChunks.push(event.data);
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+            
+            processor.onaudioprocess = (e) => {
+                if (this.isRecording) {
+                    // Get raw PCM data (Float32Array)
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    // Convert to Int16 PCM (WAV format without header)
+                    const pcmData = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        const s = Math.max(-1, Math.min(1, inputData[i]));
+                        pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    this.audioChunks.push(pcmData);
                 }
             };
             
-            this.mediaRecorder.onstop = () => {
-                stream.getTracks().forEach(track => track.stop());
-                this.processRecording();
-            };
+            source.connect(processor);
+            processor.connect(audioContext.destination);
             
-            this.mediaRecorder.start();
+            this.audioContext = audioContext;
+            this.audioProcessor = processor;
+            this.audioSource = source;
+            this.audioStream = stream;
+            
             this.isRecording = true;
             this.recordBtn.classList.add('recording');
             this.showVoiceStatus('Recording... (release to send)', 'recording');
@@ -963,12 +978,25 @@ class VortexDebugInterface {
     }
 
     stopRecording() {
-        if (!this.isRecording || !this.mediaRecorder) return;
+        if (!this.isRecording) return;
         
-        this.mediaRecorder.stop();
         this.isRecording = false;
+        
+        // Cleanup audio processing
+        if (this.audioProcessor) {
+            this.audioProcessor.disconnect();
+            this.audioSource.disconnect();
+        }
+        if (this.audioContext) {
+            this.audioContext.close();
+        }
+        if (this.audioStream) {
+            this.audioStream.getTracks().forEach(track => track.stop());
+        }
+        
         this.recordBtn.classList.remove('recording');
         this.showVoiceStatus('Processing audio...', '');
+        this.processRecording();
     }
 
     async processRecording() {
@@ -978,11 +1006,18 @@ class VortexDebugInterface {
         }
         
         try {
-            // Create audio blob
-            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm;codecs=opus' });
+            // Combine all PCM chunks
+            const totalLength = this.audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+            const combinedPCM = new Int16Array(totalLength);
+            let offset = 0;
+            for (const chunk of this.audioChunks) {
+                combinedPCM.set(chunk, offset);
+                offset += chunk.length;
+            }
             
-            // Convert to wav for better compatibility
-            const audioFile = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+            // Send raw PCM directly (no WAV wrapper needed)
+            const audioBlob = new Blob([combinedPCM.buffer], { type: 'audio/pcm' });
+            const audioFile = new File([audioBlob], 'recording.pcm', { type: 'audio/pcm' });
             
             this.showVoiceStatus('Sending voice message...', '');
             
