@@ -47,6 +47,18 @@ class VortexDebugInterface {
         this.evalReasoning = document.getElementById('evalReasoning');
         this.storageDecisions = document.getElementById('storageDecisions');
         
+        // Unified Analysis elements
+        this.retrievalQueries = document.getElementById('retrievalQueries');
+        this.retrievalCategories = document.getElementById('retrievalCategories');
+        this.mcpIntentType = document.getElementById('mcpIntentType');
+        this.mcpNeedsTools = document.getElementById('mcpNeedsTools');
+        this.mcpConfidence = document.getElementById('mcpConfidence');
+        
+        // MCP Tools elements
+        this.mcpStatus = document.getElementById('mcpStatus');
+        this.mcpToolsList = document.getElementById('mcpToolsList');
+        this.mcpSummary = document.getElementById('mcpSummary');
+        
         // Context stats
         this.workingMemoryCount = document.getElementById('workingMemoryCount');
         this.semanticMemoryCount = document.getElementById('semanticMemoryCount');
@@ -337,7 +349,14 @@ class VortexDebugInterface {
                 const debugInfo = data.data?.debug || data.debug;
                 const memoryIntelligence = data.data?.memory_intelligence || data.memory_intelligence;
                 
-                // Log memory intelligence to browser console for debugging
+                // ===== PROGRESSIVE UI UPDATES =====
+                
+                // 1. Update unified analysis FIRST (from unified LLM call)
+                if (debugInfo || memoryIntelligence) {
+                    this.updateUnifiedAnalysis({ debug: debugInfo, memory_intelligence: memoryIntelligence });
+                }
+                
+                // 2. Update memory intelligence panel
                 if (memoryIntelligence) {
                     console.log('%c========== MEMORY INTELLIGENCE DEBUG ==========', 'color: #00ff00; font-weight: bold; font-size: 14px');
                     console.log('%c📊 User Message Evaluation:', 'color: #00bfff; font-weight: bold');
@@ -380,6 +399,12 @@ class VortexDebugInterface {
                     this.updateMemoryIntelligencePanel(memoryIntelligence);
                 }
                 
+                // 3. Update MCP section
+                if (debugInfo) {
+                    this.updateMCPSection({ debug: debugInfo });
+                }
+                
+                // 4. Finally, show AI response
                 if (aiResponse) {
                     this.addMessage('assistant', aiResponse);
                 } else {
@@ -927,9 +952,17 @@ class VortexDebugInterface {
                 console.log('Transcription result:', result.transcription);
                 console.log('AI response:', result.response);
                 
+                // ===== PROGRESSIVE UI UPDATES =====
+                
                 // Log memory intelligence to browser console for debugging
                 const memoryIntelligence = result.memory_intelligence;
                 if (memoryIntelligence) {
+                    // 1. Update unified analysis first
+                    this.updateUnifiedAnalysis({ 
+                        debug: result.debug, 
+                        memory_intelligence: memoryIntelligence 
+                    });
+                    
                     console.log('%c========== MEMORY INTELLIGENCE DEBUG (VOICE) ==========', 'color: #00ff00; font-weight: bold; font-size: 14px');
                     console.log('%c📊 User Message Evaluation:', 'color: #00bfff; font-weight: bold');
                     if (memoryIntelligence.user_evaluation) {
@@ -967,8 +1000,13 @@ class VortexDebugInterface {
                     console.log('%c=========================================================', 'color: #00ff00; font-weight: bold');
                     console.log('Full memory_intelligence object:', memoryIntelligence);
                     
-                    // Update the UI panel with memory intelligence
+                    // 2. Update the UI panel with memory intelligence
                     this.updateMemoryIntelligencePanel(memoryIntelligence);
+                }
+                
+                // 3. Update MCP section
+                if (result.debug) {
+                    this.updateMCPSection({ debug: result.debug });
                 }
                 
                 // Display transcription and response
@@ -1347,6 +1385,208 @@ class VortexDebugInterface {
         const decisionsCount = (memoryIntelligence.storage_decisions || []).length;
         if (this.tokenEstimate) {
             this.tokenEstimate.textContent = decisionsCount;
+        }
+    }
+
+    updateUnifiedAnalysis(data) {
+        console.log('Updating unified analysis:', data);
+        
+        // Try to get unified analysis from multiple sources
+        let unifiedAnalysis = null;
+        
+        // Priority 1: memory_intelligence.unified_analysis (always available)
+        if (data.memory_intelligence?.unified_analysis) {
+            unifiedAnalysis = data.memory_intelligence.unified_analysis;
+        }
+        // Priority 2: debug.unified_analysis (when debug=true)
+        else if (data.debug?.unified_analysis) {
+            unifiedAnalysis = data.debug.unified_analysis;
+        }
+        
+        // Update retrieval section from memory_intelligence or unified_analysis
+        const mi = data.memory_intelligence;
+        if (mi) {
+            // Retrieval queries and categories
+            if (mi.query_enhancement) {
+                const queries = mi.query_enhancement.queries || [];
+                const categories = mi.query_enhancement.categories || [];
+                
+                if (this.retrievalQueries) {
+                    this.retrievalQueries.innerHTML = queries.length > 0 
+                        ? queries.map(q => `<div class="query-tag">${this.escapeHtml(q)}</div>`).join('')
+                        : '<span class="no-data">No queries</span>';
+                }
+                
+                if (this.retrievalCategories) {
+                    this.retrievalCategories.innerHTML = categories.length > 0
+                        ? categories.map(c => `<span class="category-tag">${c}</span>`).join(' ')
+                        : '<span class="no-data">None</span>';
+                }
+            }
+        }
+        
+        // Update MCP Intent section from unified analysis
+        if (unifiedAnalysis?.mcpIntent) {
+            const intent = unifiedAnalysis.mcpIntent;
+            
+            if (this.mcpIntentType) {
+                this.mcpIntentType.textContent = intent.intentType || 'unknown';
+                this.mcpIntentType.className = `analysis-value intent-${intent.intentType || 'unknown'}`;
+            }
+            
+            if (this.mcpNeedsTools) {
+                const needsTools = intent.needsTools || false;
+                this.mcpNeedsTools.textContent = needsTools ? 'YES' : 'NO';
+                this.mcpNeedsTools.className = `analysis-value badge ${needsTools ? 'badge-yes' : 'badge-no'}`;
+            }
+            
+            if (this.mcpConfidence) {
+                const confidence = intent.confidence || 0;
+                this.mcpConfidence.textContent = `${(confidence * 100).toFixed(0)}%`;
+                const confidenceClass = confidence >= 0.7 ? 'high' : confidence >= 0.4 ? 'medium' : 'low';
+                this.mcpConfidence.className = `analysis-value confidence-${confidenceClass}`;
+            }
+        }
+        
+        // Also update retrieval from unified_analysis if not set from query_enhancement
+        if (unifiedAnalysis?.retrieval && !mi?.query_enhancement) {
+            if (this.retrievalQueries && unifiedAnalysis.retrieval.queries) {
+                this.retrievalQueries.innerHTML = unifiedAnalysis.retrieval.queries.length > 0 
+                    ? unifiedAnalysis.retrieval.queries.map(q => `<div class="query-tag">${this.escapeHtml(q)}</div>`).join('')
+                    : '<span class="no-data">No queries</span>';
+            }
+            
+            if (this.retrievalCategories && unifiedAnalysis.retrieval.categories) {
+                this.retrievalCategories.innerHTML = unifiedAnalysis.retrieval.categories.length > 0
+                    ? unifiedAnalysis.retrieval.categories.map(c => `<span class="category-tag">${c}</span>`).join(' ')
+                    : '<span class="no-data">None</span>';
+            }
+        }
+    }
+
+    updateMCPSection(data) {
+        console.log('Updating MCP section:', data);
+        console.log('MCP data received:', data.debug?.mcp);
+        
+        // Check debug.mcp for detailed info
+        const mcpData = data.debug?.mcp;
+        
+        if (!mcpData) {
+            if (this.mcpStatus) {
+                this.mcpStatus.innerHTML = '<span class="mcp-not-called">MCP not invoked</span>';
+            }
+            if (this.mcpToolsList) this.mcpToolsList.style.display = 'none';
+            if (this.mcpSummary) this.mcpSummary.style.display = 'none';
+            return;
+        }
+        
+        // MCP was skipped
+        if (mcpData.skipped) {
+            if (this.mcpStatus) {
+                this.mcpStatus.innerHTML = `
+                    <div class="mcp-skipped">
+                        <span class="status-icon">⏭️</span>
+                        <span class="status-text">Skipped: ${mcpData.reason || 'Not needed'}</span>
+                    </div>
+                `;
+            }
+            if (this.mcpToolsList) this.mcpToolsList.style.display = 'none';
+            if (this.mcpSummary) this.mcpSummary.style.display = 'none';
+            return;
+        }
+        
+        // MCP had an error (and no tools were successfully used)
+        if (mcpData.error && !mcpData.toolsUsed) {
+            if (this.mcpStatus) {
+                this.mcpStatus.innerHTML = `
+                    <div class="mcp-error">
+                        <span class="status-icon">❌</span>
+                        <span class="status-text">Error: ${this.escapeHtml(mcpData.error)}</span>
+                    </div>
+                `;
+            }
+            if (this.mcpToolsList) this.mcpToolsList.style.display = 'none';
+            if (this.mcpSummary) this.mcpSummary.style.display = 'none';
+            return;
+        }
+        
+        // MCP was called successfully - check if tools were actually used
+        // The mcpResult is spread directly, so properties are at top level
+        if (mcpData.toolsUsed && mcpData.toolsUsed.length > 0) {
+            console.log('MCP tools were used:', mcpData.toolsUsed);
+            console.log('mcpStatus element:', this.mcpStatus);
+            console.log('mcpToolsList element:', this.mcpToolsList);
+            console.log('mcpSummary element:', this.mcpSummary);
+            
+            if (this.mcpStatus) {
+                const statusHTML = `
+                    <div class="mcp-success">
+                        <span class="status-icon">✅</span>
+                        <span class="status-text">Tools executed successfully</span>
+                    </div>
+                `;
+                console.log('Setting status HTML:', statusHTML);
+                this.mcpStatus.innerHTML = statusHTML;
+                console.log('Status after set:', this.mcpStatus.innerHTML);
+            }
+            
+            // Show tools used
+            if (this.mcpToolsList) {
+                this.mcpToolsList.style.display = 'block';
+                this.mcpToolsList.innerHTML = `
+                    <h5>Tools Used:</h5>
+                    ${mcpData.toolsUsed.map((tool, i) => {
+                        const toolResult = mcpData.toolResults?.[i];
+                        return `
+                            <div class="mcp-tool">
+                                <div class="tool-name">🔧 ${tool}</div>
+                                ${toolResult ? `<div class="tool-result">${this.escapeHtml(JSON.stringify(toolResult, null, 2).substring(0, 200))}${JSON.stringify(toolResult).length > 200 ? '...' : ''}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                `;
+                console.log('Tools list after set:', this.mcpToolsList.innerHTML.substring(0, 100));
+            }
+            
+            // Show LLM summary
+            if (this.mcpSummary && mcpData.llmSummary) {
+                this.mcpSummary.style.display = 'block';
+                this.mcpSummary.innerHTML = `
+                    <h5>MCP Summary:</h5>
+                    <div class="summary-text">${this.escapeHtml(mcpData.llmSummary)}</div>
+                `;
+                console.log('Summary after set:', this.mcpSummary.innerHTML.substring(0, 100));
+            } else if (this.mcpSummary) {
+                this.mcpSummary.style.display = 'none';
+            }
+        } else if (mcpData.needsTools === false) {
+            // MCP was called but determined no tools needed
+            console.log('MCP determined no tools needed');
+            
+            if (this.mcpStatus) {
+                this.mcpStatus.innerHTML = `
+                    <div class="mcp-skipped">
+                        <span class="status-icon">ℹ️</span>
+                        <span class="status-text">No tools needed</span>
+                    </div>
+                `;
+            }
+            if (this.mcpToolsList) this.mcpToolsList.style.display = 'none';
+            if (this.mcpSummary) this.mcpSummary.style.display = 'none';
+        } else {
+            // Fallback: MCP data exists but unclear state
+            console.warn('MCP data in unclear state:', mcpData);
+            
+            if (this.mcpStatus) {
+                this.mcpStatus.innerHTML = `
+                    <div class="mcp-skipped">
+                        <span class="status-icon">❓</span>
+                        <span class="status-text">Status unclear</span>
+                    </div>
+                `;
+            }
+            if (this.mcpToolsList) this.mcpToolsList.style.display = 'none';
+            if (this.mcpSummary) this.mcpSummary.style.display = 'none';
         }
     }
 

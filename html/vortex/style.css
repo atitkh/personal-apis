@@ -1126,3 +1126,173 @@ textarea#knowledgeContent:focus {
         grid-template-columns: 1fr;
     }
 }
+
+/* ========================================
+   Unified Analysis Section
+   ======================================== */
+
+.analysis-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.analysis-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    background: var(--bg-input);
+    border-radius: 8px;
+}
+
+.analysis-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.analysis-value {
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.4;
+}
+
+/* Query Tags */
+.query-tag {
+    display: inline-block;
+    padding: 6px 10px;
+    background: rgba(100, 255, 218, 0.1);
+    border: 1px solid rgba(100, 255, 218, 0.3);
+    border-radius: 6px;
+    color: var(--accent-teal);
+    font-size: 11px;
+    margin: 2px;
+}
+
+.category-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    background: rgba(95, 39, 205, 0.2);
+    border-radius: 10px;
+    color: #a78bfa;
+    font-size: 10px;
+    margin: 2px;
+}
+
+/* Intent Type Styling */
+.intent-query { color: var(--info); }
+.intent-action { color: var(--warning); }
+.intent-information { color: var(--success); }
+.intent-unknown { color: var(--text-muted); }
+
+/* Badge Styling */
+.badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.badge-yes {
+    background: rgba(46, 213, 115, 0.15);
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.badge-no {
+    background: rgba(136, 146, 176, 0.15);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
+/* Confidence Level Styling */
+.confidence-high { color: var(--success); font-weight: 600; }
+.confidence-medium { color: var(--warning); font-weight: 600; }
+.confidence-low { color: var(--danger); font-weight: 600; }
+
+/* ========================================
+   MCP Section
+   ======================================== */
+
+.mcp-status {
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--bg-input);
+    margin-bottom: 10px;
+}
+
+.mcp-not-called {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+}
+
+.mcp-skipped,
+.mcp-success,
+.mcp-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-icon {
+    font-size: 18px;
+}
+
+.status-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.mcp-skipped .status-text { color: var(--warning); }
+.mcp-success .status-text { color: var(--success); }
+.mcp-error .status-text { color: var(--danger); }
+
+.mcp-tools-list h5,
+.mcp-summary h5 {
+    font-size: 11px;
+    color: var(--accent-teal);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.mcp-tool {
+    background: var(--bg-input);
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    border-left: 3px solid var(--accent-primary);
+}
+
+.tool-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-teal);
+    margin-bottom: 6px;
+}
+
+.tool-result {
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.summary-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding: 10px;
+    background: var(--bg-input);
+    border-radius: 6px;
+    border-left: 3px solid var(--success);
+}

@@ -101,6 +101,43 @@
                         </div>
                     </div>
 
+                    <!-- Unified Analysis Display -->
+                    <div class="debug-card" id="unifiedAnalysisCard">
+                        <h4>🔍 Unified Analysis</h4>
+                        <div class="analysis-section">
+                            <div class="analysis-item">
+                                <span class="analysis-label">🔎 Retrieval Queries:</span>
+                                <div class="analysis-value" id="retrievalQueries">-</div>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">🏷️ Categories:</span>
+                                <div class="analysis-value" id="retrievalCategories">-</div>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">🛠️ MCP Intent:</span>
+                                <div class="analysis-value" id="mcpIntentType">-</div>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">🎯 Needs Tools:</span>
+                                <span class="analysis-value badge" id="mcpNeedsTools">-</span>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">📊 Confidence:</span>
+                                <span class="analysis-value" id="mcpConfidence">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MCP Tools Panel -->
+                    <div class="debug-card" id="mcpToolsCard">
+                        <h4>🛠️ MCP Tools</h4>
+                        <div class="mcp-status" id="mcpStatus">
+                            <span class="placeholder">Waiting for message...</span>
+                        </div>
+                        <div class="mcp-tools-list" id="mcpToolsList" style="display: none;"></div>
+                        <div class="mcp-summary" id="mcpSummary" style="display: none;"></div>
+                    </div>
+
                     <!-- Storage Decisions -->
                     <div class="debug-card">
                         <h4>📦 Storage Decisions</h4>

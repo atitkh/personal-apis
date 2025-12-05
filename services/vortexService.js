@@ -600,7 +600,26 @@ class VortexService {
           storage_decisions: storageDecisions,
           query_enhancement: queryEnhancementDebug ? {
             queries_used: queryEnhancementDebug.enhancedQueries?.length || 1,
+            queries: queryEnhancementDebug.enhancedQueries || [],
             categories: queryEnhancementDebug.categories || []
+          } : null,
+          // Include unified analysis data even when debug=false
+          unified_analysis: messageAnalysis ? {
+            evaluation: {
+              importance: messageAnalysis.evaluation.importance,
+              category: messageAnalysis.evaluation.category,
+              shouldStore: messageAnalysis.evaluation.shouldStore,
+              storageType: messageAnalysis.evaluation.storageType
+            },
+            retrieval: {
+              queries: messageAnalysis.retrieval.queries,
+              categories: messageAnalysis.retrieval.categories
+            },
+            mcpIntent: {
+              needsTools: messageAnalysis.mcpIntent.needsTools,
+              confidence: messageAnalysis.mcpIntent.confidence,
+              intentType: messageAnalysis.mcpIntent.intentType
+            }
           } : null
         }
       };
