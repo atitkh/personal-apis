@@ -337,13 +337,64 @@ class LLMService {
         };
       });
 
-      // Combine system prompt with conversation
-      const fullPrompt = `${systemPrompt}\n\nConversation:\n` + 
-        messages.map(msg => `${msg.role}: ${msg.content}`).join('\n');
+      // Convert messages to Gemini's structured format
+      const geminiContents = [];
+      
+      // Add system prompt as first user message
+      if (systemPrompt) {
+        geminiContents.push({
+          role: 'user',
+          parts: [{ text: systemPrompt }]
+        });
+        geminiContents.push({
+          role: 'model',
+          parts: [{ text: 'Understood. I will follow these instructions.' }]
+        });
+      }
+      
+      // Convert each message to Gemini format
+      for (const msg of messages) {
+        if (msg.role === 'user') {
+          geminiContents.push({
+            role: 'user',
+            parts: [{ text: msg.content }]
+          });
+        } else if (msg.role === 'assistant' && msg.tool_calls) {
+          // Assistant made tool calls - convert to Gemini format
+          const parts = msg.tool_calls.map(tc => ({
+            functionCall: {
+              name: tc.function.name,
+              args: tc.function.arguments || {}
+            }
+          }));
+          geminiContents.push({
+            role: 'model',
+            parts: parts
+          });
+        } else if (msg.role === 'tool') {
+          // Tool result - convert to Gemini function response format
+          geminiContents.push({
+            role: 'function',
+            parts: [{
+              functionResponse: {
+                name: msg.tool_name,
+                response: {
+                  content: msg.content
+                }
+              }
+            }]
+          });
+        } else if (msg.role === 'assistant') {
+          geminiContents.push({
+            role: 'model',
+            parts: [{ text: msg.content }]
+          });
+        }
+      }
 
       const response = await this.client.models.generateContent({
         model: this.model,
-        contents: fullPrompt,
+        contents: geminiContents,
         config: {
           temperature: temperature,
           maxOutputTokens: maxTokens,
@@ -366,9 +417,9 @@ class LLMService {
         content: text,
         toolCalls: toolCalls,
         usage: {
-          prompt_tokens: Math.ceil(fullPrompt.length / 4),
+          prompt_tokens: Math.ceil(JSON.stringify(geminiContents).length / 4),
           completion_tokens: Math.ceil(text.length / 4),
-          total_tokens: Math.ceil((fullPrompt.length + text.length) / 4)
+          total_tokens: Math.ceil((JSON.stringify(geminiContents).length + text.length) / 4)
         },
         model: this.model
       };
