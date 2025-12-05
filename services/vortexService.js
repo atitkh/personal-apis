@@ -304,8 +304,12 @@ class VortexService {
             
             let toolContext = '';
             
-            if (mcpResult.contextForLLM) {
-              toolContext = mcpResult.contextForLLM;
+            // Use the LLM's summary if available (it already parsed and understood the data)
+            if (mcpResult.llmSummary) {
+              toolContext = `TOOL DATA:\n${mcpResult.llmSummary}`;
+            } else if (mcpResult.contextForLLM) {
+              // Fallback to formatted results if no summary
+              toolContext = `TOOL DATA:\n${mcpResult.contextForLLM}`;
             }
             
             // If tools failed, add explicit failure context so LLM acknowledges it
@@ -323,6 +327,12 @@ class VortexService {
                 role: 'system',
                 content: toolContext
               });
+              
+              // Debug: Log what we're actually injecting
+              console.log('\n🔧 TOOL CONTEXT INJECTED INTO CONVERSATION:');
+              console.log('Role: system');
+              console.log('Content:', toolContext);
+              console.log('===============================================\n');
             }
             
             logger.debug('MCP tools executed', {
@@ -361,6 +371,13 @@ class VortexService {
       }
 
       // Get LLM response with focused parameters
+      console.log('\n📨 SENDING TO MAIN LLM:');
+      console.log('Conversation messages:', conversationContext.length);
+      conversationContext.forEach((msg, i) => {
+        console.log(`  [${i}] ${msg.role}: ${msg.content?.substring(0, 100)}${msg.content?.length > 100 ? '...' : ''}`);
+      });
+      console.log('===============================================\n');
+      
       const llmResponse = await llmService.generateResponse({
         messages: conversationContext,
         userId,

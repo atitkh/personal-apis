@@ -587,6 +587,7 @@ class MCPService {
       const maxIterations = this.config.settings?.maxPasses || 5;
       let allResults = [];
       let conversationMessages = [];
+      let finalLLMResponse = null;
       
       // Build initial user message with context
       let userMessage = message;
@@ -606,9 +607,10 @@ class MCPService {
         // Ask LLM what tools to call (if any)
         const response = await this.callLLMWithTools(conversationMessages, allTools);
         
-        // If no tool calls, we're done
+        // If no tool calls, we're done - capture the final response
         if (!response.toolCalls || response.toolCalls.length === 0) {
           console.log(`✅ Iteration ${iteration}: LLM completed (no more tool calls needed)`);
+          finalLLMResponse = response.content;
           
           // If this is the first iteration and no tools, user doesn't need tools
           if (iteration === 1) {
@@ -684,12 +686,14 @@ class MCPService {
       console.log(`  Successful: ${successfulResults.length}`);
       console.log(`  Failed: ${failedResults.length}`);
       console.log(`  Tools Used: ${[...new Set(allResults.map(r => r.tool))].join(', ')}`);
+      console.log(`  LLM Summary: ${finalLLMResponse ? finalLLMResponse.substring(0, 100) + '...' : 'No summary generated'}`);
 
       return {
         needsTools: true,
         toolsUsed: [...new Set(allResults.map(r => r.tool))],
         toolResults: allResults,
-        contextForLLM: this.formatResultsForLLM(allResults),
+        llmSummary: finalLLMResponse, // The LLM's natural language summary of what happened
+        contextForLLM: finalLLMResponse || this.formatResultsForLLM(allResults), // Prefer LLM summary, fallback to raw format
         executionStats: {
           totalResults: allResults.length,
           successful: successfulResults.length,
@@ -713,10 +717,25 @@ class MCPService {
 RULES:
 - Use tools when the user asks you to perform actions or get information
 - You can call multiple tools if needed to complete a task
-- After seeing tool results, decide if you need more tools or if you're done
-- For casual conversation, don't use tools
+- After seeing tool results, READ and PARSE the data carefully
+- Once you have all the information, provide a clear, natural language summary
+- Extract specific values, numbers, and states from the tool results
+- Don't say "I retrieved..." or "The tool returned..." - just answer naturally
 
-When you're done with all tool calls, respond naturally without calling more tools.`;
+IMPORTANT: When you're done calling tools, you MUST:
+1. READ the tool results thoroughly
+2. EXTRACT the relevant information (numbers, states, values, success/failure status)
+3. For QUERIES (temperature, status, etc): Answer with the information found
+4. For ACTIONS (turn on, set, control, etc): Confirm the action was completed successfully or report if it failed
+5. Provide a natural, conversational response
+
+Examples:
+- Query: "What's the temperature?" → "The bedroom temperature is 30.1°C"
+- Action: "Turn on the lights" → "The lights are now on" (if successful)
+- Failed action: "Turn on the lights" → "I tried to turn on the lights but encountered an error: [error details]"
+
+For casual conversation, don't use tools.`;
+
 
     // Convert tools to Ollama format
     const ollamaTools = availableTools.map(tool => ({

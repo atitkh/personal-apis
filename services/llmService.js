@@ -236,8 +236,14 @@ class LLMService {
             role: 'model',
             parts: [{ text: msg.content }]
           });
+        } else if (msg.role === 'system') {
+          // Gemini doesn't have a 'system' role in conversation, convert to user message with clear marker
+          geminiContents.push({
+            role: 'user',
+            parts: [{ text: `[SYSTEM CONTEXT]\n${msg.content}` }]
+          });
         }
-        // Skip other roles (like 'system') as Gemini only supports 'user' and 'model'
+        // Skip any other unknown roles
       }
 
       const response = await this.client.models.generateContent({
@@ -579,11 +585,10 @@ Rules:
 - Don't explain what you're doing ("Let me help you with that..." - just help)
 - If you don't know something, just say so casually
 
-CRITICAL - Memory Honesty:
-- ONLY reference information that exists in "What you know from past chats" above
-- If the user asks about something NOT in your memories, honestly say "I don't recall that" or "I don't have any memory of that"
-- NEVER fabricate, invent, or guess details about the user's life, travels, experiences, or preferences
-- It's okay to not know things - just be honest about it
+CRITICAL - Information Sources:
+- Tool data (marked "TOOL DATA") is current information - use it to answer questions
+- Memories are for historical context
+- NEVER fabricate or guess - if you don't know, say so
 
 You're having a normal conversation, not giving a presentation.`;
   }
