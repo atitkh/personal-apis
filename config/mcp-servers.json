@@ -21,6 +21,15 @@
       "env": {
         "API_ACCESS_TOKEN": "${HA_TOKEN}"
       }
+    },
+    {
+      "name": "weather",
+      "displayName": "Weather Forecasts",
+      "description": "Real-time weather data and forecasts using Open-Meteo API (free, no API key required). Supports current weather, multi-day forecasts, and location search.",
+      "type": "internal",
+      "category": "weather",
+      "enabled": true,
+      "module": "services/weatherService.js"
     }
   ]
 }
