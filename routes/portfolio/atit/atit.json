@@ -895,10 +895,70 @@
     },
     {
       "id": 44,
+      "image": "https://eac.ualr.edu/wp-content/uploads/2025/04/image7-1-1024x768.jpg",
+      "video": "",
+      "title": "UALR 2025 Research Expo",
+      "description": "Presented XR analytics research poster and live demo at UA Little Rock's 2025 Research and Creative Works Expo alongside the EAC student team, showcasing immersive telemetry replays and attendee engagement insights. The poster won the Best Poster Award.",
+      "projectLink": [
+        "https://api.atitkharel.com.np/portfolio/atit/pdf?id=2025_expo_poster",
+        "https://eac.ualr.edu/emerging-analytics-center-showcases-innovation-at-2025-research-and-creative-works-expo/"
+      ],
+      "categories": [
+        "Poster Presentation"
+      ],
+      "win": {
+        "category": "Best Poster Award",
+        "position": 0
+      },
+      "date": "April 28, 2025",
+      "mainCategory": [
+        "Research",
+        "Community Engagements"
+      ]
+    },
+    {
+      "id": 45,
+      "image": "https://eac.ualr.edu/wp-content/uploads/2025/05/image1-1024x811.jpg",
+      "video": "",
+      "title": "AI Tech Talk",
+      "description": "Presented 'AI-Powered Virtual Reality' at UA Little Rock's inaugural AI Tech Talk, introducing DataEcho platform and demonstrating how AI techniques derive behavioral insights from immersive VR session replays to track user development across sessions.",
+      "projectLink": [
+        "https://api.atitkharel.com.np/portfolio/atit/pdf?id=ai_tech_talk_ppt_2025",
+        "https://eac.ualr.edu/eac-takes-center-stage-at-ai-tech-talk"
+      ],
+      "categories": [
+        "Event",
+        "Talk"
+      ],
+      "date": "April 24, 2025",
+      "mainCategory": [
+        "In the Media",
+        "Community Engagements"
+      ]
+    },
+    {
+      "id": 46,
+      "image": "https://ualr.edu/news/wp-content/uploads/sites/240/2025/04/IMG_5616.jpeg",
+      "video": "",
+      "title": "VR Conference Feature",
+      "description": "Featured in UA Little Rock news article for co-authoring paper presented at the 32nd IEEE International Conference on Virtual Reality and 3D User Interfaces in Saint-Malo, France, introducing a framework for real-time eye-tracking data analysis with privacy protection.",
+      "projectLink": [
+        "https://ualr.edu/news/2025/04/29/graduate-research"
+      ],
+      "categories": [
+        "Article"
+      ],
+      "date": "April 29, 2025",
+      "mainCategory": [
+        "In the Media"
+      ]
+    },
+    {
+      "id": 47,
       "image": "https://i.imgur.com/wwgoVG6.png",
       "video": "",
       "title": "Snapchat's next mission in AR",
-      "description": "I was mentioned in a CNET article for my work on the Learn Languages project. This project is an augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
+      "description": "Mentioned in a CNET article for my work on the Learn Languages project. This project is an augmented reality and machine learning project that utilizes object detection to display the translated names of detected objects in multiple languages.",
       "projectLink": [
         "https://www.cnet.com/tech/mobile/snapchats-next-mission-in-ar-going-from-playground-to-practical/"
       ],
@@ -911,7 +971,7 @@
       ]
     },
     {
-      "id": 45,
+      "id": 48,
       "image": "https://i.imgur.com/6K4jnn1.png",
       "video": "",
       "title": "SnapAR - Creator Spotlight",
@@ -928,11 +988,11 @@
       ]
     },
     {
-      "id": 46,
+      "id": 49,
       "image": "https://i.imgur.com/gfJGNMv.png",
       "video": "",
       "title": "Lenslist",
-      "description": "I was featured in Lenslist's article titled \"8 Snapchat Lens Creators You Should Know | April 2021\". This article specifically highlights my works done using combination of augmented reality (AR) and machine learning (ML).",
+      "description": "Featured in Lenslist's article titled \"8 Snapchat Lens Creators You Should Know | April 2021\". This article specifically highlights my works done using combination of augmented reality (AR) and machine learning (ML).",
       "projectLink": [
         "https://blog.lenslist.co/2021/04/15/8-snapchat-lens-creators-you-should-know-april-2021/"
       ],
@@ -945,7 +1005,7 @@
       ]
     },
     {
-      "id": 47,
+      "id": 50,
       "image": "https://i.imgur.com/0H7WC0S.png",
       "video": "",
       "title": "SnapAR - APAC AR Day 2023",
@@ -962,7 +1022,7 @@
       ]
     },
     {
-      "id": 48,
+      "id": 51,
       "image": "https://i.imgur.com/ekUvzOa.png",
       "video": "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNDYxNTcxZWZiMjU1NDZmZDkzNDFhYmIxYTNmNjA5ZWQzOGVhYjFjOSZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/NIkgNKFQkg6iV7f1ph/giphy.gif",
       "title": "SnapAR - Lens Fest 2020",
@@ -979,7 +1039,7 @@
       ]
     },
     {
-      "id": 49,
+      "id": 52,
       "image": "https://i.imgur.com/gJTnK1b.png",
       "video": "",
       "title": "Hindustan Times",
@@ -996,11 +1056,11 @@
       ]
     },
     {
-      "id": 50,
+      "id": 53,
       "image": "https://i.imgur.com/cPzcpSg.png",
       "video": "",
       "title": "Heartbeat by Comet ML",
-      "description": "I was featured in an article titled \"Snapchat Lens Creator Spotlight: Atit Kharel\" published by Comet ML. This article captures the AR creations developed by me.",
+      "description": "Featured in an article titled \"Snapchat Lens Creator Spotlight: Atit Kharel\" published by Comet ML. This article captures the AR creations developed by me.",
       "projectLink": [
         "https://heartbeat.comet.ml/snapchat-lens-creator-spotlight-atit-kharel-c39962b778fd"
       ],
@@ -1013,11 +1073,11 @@
       ]
     },
     {
-      "id": 51,
+      "id": 54,
       "image": "https://i.imgur.com/ad1vcfM.png",
       "video": "",
-      "title": "The Indain Express",
-      "description": "I was featured in The Indian Express' article \"Snapchat brings 'Learn Hindi' lens to celebrate Hindi Diwas: How it works\" published on the occasion of Hindi Diwas 2020. It showcases my involvement in the development of the 'Learn Hindi' lens in collaboration with Snapchat.",
+      "title": "The Indian Express",
+      "description": "Featured in The Indian Express' article \"Snapchat brings 'Learn Hindi' lens to celebrate Hindi Diwas: How it works\" published on the occasion of Hindi Diwas 2020. It showcases my involvement in the development of the 'Learn Hindi' lens in collaboration with Snapchat.",
       "projectLink": [
         "https://indianexpress.com/article/technology/tech-news-technology/snapchat-learn-hindi-lens-to-celebrate-hindi-6595737/"
       ],
@@ -1030,11 +1090,11 @@
       ]
     },
     {
-      "id": 52,
+      "id": 55,
       "image": "https://i.imgur.com/rl3Wz1z.png",
       "video": "",
       "title": "The Statesman",
-      "description": "I was featured in The Statesman's article \"Learn six Indian language basics with AR lenses\". The article highlights innovative use of augmented reality (AR) lenses to facilitate language learning, offering users an immersive and engaging experience to learn the basics of six Indian languages.",
+      "description": "Featured in The Statesman's article \"Learn six Indian language basics with AR lenses\". The article highlights innovative use of augmented reality (AR) lenses to facilitate language learning, offering users an immersive and engaging experience to learn the basics of six Indian languages.",
       "projectLink": [
         "https://www.thestatesman.com/features/learn-six-indian-language-basics-ar-lenses-1502971509.html"
       ],
@@ -1047,11 +1107,11 @@
       ]
     },
     {
-      "id": 53,
+      "id": 56,
       "image": "https://i.imgur.com/t351dS3.png",
       "video": "",
       "title": "Mid-Day",
-      "description": "I was featured in Mid-Day's article which highlights my use of augmented reality (AR) lenses for language learning, offering users an immersive and engaging experience to learn the basics of six Indian languages.",
+      "description": "Featured in Mid-Day's article which highlights my use of augmented reality (AR) lenses for language learning, offering users an immersive and engaging experience to learn the basics of six Indian languages.",
       "projectLink": [
         "https://www.mid-day.com/lifestyle/culture/article/learn-six-indian-language-basics-with-ar-lenses-23177410"
       ],
@@ -1064,11 +1124,11 @@
       ]
     },
     {
-      "id": 54,
+      "id": 57,
       "image": "https://i.imgur.com/zQOS79k.png",
       "video": "",
       "title": "Times Now",
-      "description": "I was featured in Times Now's article showcasing my involvement in the development of the 'Learn Hindi' lens in collaboration with Snapchat.",
+      "description": "Featured in Times Now's article showcasing my involvement in the development of the 'Learn Hindi' lens in collaboration with Snapchat.",
       "projectLink": [
         "https://www.timesnownews.com/technology-science/article/exclusive-working-to-create-educational-lenses-in-more-languages-says-snapchats-learn-hindi-lens-creator/653037"
       ],
@@ -1078,24 +1138,6 @@
       "date": "September 15, 2020",
       "mainCategory": [
         "In the Media"
-      ]
-    },
-    {
-      "id": 55,
-      "image": "https://i.imgur.com/cyFcMd7.jpeg",
-      "video": "",
-      "title": "Gaze Insights in XR",
-      "description": "This paper introduces a real-time gaze-tracking analytics framework for XR applications using the Elastic Stack, enabling efficient data collection, indexing, and visualization. The system integrates immersive heatmap overlays and replay mechanisms within Unity to analyze user attention, focus regions, and navigation strategies during interactive tasks. A pilot study validated its effectiveness in identifying performance bottlenecks and attention shifts, demonstrating its scalability and usability.",
-      "projectLink": [
-        "https://www.researchgate.net/publication/388485731_Gaze_Insights_in_XR_Real-Time_Eye-Tracking_Analytics_with_Elasticsearch",
-        "https://api.atitkharel.com.np/portfolio/atit/pdf?id=elk_stack"
-      ],
-      "categories": [
-        "Conference Paper"
-      ],
-      "date": "March 8, 2025",
-      "mainCategory": [
-        "Research"
       ]
     }
   ]
