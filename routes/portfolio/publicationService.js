@@ -258,20 +258,18 @@ class PublicationService {
    * Strategy: Use arXiv thumbnail if available, otherwise generate colored badge
    */
   async generatePublicationImage(doi, type, publisher) {
-    // Try arXiv thumbnail if this appears to be an arXiv paper
-    if (doi && doi.includes('arxiv')) {
-      try {
-        const arxivId = doi.replace(/\D/g, ''); // Extract numeric ID
-        const imageUrl = `https://arxiv.org/list/${arxivId.substring(0, 4)}.${arxivId.substring(4, 7)}/pdf/${arxivId}.pdf?size=small`;
-        logger.debug('ArXiv image candidate', { doi, imageUrl });
-        return imageUrl;
-      } catch (error) {
-        logger.debug('ArXiv image lookup failed', { doi });
-      }
+    // TODO: Try other sources for image/cover data first
+    // Fallback: Generate colored badge based on publication type
+    return this.getLocalImageDOI(doi, type, publisher);
+  }
+
+  getLocalImageDOI(doi, type, publisher) {
+    if (!doi) {
+      return this.generatePublicationBadge(type);
     }
 
-    // Fallback: Generate colored badge based on publication type
-    return this.generatePublicationBadge(type);
+    // Use a local mapping for known publishers
+    return "https://api.atitkharel.com.np/portfolio/atit/img?id=" + doi;
   }
 
   /**

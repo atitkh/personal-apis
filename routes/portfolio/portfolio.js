@@ -40,6 +40,24 @@ router.get('/atit/pdf', (req, res) => {
     });
 });
 
+router.get('/atit/img', (req, res) => {
+    const id = req.query.id;
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'atit', 'img', id + '.png');
+
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            return res.status(500).send('Error');
+        }
+        // Set CORS headers for cross-origin image requests
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.contentType('image/png');
+        res.send(data);
+    });
+});
+
 router.get('/ashlesha', (req, res) => {
     const ashleshaPortfolio = require('./ashlesha/ashlesha.json');
     res.json(ashleshaPortfolio);
