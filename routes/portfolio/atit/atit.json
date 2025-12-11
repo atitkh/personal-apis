@@ -1144,13 +1144,14 @@
       "id": 58,
       "image": "https://i.imgur.com/LBux38J.png",
       "video": "",
-      "title": "F1 Simulation: Mixed Reality Experience",
+      "title": "F1 Simulation: MR Experience",
       "description": "Developed an immersive mixed reality Formula 1 race simulation in Unity that replays real-world races using OpenF1 telemetry, featuring interactive track and car visualizations, live leaderboard and telemetry panels, and support for both Oculus Quest 3 and a CAVE environment.",
       "projectLink": [
         "https://api.atitkharel.com.np/portfolio/atit/pdf?id=f1_sim_report",
         "https://github.com/atitkh/F1-Simulator-CAVE",
         "https://github.com/atitkh/F1-Simulator"
       ],
+      "more": true,
       "categories": [
         "Unity3D",
         "C#",
