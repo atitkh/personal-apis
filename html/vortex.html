@@ -10,7 +10,8 @@
     <!-- Login Form -->
     <div id="loginContainer" class="container">
         <div class="login-form">
-            <h1>Vortex AI</h1>
+            <h1>🌀 Vortex AI</h1>
+            <p>Debug Interface</p>
             <form id="loginForm">
                 <div class="form-group">
                     <label for="email">Email:</label>
@@ -29,8 +30,9 @@
     <!-- Chat Interface -->
     <div id="chatContainer" class="container" style="display: none;">
         <div class="chat-header">
-            <h1>Vortex AI</h1>
-            <div class="user-info">
+            <h1>🌀 Vortex AI</h1>
+            <div class="header-controls">
+                <span class="status-indicator" id="connectionStatus">● Connected</span>
                 <span id="userEmail"></span>
                 <button id="logoutBtn" class="logout-btn">Logout</button>
             </div>
@@ -46,60 +48,367 @@
                         <button id="recordBtn" class="voice-btn" disabled title="Hold to record voice message">🎤</button>
                         <button id="playLastBtn" class="voice-btn" disabled title="Play last AI response">🔊</button>
                     </div>
+                    <button id="debugToggle" class="debug-toggle active" title="Toggle debug mode">🐛</button>
                     <button id="sendBtn" disabled>Send</button>
                 </div>
                 <div class="voice-status" id="voiceStatus"></div>
             </div>
 
-            <!-- Debug Panel -->
+            <!-- Debug Panel - Tabbed Interface -->
             <div class="debug-panel">
-                <h3>🔧 Debug Info</h3>
-                
-                <div class="debug-section">
-                    <label for="conversationId">Conversation ID:</label>
-                    <input type="text" id="conversationId" placeholder="test-123">
-                    <button id="newConversationBtn">New Conversation</button>
+                <div class="debug-tabs">
+                    <button class="tab-btn active" data-tab="memory">🧠 Memory</button>
+                    <button class="tab-btn" data-tab="knowledge">📚 Knowledge</button>
+                    <button class="tab-btn" data-tab="conversation">💬 Conv</button>
+                    <button class="tab-btn" data-tab="voice">🎤 Voice</button>
+                    <button class="tab-btn" data-tab="system">⚙️ System</button>
                 </div>
 
-                <div class="debug-section">
-                    <button id="debugBtn">Debug Conversation</button>
-                    <button id="clearChatBtn">Clear Chat</button>
-                    <button id="debugTokenBtn">Check Token</button>
-                    <button id="testMessageBtn">Test Message Display</button>
+                <!-- Memory Tab -->
+                <div class="tab-content active" id="tab-memory">
+                    <h3>🧠 Memory Intelligence</h3>
+                    
+                    <!-- Last Evaluation Display -->
+                    <div class="debug-card" id="lastEvaluationCard">
+                        <h4>📊 Last Message Evaluation</h4>
+                        <div class="eval-grid">
+                            <div class="eval-item">
+                                <span class="eval-label">Importance</span>
+                                <span class="eval-value importance-badge" id="evalImportance">-</span>
+                            </div>
+                            <div class="eval-item">
+                                <span class="eval-label">Category</span>
+                                <span class="eval-value category-badge" id="evalCategory">-</span>
+                            </div>
+                            <div class="eval-item">
+                                <span class="eval-label">Storage</span>
+                                <span class="eval-value" id="evalStorageType">-</span>
+                            </div>
+                            <div class="eval-item">
+                                <span class="eval-label">Store?</span>
+                                <span class="eval-value" id="evalShouldStore">-</span>
+                            </div>
+                        </div>
+                        <div class="eval-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Key Facts:</span>
+                                <span class="detail-value" id="evalKeyFacts">-</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Reasoning:</span>
+                                <span class="detail-value" id="evalReasoning">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Unified Analysis Display -->
+                    <div class="debug-card" id="unifiedAnalysisCard">
+                        <h4>🔍 Unified Analysis</h4>
+                        <div class="analysis-section">
+                            <div class="analysis-item">
+                                <span class="analysis-label">🔎 Retrieval Queries:</span>
+                                <div class="analysis-value" id="retrievalQueries">-</div>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">🏷️ Categories:</span>
+                                <div class="analysis-value" id="retrievalCategories">-</div>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">🛠️ MCP Intent:</span>
+                                <div class="analysis-value" id="mcpIntentType">-</div>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">🎯 Needs Tools:</span>
+                                <span class="analysis-value badge" id="mcpNeedsTools">-</span>
+                            </div>
+                            <div class="analysis-item">
+                                <span class="analysis-label">📊 Confidence:</span>
+                                <span class="analysis-value" id="mcpConfidence">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MCP Tools Panel -->
+                    <div class="debug-card" id="mcpToolsCard">
+                        <h4>🛠️ MCP Tools</h4>
+                        <div class="mcp-status" id="mcpStatus">
+                            <span class="placeholder">Waiting for message...</span>
+                        </div>
+                        <div class="mcp-tools-list" id="mcpToolsList" style="display: none;"></div>
+                        <div class="mcp-summary" id="mcpSummary" style="display: none;"></div>
+                    </div>
+
+                    <!-- Storage Decisions -->
+                    <div class="debug-card">
+                        <h4>📦 Storage Decisions</h4>
+                        <div id="storageDecisions" class="storage-list">
+                            <span class="placeholder">No storage decisions yet</span>
+                        </div>
+                    </div>
+
+                    <!-- ChromaDB Retrieval Stats -->
+                    <div class="debug-card" id="retrievalStatsCard">
+                        <h4>🔍 ChromaDB Retrieval</h4>
+                        <div class="retrieval-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">Queries Sent:</span>
+                                <span class="stat-value" id="retrievalQueriesCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Total Retrieved:</span>
+                                <span class="stat-value" id="retrievalTotalCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">After Filter:</span>
+                                <span class="stat-value" id="retrievalFilteredCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">After Dedup:</span>
+                                <span class="stat-value" id="retrievalDedupCount">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Re-ranked:</span>
+                                <span class="stat-value badge" id="retrievalReranked">-</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Final Used:</span>
+                                <span class="stat-value highlight" id="retrievalFinalCount">-</span>
+                            </div>
+                        </div>
+                        <div id="retrievalQueriesList" class="retrieval-queries">
+                            <span class="placeholder">No retrieval data yet</span>
+                        </div>
+                    </div>
+
+                    <!-- Memory Explorer -->
+                    <div class="debug-card">
+                        <h4>💾 Memory Explorer</h4>
+                        <div class="explorer-controls">
+                            <select id="memoryType">
+                                <option value="conversations">💬 Conversations</option>
+                                <option value="events">📅 Events</option>
+                                <option value="preferences">❤️ Preferences</option>
+                                <option value="facts">📋 Facts</option>
+                            </select>
+                            <input type="text" id="memorySearch" placeholder="Search...">
+                        </div>
+                        <div class="explorer-buttons">
+                            <button id="browseMemoriesBtn" class="btn-small">Browse</button>
+                            <button id="searchMemoriesBtn" class="btn-small">Search</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="debug-section">
-                    <h4>🎤 Voice Settings</h4>
-                    <label for="voiceEnabled">Voice Mode:</label>
-                    <input type="checkbox" id="voiceEnabled">
-                    <label for="voiceSelect">Voice:</label>
-                    <select id="voiceSelect">
-                        <option value="en_US-amy-medium">English (US) - Lessac</option>
-                        <option value="en_US-ryan-high">English (US) - Ryan</option>
-                        <option value="en_GB-alan-medium">English (UK) - Alan</option>
-                    </select>
-                    <label for="speechSpeed">Speed:</label>
-                    <input type="range" id="speechSpeed" min="0.5" max="2.0" step="0.1" value="1.0">
-                    <span id="speedValue">1.0x</span>
-                    <button id="testVoiceBtn">Test Voice</button>
-                    <button id="voiceStatusBtn">Check Voice Status</button>
+                <!-- Knowledge Tab -->
+                <div class="tab-content" id="tab-knowledge">
+                    <h3>📚 Knowledge Base</h3>
+                    
+                    <!-- Upload File -->
+                    <div class="debug-card">
+                        <h4>📁 Upload File</h4>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <input type="file" id="knowledgeFileInput" accept=".txt,.md,.json,.csv,.pdf,.html,.xml,.log" style="display: none;">
+                            <div class="upload-prompt">
+                                <span class="upload-icon">📄</span>
+                                <span>Drop file here or click to browse</span>
+                                <span class="upload-hint">Supports: .txt, .md, .json, .csv, .pdf, .html, .xml</span>
+                            </div>
+                            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                                <span id="uploadStatus">Processing...</span>
+                            </div>
+                        </div>
+                        <div class="input-group" style="margin-top: 10px;">
+                            <label for="uploadCategory">Category:</label>
+                            <select id="uploadCategory">
+                                <option value="documentation">📖 Documentation</option>
+                                <option value="reference">📋 Reference</option>
+                                <option value="guide">📝 Guide</option>
+                                <option value="general">📁 General</option>
+                                <option value="personal">👤 Personal</option>
+                                <option value="technical">⚙️ Technical</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Add Knowledge Manually -->
+                    <div class="debug-card collapsible">
+                        <h4 class="collapsible-header" id="manualEntryHeader">✏️ Manual Entry <span class="collapse-icon">▼</span></h4>
+                        <div class="collapsible-content" id="manualEntryContent">
+                            <div class="input-group">
+                                <label for="knowledgeTitle">Title:</label>
+                                <input type="text" id="knowledgeTitle" placeholder="Document title...">
+                            </div>
+                            <div class="input-group">
+                                <label for="knowledgeCategory">Category:</label>
+                                <select id="knowledgeCategory">
+                                    <option value="general">📁 General</option>
+                                    <option value="documentation">📖 Documentation</option>
+                                    <option value="reference">📋 Reference</option>
+                                    <option value="guide">📝 Guide</option>
+                                    <option value="personal">👤 Personal</option>
+                                    <option value="technical">⚙️ Technical</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="knowledgeContent">Content:</label>
+                                <textarea id="knowledgeContent" rows="4" placeholder="Enter knowledge content..."></textarea>
+                            </div>
+                            <div class="button-row">
+                                <button id="addKnowledgeBtn" class="btn-small btn-primary">📤 Add Document</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Browse/Search Knowledge -->
+                    <div class="debug-card">
+                        <h4>🔍 Browse & Search</h4>
+                        <div class="explorer-controls">
+                            <select id="knowledgeFilterCategory">
+                                <option value="">All Categories</option>
+                                <option value="general">📁 General</option>
+                                <option value="documentation">📖 Documentation</option>
+                                <option value="reference">📋 Reference</option>
+                                <option value="guide">📝 Guide</option>
+                                <option value="personal">👤 Personal</option>
+                                <option value="technical">⚙️ Technical</option>
+                            </select>
+                            <input type="text" id="knowledgeSearchQuery" placeholder="Search knowledge...">
+                        </div>
+                        <div class="explorer-buttons">
+                            <button id="browseKnowledgeBtn" class="btn-small">📋 Browse All</button>
+                            <button id="searchKnowledgeBtn" class="btn-small">🔍 Search</button>
+                        </div>
+                    </div>
+
+                    <!-- Knowledge List -->
+                    <div class="debug-card knowledge-list-card">
+                        <h4>📄 Documents <span id="knowledgeCount" class="count-badge">0</span></h4>
+                        <div id="knowledgeList" class="knowledge-list">
+                            <span class="placeholder">No documents loaded. Click "Browse All" to view.</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="debug-section">
-                    <h4>💾 Memory Explorer</h4>
-                    <label for="memoryType">Memory Type:</label>
-                    <select id="memoryType">
-                        <option value="conversations">Conversations</option>
-                        <option value="events">Events</option>
-                        <option value="preferences">Preferences</option>
-                    </select>
-                    <label for="memorySearch">Search:</label>
-                    <input type="text" id="memorySearch" placeholder="Search memories...">
-                    <button id="browseMemoriesBtn">Browse Memories</button>
-                    <button id="searchMemoriesBtn">Search Memories</button>
+                <!-- Conversation Tab -->
+                <div class="tab-content" id="tab-conversation">
+                    <h3>💬 Conversation</h3>
+                    
+                    <div class="debug-card">
+                        <h4>🔑 Session</h4>
+                        <div class="input-group">
+                            <label for="conversationId">Conv ID:</label>
+                            <input type="text" id="conversationId" placeholder="debug-123">
+                        </div>
+                        <div class="button-row">
+                            <button id="newConversationBtn" class="btn-small">🔄 New</button>
+                            <button id="clearChatBtn" class="btn-small">🧹 Clear</button>
+                            <button id="debugBtn" class="btn-small">🔍 Debug</button>
+                        </div>
+                    </div>
+
+                    <div class="debug-card">
+                        <h4>📝 Context Stats</h4>
+                        <div class="context-stats">
+                            <div class="context-item">
+                                <span class="context-value" id="workingMemoryCount">0</span>
+                                <span class="context-label">Queries</span>
+                            </div>
+                            <div class="context-item">
+                                <span class="context-value" id="semanticMemoryCount">0</span>
+                                <span class="context-label">Categories</span>
+                            </div>
+                            <div class="context-item">
+                                <span class="context-value" id="tokenEstimate">0</span>
+                                <span class="context-label">Stored</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="debug-card">
+                        <h4>🔧 Actions</h4>
+                        <div class="button-row">
+                            <button id="summarizeBtn" class="btn-small">📝 Summarize</button>
+                            <button id="exportChatBtn" class="btn-small">📤 Export</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="debug-output" id="debugOutput"></div>
+                <!-- Voice Tab -->
+                <div class="tab-content" id="tab-voice">
+                    <h3>🎤 Voice Settings</h3>
+                    
+                    <div class="debug-card">
+                        <h4>⚙️ Configuration</h4>
+                        <div class="toggle-row">
+                            <label>Voice Mode</label>
+                            <label class="switch">
+                                <input type="checkbox" id="voiceEnabled">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="input-group">
+                            <label for="voiceSelect">Voice:</label>
+                            <select id="voiceSelect">
+                                <option value="en_US-amy-medium">🇺🇸 Amy</option>
+                                <option value="en_US-ryan-high">🇺🇸 Ryan</option>
+                                <option value="en_GB-alan-medium">🇬🇧 Alan</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Speed: <span id="speedValue">1.0x</span></label>
+                            <input type="range" id="speechSpeed" min="0.5" max="2.0" step="0.1" value="1.0">
+                        </div>
+                    </div>
+
+                    <div class="debug-card">
+                        <h4>🔊 Test</h4>
+                        <div class="button-row">
+                            <button id="testVoiceBtn" class="btn-small">🔊 Test Voice</button>
+                            <button id="voiceStatusBtn" class="btn-small">📡 Status</button>
+                        </div>
+                        <div id="voiceTestResult" class="test-result"></div>
+                    </div>
+                </div>
+
+                <!-- System Tab -->
+                <div class="tab-content" id="tab-system">
+                    <h3>⚙️ System</h3>
+                    
+                    <div class="debug-card">
+                        <h4>🔐 Auth</h4>
+                        <div class="button-row">
+                            <button id="debugTokenBtn" class="btn-small">🔑 Token</button>
+                            <button id="testMessageBtn" class="btn-small">📨 Test</button>
+                        </div>
+                    </div>
+
+                    <div class="debug-card">
+                        <h4>📊 API Status</h4>
+                        <div class="button-row">
+                            <button id="checkLLMBtn" class="btn-small">🤖 LLM</button>
+                            <button id="checkMemoryBtn" class="btn-small">🧠 Memory</button>
+                            <button id="checkVoiceSvcBtn" class="btn-small">🎤 Voice</button>
+                        </div>
+                        <div id="apiStatusResult" class="test-result"></div>
+                    </div>
+
+                    <div class="debug-card danger-zone">
+                        <h4>🗑️ Danger Zone</h4>
+                        <div class="button-row">
+                            <button id="clearAllMemoriesBtn" class="btn-small btn-danger">Clear Memories</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debug Output (shared) -->
+                <div class="debug-output-container">
+                    <div class="output-header">
+                        <h4>📋 Output</h4>
+                        <button id="clearOutputBtn" class="btn-tiny">Clear</button>
+                    </div>
+                    <pre class="debug-output" id="debugOutput">Ready...</pre>
+                </div>
             </div>
         </div>
     </div>

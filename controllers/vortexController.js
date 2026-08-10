@@ -8,7 +8,9 @@ class VortexController {
    */
   async chat(req, res, next) {
     try {
-      const { message, conversation_id, context, debug } = req.body;
+      const { message, conversation_id, context } = req.body;
+      // Check both body and query param for debug flag
+      const debug = req.body.debug || req.query.debug === 'true';
       const userId = req.user._id || req.user.id; // Handle both _id and id formats
 
       logger.info('Vortex chat request - user details', {
@@ -46,7 +48,8 @@ class VortexController {
       const responseData = {
         response: result.response,
         conversation_id: result.conversation_id,
-        metadata: result.metadata
+        metadata: result.metadata,
+        memory_intelligence: result.memory_intelligence
       };
 
       // Include debug information if requested
@@ -166,7 +169,7 @@ class VortexController {
           count: recentMessages.length,
           messages: recentMessages.map(msg => ({
             role: msg.metadata?.role,
-            content: msg.content?.substring(0, 100) + '...',
+            content: msg.content || msg.document || '[no content]',
             timestamp: msg.metadata?.timestamp,
             conversation_id: msg.metadata?.conversation_id
           }))
@@ -175,7 +178,7 @@ class VortexController {
           count: relevantMemories.length,
           memories: relevantMemories.map(mem => ({
             type: mem.type,
-            content: mem.content?.substring(0, 100) + '...',
+            content: mem.content || mem.document || '[no content]',
             conversation_id: mem.metadata?.conversation_id,
             distance: mem.distance
           }))
@@ -184,7 +187,7 @@ class VortexController {
           count: allUserMemories.length,
           memories: allUserMemories.slice(0, 5).map(mem => ({
             type: mem.type,
-            content: mem.content?.substring(0, 100) + '...',
+            content: mem.content || mem.document || '[no content]',
             conversation_id: mem.metadata?.conversation_id,
             user_id: mem.metadata?.user_id,
             distance: mem.distance
@@ -368,6 +371,225 @@ class VortexController {
 
     } catch (error) {
       logger.error('Status check error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Summarize a conversation and extract key information
+   */
+  async summarizeConversation(req, res, next) {
+    try {
+      const { conversation_id } = req.params;
+      const userId = req.user._id || req.user.id;
+      const { forceRegenerate } = req.body || {};
+
+      logger.info('Summarize conversation request', {
+        correlationId: req.correlationId,
+        userId,
+        conversationId: conversation_id,
+        forceRegenerate
+      });
+
+      const result = await vortexService.summarizeAndCompactConversation({
+        userId: userId?.toString(),
+        conversationId: conversation_id,
+        forceRegenerate: forceRegenerate || false
+      });
+
+      if (result.skipped) {
+        res.success(result, 'Summarization skipped');
+      } else if (result.success) {
+        res.success(result, 'Conversation summarized successfully');
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error,
+          message: 'Summarization failed'
+        });
+      }
+
+    } catch (error) {
+      logger.error('Summarize conversation error', {
+        correlationId: req.correlationId,
+        userId: req.user?.id,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Get memory intelligence status
+   */
+  async getMemoryIntelligenceStatus(req, res, next) {
+    try {
+      const status = await vortexService.getMemoryIntelligenceStatus();
+      
+      res.success(status, 'Memory intelligence status retrieved');
+
+    } catch (error) {
+      logger.error('Memory intelligence status error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Get all knowledge documents
+   */
+  async browseKnowledge(req, res, next) {
+    try {
+      const { limit, category } = req.query;
+
+      logger.info('Browse knowledge request', {
+        correlationId: req.correlationId,
+        limit,
+        category
+      });
+
+      const result = await memoryService.browseKnowledge({
+        limit: limit ? parseInt(limit) : 100,
+        category: category || null
+      });
+
+      res.success(result, 'Knowledge documents retrieved');
+
+    } catch (error) {
+      logger.error('Browse knowledge error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Add a knowledge document
+   */
+  async addKnowledge(req, res, next) {
+    try {
+      const { content, title, category, source, metadata } = req.body;
+
+      if (!content || !title) {
+        return res.status(400).json({
+          success: false,
+          error: 'Content and title are required'
+        });
+      }
+
+      logger.info('Add knowledge request', {
+        correlationId: req.correlationId,
+        title,
+        category,
+        contentLength: content.length
+      });
+
+      const result = await memoryService.storeKnowledge({
+        content,
+        title,
+        category: category || 'general',
+        source: source || 'manual',
+        metadata: metadata || {}
+      });
+
+      if (result.skipped) {
+        res.success(result, 'Knowledge document skipped (duplicate)');
+      } else {
+        res.success(result, 'Knowledge document added successfully');
+      }
+
+    } catch (error) {
+      logger.error('Add knowledge error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Delete a knowledge document
+   */
+  async deleteKnowledge(req, res, next) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          error: 'Knowledge document ID is required'
+        });
+      }
+
+      logger.info('Delete knowledge request', {
+        correlationId: req.correlationId,
+        id
+      });
+
+      const result = await memoryService.deleteKnowledge(id);
+
+      res.success(result, 'Knowledge document deleted successfully');
+
+    } catch (error) {
+      logger.error('Delete knowledge error', {
+        correlationId: req.correlationId,
+        error: error.message
+      });
+      next(error);
+    }
+  }
+
+  /**
+   * Search knowledge documents
+   */
+  async searchKnowledge(req, res, next) {
+    try {
+      const { query, limit } = req.query;
+
+      if (!query) {
+        return res.status(400).json({
+          success: false,
+          error: 'Search query is required'
+        });
+      }
+
+      logger.info('Search knowledge request', {
+        correlationId: req.correlationId,
+        query,
+        limit
+      });
+
+      await memoryService.ensureInitialized();
+      
+      const results = await memoryService.collections.knowledge.query({
+        queryTexts: [query],
+        nResults: limit ? parseInt(limit) : 10,
+        include: ['metadatas', 'documents', 'distances']
+      });
+
+      const documents = [];
+      if (results.documents?.[0]) {
+        results.documents[0].forEach((doc, index) => {
+          documents.push({
+            id: results.ids[0][index],
+            content: doc,
+            metadata: results.metadatas?.[0]?.[index] || {},
+            distance: results.distances?.[0]?.[index],
+            title: results.metadatas?.[0]?.[index]?.title || 'Untitled'
+          });
+        });
+      }
+
+      res.success({ documents, count: documents.length, query }, 'Knowledge search completed');
+
+    } catch (error) {
+      logger.error('Search knowledge error', {
         correlationId: req.correlationId,
         error: error.message
       });

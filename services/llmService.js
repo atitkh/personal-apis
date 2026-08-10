@@ -207,30 +207,74 @@ class LLMService {
   /**
    * Generate response using Google Gemini
    */
-  async generateGeminiResponse({ systemPrompt, messages }) {
-    
-    // Combine system prompt with conversation
-    const fullPrompt = `${systemPrompt}\n\nConversation:\n` + 
-      messages.map(msg => `${msg.role}: ${msg.content}`).join('\n') + 
-      '\nassistant:';
+  async generateGeminiResponse({ systemPrompt, messages, temperature = 0.7, maxTokens = 1000 }) {
+    try {
+      // Convert to Gemini's structured conversation format for better context understanding
+      const geminiContents = [];
+      
+      // Add system prompt as first user message with model acknowledgment
+      if (systemPrompt) {
+        geminiContents.push({
+          role: 'user',
+          parts: [{ text: systemPrompt }]
+        });
+        geminiContents.push({
+          role: 'model',
+          parts: [{ text: 'Understood. I will follow these instructions.' }]
+        });
+      }
+      
+      // Convert conversation messages to Gemini format
+      for (const msg of messages) {
+        if (msg.role === 'user') {
+          geminiContents.push({
+            role: 'user',
+            parts: [{ text: msg.content }]
+          });
+        } else if (msg.role === 'assistant') {
+          geminiContents.push({
+            role: 'model',
+            parts: [{ text: msg.content }]
+          });
+        } else if (msg.role === 'system') {
+          // Gemini doesn't have a 'system' role in conversation, convert to user message with clear marker
+          geminiContents.push({
+            role: 'user',
+            parts: [{ text: `[SYSTEM CONTEXT]\n${msg.content}` }]
+          });
+        }
+        // Skip any other unknown roles
+      }
 
-    const response = await this.client.models.generateContent({
-      model: this.model,
-      contents: `${fullPrompt}`
-    });
-    
-    const text = response.text();
+      const response = await this.client.models.generateContent({
+        model: this.model,
+        contents: geminiContents,
+        config: {
+          temperature: temperature,
+          maxOutputTokens: maxTokens
+        }
+      });
+      
+      // response.text is a property, not a function
+      const text = response.text || '';
 
-    return {
-      content: text,
-      functionCall: null, // Gemini function calling would need special handling
-      usage: {
-        prompt_tokens: fullPrompt.length / 4, // Rough estimate
-        completion_tokens: text.length / 4,
-        total_tokens: (fullPrompt.length + text.length) / 4
-      },
-      model: this.model
-    };
+      return {
+        content: text,
+        functionCall: null,
+        usage: {
+          prompt_tokens: Math.ceil(JSON.stringify(geminiContents).length / 4),
+          completion_tokens: Math.ceil(text.length / 4),
+          total_tokens: Math.ceil((JSON.stringify(geminiContents).length + text.length) / 4)
+        },
+        model: this.model
+      };
+    } catch (error) {
+      this.safeLog('error', 'Gemini generation failed', { 
+        error: error.message,
+        stack: error.stack 
+      });
+      throw error;
+    }
   }
 
   /**
@@ -247,6 +291,7 @@ class LLMService {
       model: this.model,
       prompt: fullPrompt,
       stream: false,
+      think: false, // Disable thinking/reasoning traces
       options: {
         temperature: temperature,
         top_p: 0.9,
@@ -257,13 +302,249 @@ class LLMService {
 
     return {
       content: response.data.response,
-      functionCall: null, // Ollama models would need custom function calling implementation
+      functionCall: null,
       usage: {
         prompt_tokens: fullPrompt.length / 4, // Rough estimate
         completion_tokens: response.data.response.length / 4,
         total_tokens: (fullPrompt.length + response.data.response.length) / 4
       },
       model: this.model
+    };
+  }
+
+  /**
+   * Generate response using Ollama API with native tool calling
+   * Uses /api/chat endpoint with tools parameter
+   */
+  /**
+   * Generate response with tool calling support
+   * Supports Ollama and Gemini native tool calling
+   */
+  async generateWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
+    if (!this.client) {
+      await this.initialize();
+    }
+
+    // Route to provider-specific tool calling implementation
+    if (this.provider === 'ollama') {
+      return this.generateOllamaWithTools({ systemPrompt, messages, tools, temperature, maxTokens });
+    } else if (this.provider === 'gemini') {
+      return this.generateGeminiWithTools({ systemPrompt, messages, tools, temperature, maxTokens });
+    } else {
+      // For other providers, fall back to standard generation (no tool support yet)
+      this.safeLog('warn', `Tool calling with ${this.provider} provider - falling back to standard generation (tools not supported)`);
+      const response = await this.generateResponse({
+        systemPrompt,
+        messages,
+        temperature,
+        maxTokens
+      });
+      return {
+        content: response.content,
+        toolCalls: [],
+        usage: response.usage,
+        model: response.model
+      };
+    }
+  }
+
+  /**
+   * Generate response using Gemini with native function calling
+   */
+  async generateGeminiWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
+    try {
+      // Convert tools to Gemini function declarations
+      const functionDeclarations = tools.map(tool => {
+        // Handle both Ollama format (type: 'function') and raw format
+        const func = tool.type === 'function' ? tool.function : tool;
+        
+        return {
+          name: func.name || func.fullName,
+          description: func.description || '',
+          parametersJsonSchema: func.parameters || func.inputSchema || {
+            type: 'object',
+            properties: {},
+            required: []
+          }
+        };
+      });
+
+      // Convert messages to Gemini's structured format
+      const geminiContents = [];
+      
+      // Add system prompt as first user message
+      if (systemPrompt) {
+        geminiContents.push({
+          role: 'user',
+          parts: [{ text: systemPrompt }]
+        });
+        geminiContents.push({
+          role: 'model',
+          parts: [{ text: 'Understood. I will follow these instructions.' }]
+        });
+      }
+      
+      // Convert each message to Gemini format
+      for (const msg of messages) {
+        if (msg.role === 'user') {
+          geminiContents.push({
+            role: 'user',
+            parts: [{ text: msg.content }]
+          });
+        } else if (msg.role === 'assistant' && msg.tool_calls) {
+          // Assistant made tool calls - convert to Gemini format
+          const parts = msg.tool_calls.map(tc => ({
+            functionCall: {
+              name: tc.function.name,
+              args: tc.function.arguments || {}
+            }
+          }));
+          geminiContents.push({
+            role: 'model',
+            parts: parts
+          });
+        } else if (msg.role === 'tool') {
+          // Tool result - convert to Gemini function response format
+          geminiContents.push({
+            role: 'function',
+            parts: [{
+              functionResponse: {
+                name: msg.tool_name,
+                response: {
+                  content: msg.content
+                }
+              }
+            }]
+          });
+        } else if (msg.role === 'assistant') {
+          geminiContents.push({
+            role: 'model',
+            parts: [{ text: msg.content }]
+          });
+        }
+      }
+
+      const response = await this.client.models.generateContent({
+        model: this.model,
+        contents: geminiContents,
+        config: {
+          temperature: temperature,
+          maxOutputTokens: maxTokens,
+          tools: functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
+        }
+      });
+
+      const text = response.text || '';
+      const functionCalls = response.functionCalls || [];
+
+      // Convert Gemini function calls to Ollama format for consistency
+      const toolCalls = functionCalls.map(fc => ({
+        function: {
+          name: fc.name,
+          arguments: fc.args || {}
+        }
+      }));
+
+      return {
+        content: text,
+        toolCalls: toolCalls,
+        usage: {
+          prompt_tokens: Math.ceil(JSON.stringify(geminiContents).length / 4),
+          completion_tokens: Math.ceil(text.length / 4),
+          total_tokens: Math.ceil((JSON.stringify(geminiContents).length + text.length) / 4)
+        },
+        model: this.model
+      };
+    } catch (error) {
+      this.safeLog('error', 'Gemini tool calling failed', { 
+        error: error.message,
+        stack: error.stack 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Generate response using Ollama with native tool calling
+   */
+  async generateOllamaWithTools({ systemPrompt, messages, tools = [], temperature = 0.7, maxTokens = 1000 }) {
+    const axios = require('axios');
+    
+    if (!this.client) {
+      await this.initialize();
+    }
+
+    // Format messages for Ollama chat API
+    const ollamaMessages = [];
+    
+    if (systemPrompt) {
+      ollamaMessages.push({ role: 'system', content: systemPrompt });
+    }
+    
+    for (const msg of messages) {
+      ollamaMessages.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+
+    // Check if tools are already in Ollama format (have type: 'function' and function property)
+    // or need conversion from MCP format
+    console.log('\n========== TOOLS INPUT DEBUG ==========');
+    console.log('Input tools count:', tools.length);
+    if (tools.length > 0) {
+      console.log('First tool sample:', JSON.stringify(tools[0], null, 2));
+    }
+    console.log('========================================\n');
+    
+    const ollamaTools = tools.map(tool => {
+      // Already in Ollama format
+      if (tool.type === 'function' && tool.function) {
+        return tool;
+      }
+      // Convert from MCP/raw format
+      return {
+        type: 'function',
+        function: {
+          name: tool.fullName || tool.name,
+          description: tool.description || '',
+          parameters: tool.inputSchema || {
+            type: 'object',
+            properties: {},
+            required: []
+          }
+        }
+      };
+    });
+
+    console.log('\n========== OLLAMA TOOL CALL REQUEST ==========');
+    console.log('Model:', this.model);
+    console.log('Messages:', JSON.stringify(ollamaMessages, null, 2));
+    console.log('Tools:', JSON.stringify(ollamaTools, null, 2));
+    console.log('===============================================\n');
+
+    const response = await axios.post(`${this.client.baseURL}/api/chat`, {
+      model: this.model,
+      messages: ollamaMessages,
+      tools: ollamaTools.length > 0 ? ollamaTools : undefined,
+      stream: false,
+    });
+
+    console.log('\n========== OLLAMA TOOL CALL RESPONSE ==========');
+    console.log('Response:', JSON.stringify(response.data, null, 2));
+    console.log('================================================\n');
+
+    const message = response.data.message;
+
+    return {
+      content: message.content || '',
+      toolCalls: message.tool_calls || [],
+      usage: {
+        prompt_tokens: response.data.prompt_eval_count || 0,
+        completion_tokens: response.data.eval_count || 0,
+        total_tokens: (response.data.prompt_eval_count || 0) + (response.data.eval_count || 0)
+      },
+      model: response.data.model
     };
   }
 
@@ -279,68 +560,114 @@ class LLMService {
     this.safeLog('debug', 'Building system prompt with memories', {
       memoryCount: relevantMemories.length,
       memoryTypes: relevantMemories.map(m => m.type),
-      memoryPreview: relevantMemories.slice(0, 2).map(m => m.content?.substring(0, 50) + '...')
+      memoryPreview: relevantMemories.slice(0, 2).map(m => (m.content || m.document)?.substring(0, 50) + '...')
     });
 
-    return `You are Vortex, ${personality.description}
+    return `You're Vortex - ${personality.description}.
 
-PERSONALITY TRAITS:
+How you talk:
 ${personality.traits.map(trait => `- ${trait}`).join('\n')}
 
-CURRENT CONTEXT:
-- Time: ${currentTime}
-- User: ${userContext.name || 'User'}
-- Location: ${userContext.location || 'Unknown'}
+Context:
+- It's ${currentTime}
+- Talking to: ${userContext.name || 'someone'}
+${userContext.location ? `- They're in ${userContext.location}` : ''}
 
-RELEVANT MEMORIES:
+What you know from past chats:
 ${memoryContext}
 
-RESPONSE GUIDELINES:
-1. Be helpful, personal, and engaging
-2. **IMPORTANT**: Always reference and use the relevant memories above when answering questions about the user's background, preferences, or past conversations
-3. If you have relevant memories, use them naturally in your responses without saying "I remember" or "based on our conversation"
-4. If no relevant memories are provided, be honest about not having that specific information
-5. Maintain context across conversations using the memory information
-6. Ask clarifying questions when needed
-7. Stay in character as a personal AI assistant
+Rules:
+- Just answer the question but never repeat what assistant said last. 
+- Don't add filler like "That's a great question!" or "I'd be happy to help!"
+- Use what you know from past chats naturally - don't announce that you're remembering things
+- Keep it short and real
+- Skip the formalities - no need for greetings or sign-offs unless it makes sense
+- Don't explain what you're doing ("Let me help you with that..." - just help)
+- If you don't know something, just say so casually
 
-Communication Guidelines:
-- Be concise and natural - avoid unnecessary verbose responses
-- Don't mention remembering conversations unless specifically relevant
-- Don't say "nice to talk to you again" or similar repetitive greetings
-- Use previous context naturally without explicitly calling attention to it
-- Keep responses focused and to the point
-- Only reference past conversations when directly relevant to the current question
-- Avoid meta-commentary about memory or conversation history
+CRITICAL - Information Sources:
+- Tool data (marked "TOOL DATA") is current information - use it to answer questions
+- Memories are for historical context
+- NEVER fabricate or guess - if you don't know, say so
 
-AVAILABLE ACTIONS:
-- Remember important information
-- Set reminders or notes
-- Search previous conversations
-- Connect related topics
-- Suggest improvements or optimizations
+CRITICAL - Context Relevance:
+- Evaluate whether retrieved memories actually relate to the current question
+- Simple factual queries usually don't need past conversation context
+- Don't force connections between unrelated topics - if memories aren't relevant, just answer the question directly
+- Natural context switches happen - recognize when the conversation topic has changed
 
-Always respond as Vortex, your personal AI assistant.`;
+You're having a normal conversation, not giving a presentation.`;
   }
 
   /**
    * Format memory context for system prompt
    */
   formatMemoryContext(memories) {
-    return memories.map(memory => {
-      const timestamp = new Date(memory.metadata.timestamp).toLocaleString();
-      const type = memory.type.toUpperCase();
-      
-      if (memory.type === 'conversation') {
-        const role = memory.metadata.role?.toUpperCase() || 'UNKNOWN';
-        return `[${timestamp}] ${type} - ${role}: "${memory.content}"`;
-      } else if (memory.type === 'event') {
-        const eventType = memory.metadata.event_type || 'unknown';
-        return `[${timestamp}] ${type} - ${eventType}: ${memory.content}`;
+    if (!memories || memories.length === 0) {
+      return 'No relevant memories found.';
+    }
+
+    // Group memories by type for better organization
+    const grouped = {
+      preference: [],
+      fact: [],
+      event: [],
+      knowledge: [],
+      conversation: []
+    };
+
+    memories.forEach(memory => {
+      const type = memory.type || memory.metadata?.type || 'conversation';
+      if (grouped[type]) {
+        grouped[type].push(memory);
       } else {
-        return `[${timestamp}] ${type}: ${memory.content}`;
+        grouped.conversation.push(memory);
       }
-    }).join('\n');
+    });
+
+    const sections = [];
+
+    // Format knowledge base entries (highest priority - full content)
+    if (grouped.knowledge.length > 0) {
+      const knowledge = grouped.knowledge.map(m => {
+        const title = m.metadata?.title || 'Document';
+        const content = m.content || m.document || '';
+        return `### ${title}\n${content}`;
+      }).join('\n\n');
+      sections.push(`Reference Knowledge:\n${knowledge}`);
+    }
+
+    // Format preferences/facts (most important for context)
+    if (grouped.preference.length > 0) {
+      const prefs = grouped.preference.map(m => `- ${m.content || m.document}`).join('\n');
+      sections.push(`Preferences:\n${prefs}`);
+    }
+
+    if (grouped.fact.length > 0) {
+      const facts = grouped.fact.map(m => `- ${m.content || m.document}`).join('\n');
+      sections.push(`Known facts:\n${facts}`);
+    }
+
+    if (grouped.event.length > 0) {
+      const events = grouped.event.map(m => {
+        const time = new Date(m.metadata?.timestamp).toLocaleDateString();
+        return `- [${time}] ${m.content || m.document}`;
+      }).join('\n');
+      sections.push(`Past events:\n${events}`);
+    }
+
+    // Format conversation snippets (less prominent)
+    if (grouped.conversation.length > 0) {
+      const convos = grouped.conversation.map(m => {
+        const time = new Date(m.metadata?.timestamp).toLocaleDateString();
+        const role = m.metadata?.role || 'user';
+        const text = m.content || m.document || '';
+        return `- [${time}] ${role}: "${text.substring(0, 150)}${text.length > 150 ? '...' : ''}"`;
+      }).join('\n');
+      sections.push(`Related past conversations:\n${convos}`);
+    }
+
+    return sections.join('\n\n');
   }
 
   /**
@@ -360,12 +687,13 @@ AVAILABLE ACTIONS:
 1. "remember" - Store information for future reference
 2. "remind" - Set a reminder or note for later  
 3. "note" - Save a general note or observation
+4. "action" - Any other specific action to be performed possibly via mcp
 
 USER MESSAGE: "${message}"
 
 Respond with a JSON array of detected actions. Each action should have:
 {
-  "type": "remember|remind|note",
+  "type": "remember|remind|note|action",
   "content": "the specific content to act on",
   "confidence": 0.0-1.0
 }
@@ -403,10 +731,11 @@ Respond with only the JSON array, no other text.`;
         content = response.content[0].text.trim();
         
       } else if (this.provider === 'gemini') {
-        const model = this.client.getGenerativeModel({ model: this.model });
-        const result = await model.generateContent(classificationPrompt);
-        const response = await result.response;
-        content = response.text().trim();
+        const response = await this.client.models.generateContent({
+          model: this.model,
+          contents: classificationPrompt
+        });
+        content = response.text.trim();
         
       } else if (this.provider === 'ollama') {
         const axios = require('axios');
@@ -526,9 +855,8 @@ Respond with only the JSON array, no other text.`;
             status.connectionStatus = 'operational'; // Assume operational if client exists
             
           } else if (this.provider === 'gemini') {
-            // Quick test for Gemini
-            const model = this.client.getGenerativeModel({ model: this.model });
-            status.connectionStatus = 'operational'; // Assume operational if client exists
+            // Quick test for Gemini - client existence means operational
+            status.connectionStatus = 'operational';
             
           } else if (this.provider === 'ollama') {
             // Test Ollama connection
@@ -560,4 +888,7 @@ Respond with only the JSON array, no other text.`;
   }
 }
 
-module.exports = new LLMService();
+// Export both the singleton instance and the class
+const instance = new LLMService();
+module.exports = instance;
+module.exports.LLMService = LLMService;

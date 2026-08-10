@@ -12,7 +12,106 @@
  */
 
 const net = require('net');
+const { spawn } = require('child_process');
 const { logger } = require('../utils/logger');
+
+/**
+ * Convert audio buffer from various formats to raw PCM using ffmpeg
+ * @param {Buffer} inputBuffer - Input audio buffer (WebM, MP3, WAV, etc.)
+ * @param {string} inputFormat - Input format hint (webm, mp3, wav, etc.)
+ * @param {Object} options - Output options
+ * @returns {Promise<Buffer>} - Raw PCM audio buffer
+ */
+async function convertToPCM(inputBuffer, inputFormat = 'webm', options = {}) {
+    const {
+        sampleRate = 16000,
+        channels = 1,
+        sampleWidth = 2  // 16-bit = 2 bytes
+    } = options;
+
+    // If input is already raw PCM with correct parameters, no conversion needed
+    if (inputFormat === 'pcm' || inputFormat === 's16le') {
+        logger.debug('Input is already PCM, skipping conversion', {
+            inputSize: inputBuffer.length,
+            sampleRate,
+            channels,
+            sampleWidth
+        });
+        return inputBuffer;
+    }
+
+    return new Promise((resolve, reject) => {
+        const ffmpegArgs = [];
+        
+        // Add input format parameters for raw PCM input
+        if (inputFormat === 'raw' || inputFormat === 'pcm_s16le') {
+            ffmpegArgs.push(
+                '-f', 's16le',
+                '-ar', String(sampleRate),
+                '-ac', String(channels)
+            );
+        }
+        
+        ffmpegArgs.push(
+            '-i', 'pipe:0',           // Read from stdin
+            '-f', 's16le',            // Output format: signed 16-bit little-endian PCM
+            '-acodec', 'pcm_s16le',   // Audio codec
+            '-ar', String(sampleRate), // Sample rate
+            '-ac', String(channels),   // Channels
+            'pipe:1'                   // Output to stdout
+        );
+
+        logger.debug('Converting audio to PCM', {
+            inputSize: inputBuffer.length,
+            inputFormat,
+            sampleRate,
+            channels,
+            sampleWidth
+        });
+
+        const ffmpeg = spawn('ffmpeg', ffmpegArgs, {
+            stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        const chunks = [];
+        let stderrOutput = '';
+
+        ffmpeg.stdout.on('data', (chunk) => {
+            chunks.push(chunk);
+        });
+
+        ffmpeg.stderr.on('data', (data) => {
+            stderrOutput += data.toString();
+        });
+
+        ffmpeg.on('close', (code) => {
+            if (code === 0) {
+                const outputBuffer = Buffer.concat(chunks);
+                logger.debug('Audio conversion successful', {
+                    inputSize: inputBuffer.length,
+                    outputSize: outputBuffer.length,
+                    duration: outputBuffer.length / (sampleRate * channels * sampleWidth)
+                });
+                resolve(outputBuffer);
+            } else {
+                logger.error('FFmpeg conversion failed', {
+                    code,
+                    stderr: stderrOutput.substring(0, 500)
+                });
+                reject(new Error(`FFmpeg exited with code ${code}: ${stderrOutput.substring(0, 200)}`));
+            }
+        });
+
+        ffmpeg.on('error', (err) => {
+            logger.error('FFmpeg spawn error', { error: err.message });
+            reject(new Error(`Failed to spawn ffmpeg: ${err.message}`));
+        });
+
+        // Write input buffer to ffmpeg stdin
+        ffmpeg.stdin.write(inputBuffer);
+        ffmpeg.stdin.end();
+    });
+}
 
 class WyomingClient {
     constructor(host, port, timeout = 30000) {
@@ -358,14 +457,38 @@ class VoiceService {
             language = 'en',
             sampleRate = 16000,
             channels = 1,
-            sampleWidth = 2
+            sampleWidth = 2,
+            inputFormat = 'webm'  // Default to webm since browser records in this format
         } = options;
 
         logger.info('Starting speech-to-text', {
             audioSize: audioBuffer.length,
             language,
-            sampleRate
+            sampleRate,
+            inputFormat
         });
+
+        // Convert audio to raw PCM format for Wyoming/Whisper
+        let pcmBuffer;
+        try {
+            pcmBuffer = await convertToPCM(audioBuffer, inputFormat, {
+                sampleRate,
+                channels,
+                sampleWidth
+            });
+            
+            logger.info('Audio converted to PCM', {
+                originalSize: audioBuffer.length,
+                pcmSize: pcmBuffer.length,
+                estimatedDuration: pcmBuffer.length / (sampleRate * channels * sampleWidth)
+            });
+        } catch (conversionError) {
+            logger.error('Audio conversion failed', { error: conversionError.message });
+            return {
+                success: false,
+                error: `Audio conversion failed: ${conversionError.message}`
+            };
+        }
 
         const client = new WyomingClient(this.whisperHost, this.whisperPort, this.timeout);
 
@@ -382,10 +505,10 @@ class VoiceService {
                 channels: channels
             });
 
-            // 3. Send audio data in chunks
+            // 3. Send PCM audio data in chunks
             const chunkSize = 8192;
-            for (let offset = 0; offset < audioBuffer.length; offset += chunkSize) {
-                const chunk = audioBuffer.slice(offset, Math.min(offset + chunkSize, audioBuffer.length));
+            for (let offset = 0; offset < pcmBuffer.length; offset += chunkSize) {
+                const chunk = pcmBuffer.slice(offset, Math.min(offset + chunkSize, pcmBuffer.length));
                 
                 client.sendEventWithPayload('audio-chunk', {
                     rate: sampleRate,
@@ -634,17 +757,36 @@ class VoiceService {
     async processVoiceConversation(audioBuffer, filename, chatProcessor, options = {}) {
         const startTime = Date.now();
 
+        logger.info('Processing voice conversation', {
+            audioBufferLength: audioBuffer.length,
+            filename,
+            inputLanguage: options.inputLanguage,
+            outputVoice: options.outputVoice
+        });
+
         // Step 1: Speech to Text
+        // Detect input format from filename
+        const inputFormat = filename ? filename.toLowerCase().split('.').pop() : 'webm';
+        
         const sttResult = await this.speechToText(audioBuffer, {
             language: options.inputLanguage,
             sampleRate: 16000,
             channels: 1,
-            sampleWidth: 2
+            sampleWidth: 2,
+            inputFormat
         });
 
         if (!sttResult.success) {
             throw new Error(`Speech-to-text failed: ${sttResult.error}`);
         }
+
+        // Log the transcription result for debugging
+        logger.info('Voice transcription result', {
+            success: sttResult.success,
+            textLength: sttResult.text?.length || 0,
+            text: sttResult.text,
+            language: sttResult.language
+        });
 
         // Step 2: Process with chat
         const chatResponse = await chatProcessor(sttResult.text, options.chatOptions);

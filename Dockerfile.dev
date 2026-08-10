@@ -5,6 +5,10 @@ WORKDIR /home/node/app
 ENV NODE_ENV=development
 ENV PORT=3000
 
+# Install ffmpeg for audio format conversion (WebM to PCM for Whisper)
+USER root
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies first for better build caching
 COPY package*.json ./
 RUN npm ci && chown -R node:node /home/node
