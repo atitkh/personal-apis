@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VorteX Axis: the face</title>
+<!--
+  A small, live version of the VorteX face for a web page or an iframe. It draws with the real
+  `web/vortex.js`, the same file the web client and the admin Face page run, and it is not connected
+  to any agent: what you type goes nowhere, and the reply is always the same line.
+
+  Needs `vortex.js` and `icons.js` beside it: `node scripts/make-face-demo.mjs <folder>` puts them there.
+  Nothing leaves the browser. The microphone, if you allow it, only moves the face; it is never recorded.
+
+  Address options:  ?say=turn on the lights   run one exchange as soon as the page loads
+-->
+<style>
+  :root { color-scheme: dark; --ink: #cfe9f2; --dim: #7c8f99; --line: #1d2a31; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #000; color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, "DejaVu Sans", sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 12px; gap: 10px; overflow: hidden;
+  }
+  #face {
+    width: min(78vw, 46vh, 340px); aspect-ratio: 1; display: block; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  #state { letter-spacing: 3px; font-size: 13px; min-height: 1.2em; transition: color .3s; }
+  #said { min-height: 2.9em; max-width: 30em; margin: 0; text-align: center; color: var(--ink); }
+  #said.you { color: var(--dim); }
+  form { display: flex; gap: 8px; width: min(92vw, 30em); }
+  input[type=text] {
+    flex: 1; min-width: 0; background: #070b0d; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; font: inherit; outline: none;
+  }
+  input[type=text]:focus { border-color: #2f6f86; }
+  button {
+    font: inherit; color: var(--ink); background: #0a1215; border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 13px; cursor: pointer;
+  }
+  button:hover { border-color: #2f6f86; }
+  button[aria-pressed=true] { border-color: #2f9f7a; color: #7df0bd; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .chips button { padding: 5px 10px; font-size: 12.5px; color: var(--dim); }
+  .note { margin: 0; color: var(--dim); font-size: 12px; text-align: center; max-width: 34em; }
+  @media (max-height: 430px) { .note, .chips { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="face" aria-label="The VorteX face. Tap it to talk."></canvas>
+<div id="state" aria-live="polite">idle</div>
+<p id="said" aria-live="polite">Tap the face, or type something.</p>
+<form id="form" autocomplete="off">
+  <button type="button" id="talk" title="Listen to the microphone (it only moves the face)">Talk</button>
+  <input type="text" id="text" placeholder="Say something…" maxlength="140" aria-label="Say something">
+  <button type="submit">Send</button>
+  <button type="button" id="sound" aria-pressed="false" title="Speak the reply aloud">Voice</button>
+</form>
+<div class="chips" aria-label="Jump to a state">
+  <button type="button" data-state="idle">idle</button>
+  <button type="button" data-state="listening">listening</button>
+  <button type="button" data-state="thinking">thinking</button>
+  <button type="button" data-state="speaking">speaking</button>
+</div>
+<p class="note">This is the face the VorteX Axis clients draw. It is not connected to an agent here, so it can only say hello.</p>
+
+<script type="module">
+import { Vortex } from "./vortex.js";
+
+const REPLY = "I'm not linked to any provider right now, but thanks for trying me.";
+// What the agent picked up, as the face shows it while thinking (icon names from icons.js).
+const DOING = [
+  [/light|lamp|home|room|thermostat|heat/i, "home"],
+  [/weather|search|look up|google|find|news/i, "search"],
+  [/calendar|meeting|schedule|tomorrow|appointment/i, "calendar"],
+  [/timer|alarm|remind|minutes?/i, "timer"],
+  [/code|bug|script|program|build/i, "code"],
+  [/mail|message|text|whatsapp|send/i, "message"],
+  [/list|todo|task|shopping/i, "list"],
+  [/file|document|pdf|folder/i, "files"],
+  [/picture|photo|image|draw/i, "image"],
+  [/remember|memory|forget/i, "memory"],
+];
+
+const $ = (id) => document.getElementById(id);
+const canvas = $("face"), stateEl = $("state"), said = $("said"), text = $("text");
+const vortex = new Vortex(canvas);
+vortex.setMode("idle");
+
+const COLORS = { idle: "#6fc7dc", listening: "#5de3a0", thinking: "#b690ff", speaking: "#bff0ff" };
+let state = "idle";
+let token = 0;            // a newer turn cancels an older one
+let voiceOn = false;
+let mic = null;           // { analyser, data, stream } once allowed
+let micDenied = false;
+
+function show(next) {
+  state = next;
+  vortex.setMode(next);
+  stateEl.textContent = next;
+  stateEl.style.color = COLORS[next] ?? "";
+  if (next !== "thinking") vortex.setDoing(undefined);
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const clamp = (x) => Math.min(1, Math.max(0, x));
+
+// The level of a voice, the way docs/face.md section 4 says to measure one: how far above the room,
+// square-root shaped, quick to rise, about a tenth of a second to fall.
+function follower() {
+  let room = 0, shown = 0, last = performance.now();
+  return (loudness, rms = true) => {
+    const now = performance.now(), dt = (now - last) / 1000; last = now;
+    let want;
+    if (rms) {
+      room += (loudness - room) * (loudness < room ? 0.3 : 0.005);
+      want = Math.sqrt(clamp((loudness - room * 1.3 - 0.002) / 0.08));
+    } else {
+      want = loudness;
+    }
+    shown = want >= shown ? want : shown + (want - shown) * (1 - Math.exp(-dt / 0.1));
+    return shown;
+  };
+}
+
+// A made-up voice for when there is no microphone or while a reply "plays": syllables and word gaps.
+function fakeVoice(ms) {
+  const t = ms / 1000;
+  const syllable = Math.pow(Math.abs(Math.sin(Math.PI * 4.3 * t + 0.6 * Math.sin(t * 1.7))), 1.3);
+  const word = clamp(1.8 * Math.sin(Math.PI * 1.7 * t + 0.4) + 0.5);
+  const swing = 0.65 + 0.35 * Math.sin(t * 2.3);
+  return Math.sqrt(clamp(syllable * word * swing));
+}
+
+async function openMic() {
+  if (mic || micDenied || !navigator.mediaDevices?.getUserMedia) return mic;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false } });
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    ctx.createMediaStreamSource(stream).connect(analyser);
+    mic = { analyser, data: new Float32Array(analyser.fftSize), stream };
+  } catch {
+    micDenied = true;
+  }
+  return mic;
+}
+
+function closeMic() {
+  mic?.stream.getTracks().forEach((t) => t.stop());
+  mic = null;
+}
+
+// Listening: the microphone if allowed, otherwise a made-up voice. Ends on silence or a time cap.
+async function listen(id) {
+  show("listening");
+  said.className = "you";
+  said.textContent = "Listening…";
+  await openMic();
+  const follow = follower();
+  const started = performance.now();
+  let voicedFor = 0, quietFor = 0, lastFrame = started;
+  while (id === token) {
+    const now = performance.now();
+    const dt = now - lastFrame; lastFrame = now;
+    let level;
+    if (mic) {
+      mic.analyser.getFloatTimeDomainData(mic.data);
+      let sum = 0;
+      for (const x of mic.data) sum += x * x;
+      level = follow(Math.sqrt(sum / mic.data.length));
+    } else {
+      level = follow(fakeVoice(now - started), false);
+    }
+    vortex.setLevel(level);
+    if (level > 0.25) { voicedFor += dt; quietFor = 0; } else quietFor += dt;
+    const elapsed = now - started;
+    if (mic ? (voicedFor > 250 && quietFor > 1300) || elapsed > 9000 : elapsed > 2600) break;
+    await sleep(16);
+  }
+  closeMic();
+  vortex.setLevel(-1);
+}
+
+async function think(id, said_) {
+  show("thinking");
+  const hit = DOING.find(([re]) => re.test(said_ ?? ""));
+  await sleep(500);
+  if (id !== token) return;
+  if (hit) vortex.setDoing(hit[1]);
+  await sleep(hit ? 1900 : 1100);
+}
+
+async function speak(id) {
+  show("speaking");
+  said.className = "";
+  said.textContent = REPLY;
+  let done = false;
+  if (voiceOn && "speechSynthesis" in window) {
+    const u = new SpeechSynthesisUtterance(REPLY);
+    u.rate = 1.02;
+    u.onend = u.onerror = () => { done = true; };
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }
+  const started = performance.now();
+  const follow = follower();
+  const length = Math.max(2600, REPLY.length * 62);
+  while (id === token) {
+    const t = performance.now() - started;
+    if (voiceOn && "speechSynthesis" in window ? done && t > 600 : t > length) break;
+    vortex.setLevel(follow(fakeVoice(t), false));
+    await sleep(16);
+  }
+  vortex.setLevel(-1);
+}
+
+// One exchange: listen (unless words were typed), think, answer, settle.
+async function turn(typed) {
+  const id = ++token;
+  speechSynthesis?.cancel?.();
+  closeMic();
+  if (typed) {
+    said.className = "you";
+    said.textContent = "“" + typed + "”";
+    show("listening");
+    await sleep(450);
+  } else {
+    await listen(id);
+  }
+  if (id !== token) return;
+  await think(id, typed);
+  if (id !== token) return;
+  await speak(id);
+  if (id !== token) return;
+  await sleep(350);
+  if (id === token) {
+    show("idle");
+    vortex.setLevel(-1);
+  }
+}
+
+// Jump to a state and stay there (until something else is done).
+function hold(name) {
+  token++;
+  speechSynthesis?.cancel?.();
+  closeMic();
+  show(name);
+  said.className = "you";
+  said.textContent = name === "idle" ? "Tap the face, or type something." : "";
+  if (name === "listening" || name === "speaking") {
+    const id = token, started = performance.now(), follow = follower();
+    (async () => {
+      while (id === token) {
+        vortex.setLevel(follow(fakeVoice(performance.now() - started), false));
+        await sleep(16);
+      }
+    })();
+  } else {
+    vortex.setLevel(-1);
+  }
+}
+
+$("form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const value = text.value.trim();
+  text.value = "";
+  turn(value || undefined);
+});
+canvas.addEventListener("click", () => turn());
+$("talk").addEventListener("click", () => turn());
+$("sound").addEventListener("click", (e) => {
+  voiceOn = !voiceOn;
+  e.currentTarget.setAttribute("aria-pressed", String(voiceOn));
+});
+document.querySelectorAll(".chips button").forEach((b) => b.addEventListener("click", () => hold(b.dataset.state)));
+
+const say = new URLSearchParams(location.search).get("say");
+if (say) setTimeout(() => turn(say), 400);
+</script>
+</body>
+</html>

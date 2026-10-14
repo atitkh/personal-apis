@@ -38,6 +38,15 @@ app.use(helmet({
 // Compression middleware
 app.use(compression());
 
+// CORS comes before the rate limiter, so a 429 also carries the CORS headers. Without that a browser
+// reports "blocked by CORS policy" and hides that the real problem is the limit.
+app.use(cors());
+
+// Behind a Cloudflare tunnel every request reaches the container from the Docker gateway. Trusting
+// private/loopback hops makes req.ip the visitor's address (from X-Forwarded-For), so the limits below
+// are per visitor and not one bucket shared by the whole internet.
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+
 // Rate limiting
 const rateLimitConfig = config.getRateLimitConfig();
 const limiter = rateLimit({
@@ -49,6 +58,9 @@ const limiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    // The portfolio's data, images and demo pages are public and static: a page view fetches a dozen
+    // of them. Only the ORCID lookup (it calls an outside service) stays limited.
+    skip: (req) => req.path.startsWith('/portfolio/') && !req.path.includes('/publications'),
 });
 app.use(limiter);
 
@@ -62,7 +74,6 @@ const authLimiter = rateLimit({
     }
 });
 
-app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

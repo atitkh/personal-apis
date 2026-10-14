@@ -58,6 +58,41 @@ router.get('/atit/img', (req, res) => {
     });
 });
 
+// Small self-contained demo pages (atit/demo/<name>/index.html), meant to be embedded in an iframe on
+// the portfolio. The API's default X-Frame-Options (same origin only) is lifted for these, and replaced
+// by a frame-ancestors list.
+router.use('/atit/demo', (req, res, next) => {
+    res.removeHeader('X-Frame-Options');
+    res.header('Content-Security-Policy', "frame-ancestors 'self' https://atitkharel.com.np https://*.atitkharel.com.np http://localhost:*");
+    res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+}, require('express').static(require('path').join(__dirname, 'atit', 'demo'), { index: 'index.html' }));
+
+// Animated images (GIF). Same folder as /atit/img, id without the extension.
+router.get('/atit/gif', (req, res) => {
+    const id = String(req.query.id || '');
+    const fs = require('fs');
+    const path = require('path');
+    const dir = path.join(__dirname, 'atit', 'img');
+    const filePath = path.join(dir, id + '.gif');
+
+    // Stay inside the image folder.
+    if (!filePath.startsWith(dir + path.sep)) {
+        return res.status(400).send('Error');
+    }
+
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            return res.status(404).send('Error');
+        }
+        res.header('Access-Control-Allow-Origin', '*');
+        res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.header('Cache-Control', 'public, max-age=86400');
+        res.contentType('image/gif');
+        res.send(data);
+    });
+});
+
 router.get('/ashlesha', (req, res) => {
     const ashleshaPortfolio = require('./ashlesha/ashlesha.json');
     res.json(ashleshaPortfolio);

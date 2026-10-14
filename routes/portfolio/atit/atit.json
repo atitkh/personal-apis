@@ -13,7 +13,7 @@
     "ML",
     "Game",
     "Webapp",
-    "Bot",
+    "Agents & Bots",
     "Design",
     "Research",
     "In the Media",
@@ -388,7 +388,7 @@
       ],
       "date": "2018",
       "mainCategory": [
-        "Bot"
+        "Agents & Bots"
       ]
     },
     {
@@ -619,7 +619,7 @@
       ],
       "date": "2020",
       "mainCategory": [
-        "Bot"
+        "Agents & Bots"
       ]
     },
     {
@@ -638,7 +638,7 @@
       ],
       "date": "2021",
       "mainCategory": [
-        "Bot"
+        "Agents & Bots"
       ]
     },
     {
@@ -657,7 +657,7 @@
       ],
       "date": "2021",
       "mainCategory": [
-        "Bot"
+        "Agents & Bots"
       ]
     },
     {
@@ -1160,6 +1160,28 @@
       "date": "Dec 10, 2024",
       "mainCategory": [
         "AR/VR"
+      ]
+    },
+    {
+      "id": 59,
+      "image": "https://api.atitkharel.com.np/portfolio/atit/gif?id=vortex-axis",
+      "video": "",
+      "title": "VorteX Axis",
+      "description": "A device gateway that connects one AI agent to every client around you: ESP32-S3 clients with a microphone and animated face, a web client and a Windows client. It handles pairing, wake-word arbitration, local speech and agent tools so the same agent can listen, speak, ask, show pictures and act on any of them.",
+      "projectLink": [],
+      "more": true,
+      "categories": [
+        "TypeScript",
+        "C++",
+        "C#",
+        "ESP32",
+        "Docker",
+        "MQTT"
+      ],
+      "date": "October 2026",
+      "mainCategory": [
+        "Agents & Bots",
+        "Webapp"
       ]
     }
   ]
