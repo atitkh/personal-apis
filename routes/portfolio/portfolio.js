@@ -137,8 +137,13 @@ router.get('/atit/full', async (req, res) => {
         // Find highest ID in existing portfolio
         let maxId = Math.max(...atitPortfolio.portfolio.map(p => p.id || 0));
         
+        // A paper that has its own entry in atit.json (matched by its `doi` field) is shown there, with its
+        // detail page, and left out of the generated publication cards so it does not appear twice.
+        const ownDois = new Set(atitPortfolio.portfolio.map(p => p.doi && String(p.doi).toLowerCase()).filter(Boolean));
+        const generated = publications.filter(pub => !ownDois.has(String(pub.metadata && pub.metadata.doi).toLowerCase()));
+
         // Add IDs and images to publications
-        const enhancedPublications = publications.map((pub, index) => {
+        const enhancedPublications = generated.map((pub, index) => {
             maxId++;
             return {
                 id: maxId,

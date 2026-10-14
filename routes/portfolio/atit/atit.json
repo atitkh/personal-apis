@@ -1183,6 +1183,34 @@
         "Agents & Bots",
         "Webapp"
       ]
+    },
+    {
+      "id": 60,
+      "doi": "10.1109/vrw70859.2026.00057",
+      "image": "https://api.atitkharel.com.np/portfolio/atit/img?id=dataecho",
+      "video": "",
+      "title": "DataEcho",
+      "description": "An end-to-end framework for recording, storing and replaying immersive XR sessions: a Unity logger captures poses, gaze and interactions into Elasticsearch, a browser replay shows any session in 3D from first or third person, and an MCP gateway lets an LLM query the data. Basis of the IEEE VR 2026 paper on reflective telemetry replay.",
+      "projectLink": [
+        "https://api.atitkharel.com.np/portfolio/atit/pdf?id=10.1109/vrw70859.2026.00057",
+        "https://ieeexplore.ieee.org/document/11489749/",
+        "http://dx.doi.org/10.1109/vrw70859.2026.00057"
+      ],
+      "more": true,
+      "categories": [
+        "Unity3D",
+        "C#",
+        "Python",
+        "Elasticsearch",
+        "Babylon.js",
+        "MCP"
+      ],
+      "date": "March 21, 2026",
+      "mainCategory": [
+        "AR/VR",
+        "Research",
+        "Webapp"
+      ]
     }
   ]
 }
