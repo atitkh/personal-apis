@@ -1,27 +1,35 @@
 const router = require('express').Router();
-const verify = require('../auth/verifyToken');
+const { requireScope } = require('../../middleware/apiKey');
 const { google } = require('googleapis');
 
-const client = new google.auth.JWT(
-    process.env.SA_EMAIL,
-    null,
-    process.env.SA_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    ['https://www.googleapis.com/auth/spreadsheets']
-);
+// The Sheets client is built on first use, so a missing service-account key no longer stops the whole
+// server from booting (the portfolio shares this process).
+let client = null;
+function getClient() {
+    if (!client) {
+        client = new google.auth.JWT(
+            process.env.SA_EMAIL,
+            null,
+            (process.env.SA_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+            ['https://www.googleapis.com/auth/spreadsheets']
+        );
+    }
+    return client;
+}
 
 router.get('/', (req, res) => {
     res.send("Welcome to Kerkar Creations' Attendance API");
 });
 
-router.get('/get', verify, (req, res) => {
-    client.authorize(function (err, tokens) {
+router.get('/get', requireScope('attendance:read'), (req, res) => {
+    getClient().authorize(function (err, tokens) {
         if (err) {
             console.log(err);
             res.status(500).send('Error');
             return;
         } else {
             console.log('Connected to Sheets!');
-            gsrun(client);
+            gsrun(getClient());
         }
     });
 
@@ -52,15 +60,15 @@ router.get('/get', verify, (req, res) => {
 });
 
 // get by name
-router.get('/get/:name', verify, (req, res) => {
-    client.authorize(function (err, tokens) {
+router.get('/get/:name', requireScope('attendance:read'), (req, res) => {
+    getClient().authorize(function (err, tokens) {
         if (err) {
             console.log(err);
             res.status(500).send('Error');
             return;
         } else {
             console.log('Connected to Sheets!');
-            gsrun(client);
+            gsrun(getClient());
         }
     });
 
@@ -93,15 +101,15 @@ router.get('/get/:name', verify, (req, res) => {
 });
 
 
-router.post('/add', verify, (req, res) => {
-    client.authorize(function (err, tokens) {
+router.post('/add', requireScope('attendance:write'), (req, res) => {
+    getClient().authorize(function (err, tokens) {
         if (err) {
             console.log(err);
             res.status(500).send('Error');
             return;
         } else {
             console.log('Connected to Sheets!');
-            gsrun(client);
+            gsrun(getClient());
         }
     });
 

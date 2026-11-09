@@ -6,19 +6,9 @@ const configSchema = Joi.object({
     NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
     PORT: Joi.number().default(5000),
     
-    // Database
-    DB_CONNECTION: Joi.string().uri().required(),
-    DB_MAX_POOL_SIZE: Joi.number().default(10),
-    DB_MIN_POOL_SIZE: Joi.number().default(2),
-    
-    // JWT
-    TOKEN_SECRET: Joi.string().min(8).required(),
-    TOKEN_EXPIRY: Joi.string().default('24h'),
-    
     // Rate Limiting
     RATE_LIMIT_WINDOW_MS: Joi.number().default(15 * 60 * 1000), // 15 minutes
     RATE_LIMIT_MAX_REQUESTS: Joi.number().default(100),
-    AUTH_RATE_LIMIT_MAX_REQUESTS: Joi.number().default(5),
     
     // External APIs
     NFTPORTAL_KEY: Joi.string().optional(),
@@ -62,7 +52,6 @@ class Config {
     _setEnvironmentDefaults() {
         if (this._config.NODE_ENV === 'test') {
             this._config.LOG_LEVEL = 'error';
-            this._config.DB_CONNECTION = this._config.DB_CONNECTION || 'mongodb://localhost:27017/test-personal-apis';
         }
         
         if (this._config.NODE_ENV === 'production') {
@@ -96,33 +85,10 @@ class Config {
         return this._config.NODE_ENV === 'test';
     }
     
-    getDatabaseConfig() {
-        return {
-            uri: this._config.DB_CONNECTION,
-            options: {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-                maxPoolSize: this._config.DB_MAX_POOL_SIZE,
-                minPoolSize: this._config.DB_MIN_POOL_SIZE,
-                maxIdleTimeMS: 30000,
-                serverSelectionTimeoutMS: 5000,
-                socketTimeoutMS: 45000,
-            }
-        };
-    }
-    
     getRateLimitConfig() {
         return {
             windowMs: this._config.RATE_LIMIT_WINDOW_MS,
-            max: this._config.RATE_LIMIT_MAX_REQUESTS,
-            authMax: this._config.AUTH_RATE_LIMIT_MAX_REQUESTS
-        };
-    }
-    
-    getJWTConfig() {
-        return {
-            secret: this._config.TOKEN_SECRET,
-            expiresIn: this._config.TOKEN_EXPIRY
+            max: this._config.RATE_LIMIT_MAX_REQUESTS
         };
     }
 }

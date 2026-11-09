@@ -2,7 +2,6 @@ const router = require('express').Router();
 const fetch = require('node-fetch');
 const sharp = require('sharp');
 const axios = require('axios');
-const verify = require('../auth/verifyToken');
 const ethers = require('ethers');
 
 router.get('/', (req, res) => {

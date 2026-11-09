@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const verify = require('../auth/verifyToken');
 const publicationService = require('./publicationService');
 
 router.get('/', (req, res) => {

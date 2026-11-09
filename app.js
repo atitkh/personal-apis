@@ -10,14 +10,12 @@ const { specs, swaggerUi } = require('./config/swagger');
 
 // Import utilities and config
 const config = require('./config');
-const databaseManager = require('./utils/database');
+const db = require('./db');
 const { requestLogger, errorLogger } = require('./utils/logger');
 const { responseFormatter } = require('./middleware/responseFormatter');
 const { BaseError } = require('./utils/errors');
 
 //Import Routes
-const apiRoutes = require('./routes/api');
-const authRoute = require('./routes/auth/auth');
 const nftlisterRoute = require('./routes/nft/nftsearch');
 const portfolioRoute = require('./routes/portfolio/portfolio');
 const attendanceRoute = require('./routes/kerkarcreations/attendance');
@@ -58,16 +56,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Stricter rate limit for auth endpoints
-const authLimiter = rateLimit({
-    windowMs: rateLimitConfig.windowMs,
-    max: rateLimitConfig.authMax,
-    message: {
-        error: 'Too many authentication attempts',
-        message: 'Please try again later'
-    }
-});
-
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -86,13 +74,9 @@ if (config.isDevelopment()) {
 
 app.use(express.static("html"));
 
-app.use('/auth', authLimiter, authRoute);
 app.use('/api/v1/nft', nftlisterRoute);
 app.use('/api/v1/portfolio', portfolioRoute);
 app.use('/api/v1/kerkarcreations/attendance', attendanceRoute);
-
-// Mount new versioned API routes
-app.use('/api', apiRoutes);
 
 // Legacy routes (for backward compatibility)
 app.use('/nft', nftlisterRoute);
@@ -129,13 +113,13 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
  *                 uptime:
  *                   type: number
  *                 database:
- *                   type: string
- *                   example: connected
+ *                   type: object
+ *                   example: { status: healthy, migrations: 1 }
  */
 // Health check endpoint
-app.get('/health', async (req, res) => {
+app.get('/health', (req, res) => {
     try {
-        const dbHealth = await databaseManager.healthCheck();
+        const dbHealth = db.health();
         const healthCheck = {
             status: dbHealth.status === 'healthy' ? 'OK' : 'WARNING',
             timestamp: new Date().toISOString(),
@@ -188,7 +172,6 @@ app.get('/api', (req, res) => {
         documentation: 'https://github.com/atitkh/personal-apis',
         endpoints: {
             health: '/health',
-            auth: '/auth',
             v1: {
                 nft: '/api/v1/nft',
                 portfolio: '/api/v1/portfolio',
@@ -202,8 +185,7 @@ app.get('/api', (req, res) => {
             }
         },
         rateLimit: {
-            general: '100 requests per 15 minutes',
-            auth: '5 requests per 15 minutes'
+            general: '100 requests per 15 minutes'
         }
     });
 });
@@ -227,15 +209,14 @@ app.use('*', (req, res) => {
 //     res.sendFile(path.join(__dirname, '/html/index.html'));
 // });
 
-//Connect to DB
+// Open the hub database (and apply migrations) at boot. A failure is logged and shows up in /health, but
+// the portfolio keeps serving: it does not depend on the database.
 if (!config.isTest()) {
-    databaseManager.connect()
-        .catch(err => {
-            console.error('Failed to start application:', err);
-            if (config.isProduction()) {
-                process.exit(1);
-            }
-        });
+    try {
+        db.get();
+    } catch (err) {
+        console.error('Hub database failed to open:', err);
+    }
 }
 
 //listen
@@ -247,7 +228,13 @@ if (!config.isTest()) {
         console.log(`🚀 Server running on port ${port}`);
     });
 
-    // Graceful shutdown is handled by databaseManager
+    const shutdown = () => {
+        server.close();
+        db.close();
+        process.exit(0);
+    };
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
 }
 
 // Export app for testing
