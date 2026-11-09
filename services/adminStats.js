@@ -80,11 +80,23 @@ function digestWatch(conn, now = new Date()) {
     const have = expected && conn.prepare("SELECT 1 FROM digests WHERE kind = 'daily' AND period = ?").get(expected);
     return {
         enabled,
+        coverage: digestCoverage(conn, now, tz),
         dailyCount: latest.n,
         latestDaily: latest.p || null,
         expectedDaily: expected,
         missing: Boolean(enabled && latest.n > 0 && expected && !have),
     };
+}
+
+// Which of the last `days` days (ending yesterday, today is still being lived) have a daily digest.
+function digestCoverage(conn, now = new Date(), tz = 'America/Chicago', days = 30) {
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz });
+    const list = [];
+    for (let i = days; i >= 1; i--) list.push(fmt.format(new Date(now.getTime() - i * 24 * 3600 * 1000)));
+    const have = new Set(conn.prepare("SELECT period FROM digests WHERE kind = 'daily' AND period >= ? AND period <= ?")
+        .all(list[0], list[list.length - 1]).map((r) => r.period));
+    const out = list.map((day) => ({ day, present: have.has(day) }));
+    return { days: out, present: out.filter((d) => d.present).length, total: out.length };
 }
 
 function overview() {

@@ -7,7 +7,7 @@
     const state = {
         session: null, view: 'overview', newKey: null, confirmRevoke: null, filter: '', confirmDomain: null,
         digestKind: 'daily', digestQuery: '', digest: null, viewRev: null, editing: false, showHistory: false,
-        compare: null, confirmRestore: null,
+        compare: null, confirmRestore: null, activityFilter: 'all', backupMsg: '', backingUp: false,
     };
 
     const VIEWS = [
@@ -251,40 +251,47 @@
             ? issues.join(' ')
             : `The database is healthy, the last backup was ${ago(newest.modifiedAt)}, and ${plural(o.keys.active, 'API key')} ${o.keys.active === 1 ? 'is' : 'are'} active.`;
 
+        const tile = (label, value, detail, target, kind) => h(target ? 'button' : 'div', {
+            class: `tile${kind ? ` ${kind}` : ''}`,
+            type: target ? 'button' : null,
+            onclick: target ? () => go(target) : null,
+        }, h('span', { class: 'tile-label', text: label }), h('span', { class: 'tile-value', text: value }), h('span', { class: 'tile-detail', text: detail }));
+
+        const on = (o.domains || []).filter((d) => d.enabled).length;
+        const cov = o.digests && o.digests.coverage;
+        const tiles = h('div', { class: 'tiles' },
+            tile('Domains on', `${on} of ${(o.domains || []).length}`, 'Switch them below', null),
+            tile('Digests', String(o.digests ? o.digests.dailyCount : 0), o.digests && o.digests.latestDaily ? `Latest: ${o.digests.latestDaily}` : 'None yet', 'digests', o.digests && o.digests.missing ? 'warn' : ''),
+            tile('API keys', String(o.keys.active), o.keys.lastUsedAt ? `Used ${ago(o.keys.lastUsedAt)}` : 'Never used', 'keys'),
+            tile('Last backup', newest ? ago(newest.modifiedAt).replace(' ago', '') : 'None', newest ? `${plural(o.backups.count, 'copy', 'copies')} kept` : 'Make one in Backups', 'backups', !newest ? 'warn' : ''),
+            tile('Portfolio', plural(o.portfolio.entryCount, 'entry', 'entries'), o.portfolio.problems ? plural(o.portfolio.problems, 'problem') : 'No problems', 'portfolio', o.portfolio.problems ? 'warn' : ''));
+
+        const coverage = cov && cov.total ? h('section', {},
+            h('h2', { text: 'Daily digests, last 30 days' }),
+            h('p', { class: 'note', text: `${cov.present} of ${cov.total} days have one. Gaps are days the nightly job did not deliver.` }),
+            h('div', { class: 'strip', role: 'img', 'aria-label': `${cov.present} of ${cov.total} days have a daily digest` },
+                cov.days.map((d) => h('button', {
+                    class: `cell ${d.present ? 'have' : 'gap'}`,
+                    type: 'button',
+                    title: `${d.day}${d.present ? '' : ' (missing)'}`,
+                    'aria-label': `${d.day}: ${d.present ? 'digest present' : 'missing'}`,
+                    onclick: () => { if (d.present) { state.view = 'digests'; state.digestKind = 'daily'; state.digest = { kind: 'daily', period: d.day }; render(); } },
+                })))) : null;
+
         return h('div', {},
             h('header', {},
                 h('h1', { class: `status${issues.length ? ' warn' : ''}`, text: headline }),
                 h('p', { class: 'lede', text: lede })),
+            tiles,
+            coverage,
             domainsSection(o.domains || []),
             h('section', {},
-                h('h2', { text: 'Database' }),
+                h('h2', { text: 'System' }),
                 h('dl', { class: 'facts' },
-                    fact('Status', dot(o.database.status === 'healthy' ? 'good' : 'bad'), o.database.status === 'healthy' ? 'Healthy' : 'Not responding'),
+                    fact('Database', dot(o.database.status === 'healthy' ? 'good' : 'bad'), o.database.status === 'healthy' ? 'Healthy' : 'Not responding'),
                     fact('Size', bytes(o.database.bytes), o.database.walBytes ? ` (plus ${bytes(o.database.walBytes)} of recent writes)` : ''),
-                    fact('Schema', `${plural(o.database.migrations, 'migration')} applied`))),
-            h('section', {},
-                h('h2', { text: 'Backups' }),
-                h('dl', { class: 'facts' },
-                    fact('Newest', newest ? `${when(newest.modifiedAt)} (${ago(newest.modifiedAt)})` : 'None yet'),
-                    fact('Kept', plural(o.backups.count, 'copy', 'copies'))),
-                h('p', {}, h('button', { class: 'btn quiet small', type: 'button', text: 'See backups', onclick: () => go('backups') }))),
-            h('section', {},
-                h('h2', { text: 'API keys' }),
-                h('dl', { class: 'facts' },
-                    fact('Active', String(o.keys.active)),
-                    fact('Revoked', String(o.keys.revoked)),
-                    fact('Last used', o.keys.lastUsedAt ? `${when(o.keys.lastUsedAt)} (${ago(o.keys.lastUsedAt)})` : 'Never')),
-                h('p', {}, h('button', { class: 'btn quiet small', type: 'button', text: 'Manage keys', onclick: () => go('keys') }))),
-            h('section', {},
-                h('h2', { text: 'Portfolio' }),
-                h('dl', { class: 'facts' },
-                    fact('Entries', String(o.portfolio.entryCount)),
-                    fact('Last edited', `${when(o.portfolio.updatedAt)} (${ago(o.portfolio.updatedAt)})`),
-                    fact('Problems', o.portfolio.problems ? [dot('warn'), plural(o.portfolio.problems, 'file')] : [dot('good'), 'None'])),
-                h('p', {}, h('button', { class: 'btn quiet small', type: 'button', text: 'Open the portfolio inventory', onclick: () => go('portfolio') }))),
-            h('section', {},
-                h('h2', { text: 'Server' }),
-                h('dl', { class: 'facts' },
+                    fact('Schema', `${plural(o.database.migrations, 'migration')} applied`),
+                    fact('Portfolio edited', `${when(o.portfolio.updatedAt)} (${ago(o.portfolio.updatedAt)})`),
                     fact('Service', `${o.app.name} ${o.app.version}`),
                     fact('Running for', span(o.app.uptimeSeconds)),
                     fact('Runtime', `Node ${o.app.node.replace(/^v/, '')}, ${o.app.environment}`))));
@@ -387,7 +394,20 @@
         return h('div', {},
             h('header', {},
                 h('h1', { class: 'status', text: 'Backups' }),
-                h('p', { class: 'lede', text: 'The database is copied once a day, from inside the service. The newest seven copies are kept next to the database file.' })),
+                h('p', { class: 'lede', text: 'The database is copied once a day, from inside the service. The newest seven copies are kept next to the database file.' }),
+                h('p', { class: 'row' },
+                    h('button', {
+                        class: 'btn',
+                        type: 'button',
+                        disabled: state.backingUp,
+                        text: state.backingUp ? 'Backing up…' : 'Back up now',
+                        onclick: async () => {
+                            state.backingUp = true; state.backupMsg = ''; render();
+                            try { await api('/backups', { method: 'POST' }); state.backupMsg = 'Done. A fresh copy of today is saved.'; } catch (err) { state.backupMsg = err.message; }
+                            state.backingUp = false; render();
+                        },
+                    }),
+                    state.backupMsg ? h('span', { class: 'muted', role: 'status', text: state.backupMsg }) : null)),
             h('section', {},
                 list.length
                     ? h('div', { class: 'table-wrap' }, h('table', {},
@@ -614,15 +634,34 @@
         login_failed: () => 'Tried a wrong key',
         key_created: (d) => `Created key ${d && d.name ? d.name : ''}${d && d.scopes ? ` (${d.scopes.join(', ')})` : ''}`,
         key_revoked: (d) => `Revoked key ${d && d.name ? d.name : ''}`,
+        backup_run: () => 'Made a backup by hand',
     };
 
+    const GROUPS = [
+        ['all', 'Everything', null],
+        ['signins', 'Sign-ins', ['login', 'logout', 'login_failed']],
+        ['keys', 'Keys', ['key_created', 'key_revoked']],
+        ['domains', 'Domains', ['domain_enabled', 'domain_disabled']],
+        ['digests', 'Digests', ['digest_edited', 'digest_restored']],
+        ['backups', 'Backups', ['backup_run']],
+    ];
+
     async function activity() {
-        const { events } = await api('/activity?limit=100');
+        const { events: all } = await api('/activity?limit=200');
+        const group = GROUPS.find((g) => g[0] === state.activityFilter) || GROUPS[0];
+        const events = group[2] ? all.filter((e) => group[2].includes(e.action)) : all;
         return h('div', {},
             h('header', {},
                 h('h1', { class: 'status', text: 'Activity' }),
-                h('p', { class: 'lede', text: 'Sign-ins and key changes, newest first.' })),
+                h('p', { class: 'lede', text: 'Sign-ins, key and domain changes, digest edits and backups, newest first.' })),
             h('section', {},
+                h('div', { class: 'row', role: 'group', 'aria-label': 'Filter activity' }, GROUPS.map(([id, label]) => h('button', {
+                    class: `btn small ${state.activityFilter === id ? '' : 'quiet'}`,
+                    type: 'button',
+                    'aria-pressed': state.activityFilter === id ? 'true' : 'false',
+                    text: label,
+                    onclick: () => { state.activityFilter = id; render(); },
+                }))),
                 events.length
                     ? h('div', { class: 'table-wrap' }, h('table', {},
                         h('thead', {}, h('tr', {}, ['When', 'What', 'From'].map((t) => h('th', { text: t })))),
@@ -630,7 +669,7 @@
                             h('td', { text: when(e.at) }),
                             h('td', { text: (WHAT[e.action] || (() => e.action))(e.detail).trim() }),
                             h('td', { class: 'muted', text: e.ip || '' }))))))
-                    : h('p', { class: 'muted', text: 'Nothing has happened yet.' })));
+                    : h('p', { class: 'muted', text: all.length ? 'Nothing of that kind in the recent events.' : 'Nothing has happened yet.' })));
     }
 
     const VIEW_FN = { overview, digests, keys, backups, portfolio, activity };

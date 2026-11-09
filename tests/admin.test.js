@@ -214,6 +214,43 @@ describe('dashboard: domains and digests', () => {
     });
 });
 
+describe('dashboard: coverage, manual backup, activity', () => {
+    test('overview reports which of the last 30 days have a daily digest', async () => {
+        const app = buildApp();
+        const agent = await signedIn(app);
+        const cov = (await agent.get('/admin/api/overview').expect(200)).body.digests.coverage;
+        expect(cov.total).toBe(30);
+        expect(cov.days).toHaveLength(30);
+        expect(cov.present).toBe(cov.days.filter((d) => d.present).length);
+        expect(cov.days[0].day < cov.days[29].day).toBe(true);
+    });
+
+    test('digestCoverage marks only the days that have a digest', () => {
+        const stats = require('../services/adminStats');
+        const conn = db.get();
+        const now = new Date('2026-11-09T18:00:00Z');
+        const digests = require('../services/digests');
+        conn.prepare("DELETE FROM digests WHERE period IN ('2026-11-08', '2026-11-06')").run();
+        const before = stats.digestWatch(conn, now).coverage.present;
+        digests.put(conn, 'daily', '2026-11-08', { body: 'x', source: 'import', actor: 'test' });
+        const cov = stats.digestWatch(conn, now).coverage;
+        expect(cov.present).toBe(before + 1);
+        expect(cov.days[cov.days.length - 1]).toEqual({ day: '2026-11-08', present: true });
+        expect(cov.days.find((d) => d.day === '2026-11-06').present).toBe(false);
+        conn.prepare("DELETE FROM digests WHERE period = '2026-11-08'").run();
+    });
+
+    test('a manual backup is audited and needs the header', async () => {
+        const app = buildApp();
+        const agent = await signedIn(app);
+        await agent.post('/admin/api/backups').expect(403);
+        const res = await agent.post('/admin/api/backups').set(H).expect(200);
+        expect(res.body.ok).toBe(true);
+        const events = (await agent.get('/admin/api/activity').expect(200)).body.events;
+        expect(events.some((e) => e.action === 'backup_run')).toBe(true);
+    });
+});
+
 describe('mounted in the real app', () => {
     const realApp = require('../app');
 

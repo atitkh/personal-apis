@@ -11,6 +11,7 @@ const audit = require('../../services/audit');
 const stats = require('../../services/adminStats');
 const domains = require('../../services/domains');
 const digests = require('../../services/digests');
+const backup = require('../../services/backup');
 
 const COOKIE = 'hub_admin';
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -123,6 +124,16 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
 
     api.get('/overview', (req, res) => res.json(stats.overview()));
     api.get('/backups', (req, res) => res.json({ backups: stats.backups() }));
+    api.post('/backups', async (req, res) => {
+        const conn = db.get();
+        try {
+            const file = await backup.runOnce(conn, { force: true });
+            audit.record(conn, 'admin', 'backup_run', null, req.ip);
+            res.json({ ok: true, created: Boolean(file), backups: stats.backups() });
+        } catch (err) {
+            res.status(500).json({ error: `The backup failed: ${err.message}` });
+        }
+    });
     api.get('/portfolio', (req, res) => res.json(stats.portfolio()));
     api.get('/activity', (req, res) => res.json({ events: audit.recent(db.get(), req.query.limit) }));
 

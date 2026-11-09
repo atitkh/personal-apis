@@ -17,13 +17,13 @@ function prune(dir, keep) {
     }
 }
 
-// Writes today's snapshot unless it already exists. Resolves to the new file's path, or null if skipped.
-async function runOnce(conn = db.get(), { keep = KEEP } = {}) {
+// Writes today's snapshot unless it already exists (force replaces it). Resolves to the new file's path, or null if skipped.
+async function runOnce(conn = db.get(), { keep = KEEP, force = false } = {}) {
     if (conn.memory) return null;
     const dir = path.join(path.dirname(conn.name), 'backups');
     fs.mkdirSync(dir, { recursive: true });
     const dest = path.join(dir, `hub-${today()}.db`);
-    if (fs.existsSync(dest)) return null;
+    if (!force && fs.existsSync(dest)) return null;
     const tmp = `${dest}.tmp`;
     await conn.backup(tmp);
     fs.renameSync(tmp, dest);
