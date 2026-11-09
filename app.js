@@ -23,7 +23,6 @@ const magichomeRoute = require('./routes/smarthome/magichome');
 const nftlisterRoute = require('./routes/nft/nftsearch');
 const phonecallRoute = require('./routes/phonecall/phonecallIFTTT');
 const ipoResult = require('./routes/iporesult/iporesult');
-const valorantRoute = require('./routes/valorant/info');
 const karunRoute = require('./routes/karun/karun');
 const portfolioRoute = require('./routes/portfolio/portfolio');
 const attendanceRoute = require('./routes/kerkarcreations/attendance');
@@ -98,7 +97,6 @@ app.use('/api/v1/smarthome/magichome', magichomeRoute);
 app.use('/api/v1/nft', nftlisterRoute);
 app.use('/api/v1/phonecall', phonecallRoute);
 app.use('/api/v1/ipo', ipoResult);
-app.use('/api/v1/valorant', valorantRoute);
 app.use('/api/v1/karun', karunRoute);
 app.use('/api/v1/portfolio', portfolioRoute);
 app.use('/api/v1/kerkarcreations/attendance', attendanceRoute);
@@ -112,7 +110,6 @@ app.use('/smarthome/magichome', magichomeRoute);
 app.use('/nft', nftlisterRoute);
 app.use('/phonecall', phonecallRoute);
 app.use('/ipo', ipoResult);
-app.use('/valorant', valorantRoute);
 app.use('/karun', karunRoute);
 app.use('/portfolio', portfolioRoute);
 app.use('/kerkarcreations/attendance', attendanceRoute);
@@ -209,7 +206,6 @@ app.get('/api', (req, res) => {
             auth: '/auth',
             v1: {
                 nft: '/api/v1/nft',
-                valorant: '/api/v1/valorant',
                 smartHome: '/api/v1/smarthome',
                 portfolio: '/api/v1/portfolio',
                 ipo: '/api/v1/ipo',
@@ -219,7 +215,6 @@ app.get('/api', (req, res) => {
             legacy: {
                 note: 'Legacy endpoints maintained for backward compatibility',
                 nft: '/nft',
-                valorant: '/valorant',
                 smartHome: '/smarthome',
                 portfolio: '/portfolio',
                 ipo: '/ipo',

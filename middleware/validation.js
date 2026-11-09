@@ -49,21 +49,6 @@ const schemas = {
         boid: Joi.string().required(),
         userCaptcha: Joi.string().required(),
         captchaIdentifier: Joi.string().required()
-    }),
-
-    // Valorant auth validation
-    valorantAuth: Joi.object({
-        username: Joi.string().min(3).max(50).required(),
-        password: Joi.string().min(6).max(100).required()
-    }),
-
-    // Valorant API validation
-    valorantApi: Joi.object({
-        access_token: Joi.string().required(),
-        entitlements_token: Joi.string().required(),
-        user_id: Joi.string().required(),
-        username: Joi.string().required(),
-        region: Joi.string().required()
     })
 };
 
