@@ -30,7 +30,6 @@ const configSchema = Joi.object({
     ATTENDANCE_CLIENT_ID: Joi.string().optional(),
     ATTENDANCE_CLIENT_SECRET: Joi.string().optional(),
     ATTENDANCE_SHEET_ID: Joi.string().optional(),
-    UNOFFICIAL_API_KEY: Joi.string().optional(),
     API_KEY: Joi.string().optional(),
     
     // Logging

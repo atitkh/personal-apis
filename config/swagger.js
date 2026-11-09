@@ -60,14 +60,6 @@ const options = {
                 description: 'Non-Fungible Token search endpoints',
             },
             {
-                name: 'Valorant',
-                description: 'Valorant game API endpoints',
-            },
-            {
-                name: 'Smart Home',
-                description: 'IoT and smart home control endpoints',
-            },
-            {
                 name: 'Portfolio',
                 description: 'Personal portfolio and project endpoints',
             },

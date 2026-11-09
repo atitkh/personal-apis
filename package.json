@@ -9,9 +9,7 @@
     "api",
     "express",
     "mongodb",
-    "valorant",
-    "nft",
-    "smart-home"
+    "nft"
   ],
   "scripts": {
     "start": "node app.js",
@@ -32,7 +30,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.0.1",
     "ethers": "^5.7.1",
-    "ewelink-api": "^3.1.1",
     "express": "^4.18.1",
     "express-rate-limit": "^8.2.1",
     "googleapis": "^39.2.0",
@@ -45,7 +42,6 @@
     "sharp": "^0.30.7",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "unofficial-valorant-api": "^2.3.0-stable.0",
     "winston": "^3.18.3"
   },
   "devDependencies": {
