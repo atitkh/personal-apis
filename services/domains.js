@@ -53,10 +53,33 @@ function setEnabled(db, name, enabled, actor) {
         .run(name, enabled ? 1 : 0, new Date().toISOString(), actor || null);
 }
 
+// How agents may reach the domain through /hub/mcp: off, read or write (see migration 004).
+const MCP_MODES = ['off', 'read', 'write'];
+const DEFAULT_MCP_MODE = 'read';
+
+function mcpMode(db, name) {
+    if (!exists(name)) return 'off';
+    try {
+        const row = db.prepare('SELECT mcp_mode FROM hub_domains WHERE name = ?').get(name);
+        return row && MCP_MODES.includes(row.mcp_mode) ? row.mcp_mode : DEFAULT_MCP_MODE;
+    } catch (err) {
+        return DEFAULT_MCP_MODE;
+    }
+}
+
+function setMcpMode(db, name, mode, actor) {
+    if (!exists(name)) throw new Error(`Unknown domain "${name}"`);
+    if (!MCP_MODES.includes(mode)) throw new Error(`MCP mode must be one of: ${MCP_MODES.join(', ')}`);
+    const def = REGISTRY[name];
+    db.prepare(`INSERT INTO hub_domains (name, enabled, mcp_mode, updated_at, updated_by) VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (name) DO UPDATE SET mcp_mode = excluded.mcp_mode, updated_at = excluded.updated_at, updated_by = excluded.updated_by`)
+        .run(name, def.defaultEnabled ? 1 : 0, mode, new Date().toISOString(), actor || null);
+}
+
 function list(db) {
     return names().map((name) => {
         const def = REGISTRY[name];
-        const row = db.prepare('SELECT enabled, updated_at, updated_by FROM hub_domains WHERE name = ?').get(name);
+        const row = db.prepare('SELECT enabled, mcp_mode, updated_at, updated_by FROM hub_domains WHERE name = ?').get(name);
         let stats = {};
         try { stats = def.stats(db) || {}; } catch (err) { stats = { error: err.message }; }
         return {
@@ -68,6 +91,7 @@ function list(db) {
             changedAt: row ? row.updated_at : null,
             changedBy: row ? row.updated_by : null,
             confirmOff: def.confirmOff || null,
+            mcpMode: row && MCP_MODES.includes(row.mcp_mode) ? row.mcp_mode : DEFAULT_MCP_MODE,
             records: stats.records == null ? null : stats.records,
             recordLabel: stats.label || 'records',
             lastChange: stats.lastChange || null,
@@ -75,4 +99,4 @@ function list(db) {
     });
 }
 
-module.exports = { REGISTRY, names, exists, sync, isEnabled, setEnabled, list };
+module.exports = { REGISTRY, names, exists, sync, isEnabled, setEnabled, list, MCP_MODES, mcpMode, setMcpMode };
