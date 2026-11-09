@@ -23,7 +23,7 @@ function requireScope(scope) {
         if (!key) {
             return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
         }
-        if (!apiKeys.hasScope(key.scopes, scope)) {
+        if (scope && !apiKeys.hasScope(key.scopes, scope)) {
             return res.status(403).json({ error: 'Forbidden', message: `This key lacks the "${scope}" scope` });
         }
         req.apiKey = key;
@@ -31,4 +31,7 @@ function requireScope(scope) {
     };
 }
 
-module.exports = { requireScope, extractKey };
+// Any live key, whatever its scopes. The route then decides per request what the key may do (/hub/mcp).
+const requireKey = () => requireScope(null);
+
+module.exports = { requireScope, requireKey, extractKey };
