@@ -38,11 +38,6 @@ const schemas = {
         password: Joi.string().required()
     }),
 
-    // Phone call validation
-    phoneCall: Joi.object({
-        message: Joi.string().min(1).max(500).required()
-    }),
-
     // IPO result validation
     ipoResult: Joi.object({
         companyShareId: Joi.string().required(),

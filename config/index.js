@@ -30,7 +30,6 @@ const configSchema = Joi.object({
     NFTPORTAL_KEY: Joi.string().optional(),
     OPENSEA_KEY: Joi.string().optional(),
     JSONRPCPROVIDER_ETH: Joi.string().uri().optional(),
-    IFTTT_PHONE_KEY: Joi.string().optional(),
     SA_EMAIL: Joi.string().email().optional(),
     SA_PRIVATE_KEY: Joi.string().optional(),
     SHEETS_API_KEY: Joi.string().optional(),

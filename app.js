@@ -20,7 +20,6 @@ const apiRoutes = require('./routes/api');
 const authRoute = require('./routes/auth/auth');
 const ewelinkRoute = require('./routes/smarthome/ewelink');
 const nftlisterRoute = require('./routes/nft/nftsearch');
-const phonecallRoute = require('./routes/phonecall/phonecallIFTTT');
 const ipoResult = require('./routes/iporesult/iporesult');
 const portfolioRoute = require('./routes/portfolio/portfolio');
 const attendanceRoute = require('./routes/kerkarcreations/attendance');
@@ -92,7 +91,6 @@ app.use(express.static("html"));
 app.use('/auth', authLimiter, authRoute);
 app.use('/api/v1/smarthome/ewelink', ewelinkRoute);
 app.use('/api/v1/nft', nftlisterRoute);
-app.use('/api/v1/phonecall', phonecallRoute);
 app.use('/api/v1/ipo', ipoResult);
 app.use('/api/v1/portfolio', portfolioRoute);
 app.use('/api/v1/kerkarcreations/attendance', attendanceRoute);
@@ -103,7 +101,6 @@ app.use('/api', apiRoutes);
 // Legacy routes (for backward compatibility)
 app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/nft', nftlisterRoute);
-app.use('/phonecall', phonecallRoute);
 app.use('/ipo', ipoResult);
 app.use('/portfolio', portfolioRoute);
 app.use('/kerkarcreations/attendance', attendanceRoute);
@@ -203,7 +200,6 @@ app.get('/api', (req, res) => {
                 smartHome: '/api/v1/smarthome',
                 portfolio: '/api/v1/portfolio',
                 ipo: '/api/v1/ipo',
-                phonecall: '/api/v1/phonecall',
                 attendance: '/api/v1/kerkarcreations/attendance'
             },
             legacy: {
@@ -212,7 +208,6 @@ app.get('/api', (req, res) => {
                 smartHome: '/smarthome',
                 portfolio: '/portfolio',
                 ipo: '/ipo',
-                phonecall: '/phonecall',
                 attendance: '/kerkarcreations/attendance'
             }
         },
