@@ -36,14 +36,6 @@ const schemas = {
     login: Joi.object({
         email: Joi.string().email().required(),
         password: Joi.string().required()
-    }),
-
-    // IPO result validation
-    ipoResult: Joi.object({
-        companyShareId: Joi.string().required(),
-        boid: Joi.string().required(),
-        userCaptcha: Joi.string().required(),
-        captchaIdentifier: Joi.string().required()
     })
 };
 

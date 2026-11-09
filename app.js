@@ -19,7 +19,6 @@ const { BaseError } = require('./utils/errors');
 const apiRoutes = require('./routes/api');
 const authRoute = require('./routes/auth/auth');
 const nftlisterRoute = require('./routes/nft/nftsearch');
-const ipoResult = require('./routes/iporesult/iporesult');
 const portfolioRoute = require('./routes/portfolio/portfolio');
 const attendanceRoute = require('./routes/kerkarcreations/attendance');
 
@@ -89,7 +88,6 @@ app.use(express.static("html"));
 
 app.use('/auth', authLimiter, authRoute);
 app.use('/api/v1/nft', nftlisterRoute);
-app.use('/api/v1/ipo', ipoResult);
 app.use('/api/v1/portfolio', portfolioRoute);
 app.use('/api/v1/kerkarcreations/attendance', attendanceRoute);
 
@@ -98,7 +96,6 @@ app.use('/api', apiRoutes);
 
 // Legacy routes (for backward compatibility)
 app.use('/nft', nftlisterRoute);
-app.use('/ipo', ipoResult);
 app.use('/portfolio', portfolioRoute);
 app.use('/kerkarcreations/attendance', attendanceRoute);
 
@@ -195,14 +192,12 @@ app.get('/api', (req, res) => {
             v1: {
                 nft: '/api/v1/nft',
                 portfolio: '/api/v1/portfolio',
-                ipo: '/api/v1/ipo',
                 attendance: '/api/v1/kerkarcreations/attendance'
             },
             legacy: {
                 note: 'Legacy endpoints maintained for backward compatibility',
                 nft: '/nft',
                 portfolio: '/portfolio',
-                ipo: '/ipo',
                 attendance: '/kerkarcreations/attendance'
             }
         },
