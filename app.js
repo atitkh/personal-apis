@@ -214,6 +214,7 @@ app.use('*', (req, res) => {
 if (!config.isTest()) {
     try {
         db.get();
+        require('./services/backup').start();
     } catch (err) {
         console.error('Hub database failed to open:', err);
     }
