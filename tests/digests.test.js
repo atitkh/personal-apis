@@ -32,6 +32,16 @@ describe('put', () => {
         expect(digests.get(conn, 'daily', '2026-10-01').source).toBe('import');
     });
 
+    test('an imported file keeps its original time, other sources cannot backdate', () => {
+        put('2026-10-01', 'from a file', { source: 'import', actor: 'importer', at: '2026-10-01T23:20:00Z' });
+        expect(digests.get(conn, 'daily', '2026-10-01')).toMatchObject({ revisedAt: '2026-10-01T23:20:00.000Z', createdAt: '2026-10-01T23:20:00.000Z' });
+
+        put('2026-10-02', 'generated tonight', { at: '2020-01-01T00:00:00Z' });
+        expect(digests.get(conn, 'daily', '2026-10-02').revisedAt.startsWith('2020')).toBe(false);
+        put('2026-10-03', 'bad stamp', { source: 'import', at: 'not a date' });
+        expect(Date.now() - Date.parse(digests.get(conn, 'daily', '2026-10-03').revisedAt)).toBeLessThan(5000);
+    });
+
     test('rejects bad kinds, periods, sources and bodies', () => {
         expect(() => digests.put(conn, 'yearly', '2026', { body: 'x', actor: 'a' })).toThrow(/Kind must be/);
         expect(() => put('2026-13-40', 'x')).toThrow(/not a real date|looks like/);

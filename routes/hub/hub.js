@@ -61,9 +61,9 @@ router.get('/digests/:kind/:period', read, handle((req, res, conn) => {
 
 // The nightly job, the weekly review and the importer write here.
 router.put('/digests/:kind/:period', write, handle((req, res, conn) => {
-    const { body, source, model, meta, force } = req.body || {};
+    const { body, source, model, meta, force, at } = req.body || {};
     const result = digests.put(conn, req.params.kind, req.params.period, {
-        body, source, model, meta, force: force === true, actor: req.apiKey.name,
+        body, source, model, meta, at, force: force === true, actor: req.apiKey.name,
     });
     res.status(result.status === 'created' ? 201 : 200).json(result);
 }));

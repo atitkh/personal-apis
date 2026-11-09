@@ -71,9 +71,9 @@ function shape(d, r, revisions) {
     };
 }
 
-function addRevision(db, d, { body, source, actor, model, note, meta }) {
+function addRevision(db, d, { body, source, actor, model, note, meta, at: when }) {
     const rev = d.current_rev + 1;
-    const at = new Date().toISOString();
+    const at = when || new Date().toISOString();
     db.prepare('INSERT INTO digest_revisions (digest_id, rev, body, source, actor, model, note, meta, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(d.id, rev, body, source, actor, model || null, note || null, meta, at);
     db.prepare('UPDATE digests SET current_rev = ?, updated_at = ? WHERE id = ?').run(rev, at, d.id);
@@ -83,16 +83,18 @@ function addRevision(db, d, { body, source, actor, model, note, meta }) {
 
 // The nightly job and the importer. Safe to repeat. A revision made by a human is never replaced by
 // generated text unless force is set.
-function put(db, kind, period, { body, source = 'generated', actor, model, meta, force = false }) {
+// `at` backdates an imported file to when it was originally written; it is ignored for any other source.
+function put(db, kind, period, { body, source = 'generated', actor, model, meta, force = false, at: given }) {
     check(kind, period);
     if (!SOURCES.has(source)) throw new DigestError(400, 'bad_source', 'source must be generated or import.');
     const text = cleanBody(body);
     const metaJson = cleanMeta(meta);
+    const stamp = source === 'import' && given && !Number.isNaN(Date.parse(given)) ? new Date(given).toISOString() : null;
 
     return db.transaction(() => {
         const existing = row(db, kind, period);
         if (!existing) {
-            const at = new Date().toISOString();
+            const at = stamp || new Date().toISOString();
             const id = Number(db.prepare('INSERT INTO digests (kind, period, current_rev, created_at, updated_at) VALUES (?, ?, 1, ?, ?)')
                 .run(kind, period, at, at).lastInsertRowid);
             db.prepare('INSERT INTO digest_revisions (digest_id, rev, body, source, actor, model, note, meta, at) VALUES (?, 1, ?, ?, ?, ?, NULL, ?, ?)')
@@ -105,7 +107,7 @@ function put(db, kind, period, { body, source = 'generated', actor, model, meta,
         if (HUMAN.has(current.source) && !force) {
             throw new DigestError(409, 'edited', `The ${kind} digest for ${period} has been edited by hand. Send force to replace it.`);
         }
-        return { status: 'updated', rev: addRevision(db, existing, { body: text, source, actor, model, meta: metaJson }) };
+        return { status: 'updated', rev: addRevision(db, existing, { body: text, source, actor, model, meta: metaJson, at: stamp }) };
     })();
 }
 
