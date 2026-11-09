@@ -92,19 +92,6 @@ if (config.isDevelopment()) {
 
 app.use(express.static("html"));
 
-// Vortex Web Interface Routes
-app.get('/vortex', (req, res) => {
-    res.sendFile(path.join(__dirname, 'html', 'vortex.html'));
-});
-
-app.get('/vortex/style.css', (req, res) => {
-    res.sendFile(path.join(__dirname, 'html', 'vortex', 'style.css'));
-});
-
-app.get('/vortex/app.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'html', 'vortex', 'app.js'));
-});
-
 app.use('/auth', authLimiter, authRoute);
 app.use('/api/v1/smarthome/ewelink', ewelinkRoute);
 app.use('/api/v1/smarthome/magichome', magichomeRoute);
@@ -269,17 +256,6 @@ app.use('*', (req, res) => {
 //Connect to DB
 if (!config.isTest()) {
     databaseManager.connect()
-        .then(async () => {
-            // Initialize MCP service after database connection
-            try {
-                const mcpService = require('./services/mcpService');
-                await mcpService.initialize();
-                console.log('✅ MCP Service initialized');
-            } catch (mcpError) {
-                console.warn('⚠️ MCP Service initialization failed:', mcpError.message);
-                // Continue without MCP - non-critical
-            }
-        })
         .catch(err => {
             console.error('Failed to start application:', err);
             if (config.isProduction()) {
