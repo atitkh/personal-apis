@@ -1167,8 +1167,10 @@
       "image": "https://api.atitkharel.com.np/portfolio/atit/gif?id=vortex-axis",
       "video": "",
       "title": "VorteX Axis",
-      "description": "A device gateway that connects one AI agent to every client around you: ESP32-S3 clients with a microphone and animated face, a web client and a Windows client. It handles pairing, wake-word arbitration, local speech and agent tools so the same agent can listen, speak, ask, show pictures and act on any of them.",
-      "projectLink": [],
+      "description": "A device gateway that connects one AI agent to every client around you: ESP32-S3 clients with a microphone and animated face, a web client, and Windows, Mac and Quest apps. Open source (Apache-2.0). It handles pairing, wake-word arbitration, local speech and agent tools so the same agent can listen, speak, ask, show pictures and act on any of them.",
+      "projectLink": [
+        "https://github.com/atitkh/vortex-axis"
+      ],
       "more": true,
       "categories": [
         "TypeScript",
