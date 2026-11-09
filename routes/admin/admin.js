@@ -12,6 +12,7 @@ const stats = require('../../services/adminStats');
 const domains = require('../../services/domains');
 const digests = require('../../services/digests');
 const backup = require('../../services/backup');
+const agents = require('../../services/mcp/agents');
 
 const COOKIE = 'hub_admin';
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -162,7 +163,7 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
     });
 
     // ---- domains ----
-    api.get('/domains', (req, res) => res.json({ domains: domains.list(db.get()) }));
+    api.get('/domains', (req, res) => res.json({ domains: agents.domainsWithTools(db.get()) }));
 
     api.put('/domains/:name', (req, res) => {
         const conn = db.get();
@@ -174,6 +175,23 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         audit.record(conn, 'admin', enabled ? 'domain_enabled' : 'domain_disabled', { name }, req.ip);
         res.json({ ok: true, enabled });
     });
+
+    // How agents may reach a domain through /hub/mcp. Only domains that have an agent tool have a mode.
+    api.put('/domains/:name/mcp', (req, res) => {
+        const conn = db.get();
+        const { name } = req.params;
+        if (!domains.exists(name)) return res.status(404).json({ error: 'No such domain.' });
+        if (!agents.hasTool(name)) return res.status(400).json({ error: 'This domain has no agent tool.' });
+        const mode = (req.body || {}).mode;
+        if (!domains.MCP_MODES.includes(mode)) return res.status(400).json({ error: `mode must be one of: ${domains.MCP_MODES.join(', ')}.` });
+        const from = domains.mcpMode(conn, name);
+        domains.setMcpMode(conn, name, mode, 'admin');
+        audit.record(conn, 'admin', 'domain_mcp_changed', { name, from, to: mode }, req.ip);
+        res.json({ ok: true, mode });
+    });
+
+    // ---- agent access (/hub/mcp): tools, what each key sees now, recent calls ----
+    api.get('/agents', (req, res) => res.json(agents.summary(db.get())));
 
     // ---- digests (the dashboard may read and edit them even while the domain is switched off) ----
     const digestHandler = (fn) => (req, res) => {

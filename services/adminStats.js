@@ -4,6 +4,7 @@ const path = require('path');
 const db = require('../db');
 const apiKeys = require('./apiKeys');
 const domains = require('./domains');
+const agents = require('./mcp/agents');
 const { readJson } = require('../routes/portfolio/freshJson');
 
 const ATIT_DIR = path.join(__dirname, '..', 'routes', 'portfolio', 'atit');
@@ -133,7 +134,8 @@ function overview() {
             problems: p.missingPages.length + p.orphanPages.length,
         },
         digests: digestWatch(conn),
-        domains: domains.list(conn),
+        agents: { calls24h: agents.callCount(conn), keysWithTools: agents.keysWithTools(conn) },
+        domains: agents.domainsWithTools(conn),
     };
 }
 
