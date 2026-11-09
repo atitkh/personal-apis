@@ -19,7 +19,6 @@ const { BaseError } = require('./utils/errors');
 const apiRoutes = require('./routes/api');
 const authRoute = require('./routes/auth/auth');
 const ewelinkRoute = require('./routes/smarthome/ewelink');
-const magichomeRoute = require('./routes/smarthome/magichome');
 const nftlisterRoute = require('./routes/nft/nftsearch');
 const phonecallRoute = require('./routes/phonecall/phonecallIFTTT');
 const ipoResult = require('./routes/iporesult/iporesult');
@@ -92,7 +91,6 @@ app.use(express.static("html"));
 
 app.use('/auth', authLimiter, authRoute);
 app.use('/api/v1/smarthome/ewelink', ewelinkRoute);
-app.use('/api/v1/smarthome/magichome', magichomeRoute);
 app.use('/api/v1/nft', nftlisterRoute);
 app.use('/api/v1/phonecall', phonecallRoute);
 app.use('/api/v1/ipo', ipoResult);
@@ -104,7 +102,6 @@ app.use('/api', apiRoutes);
 
 // Legacy routes (for backward compatibility)
 app.use('/smarthome/ewelink', ewelinkRoute);
-app.use('/smarthome/magichome', magichomeRoute);
 app.use('/nft', nftlisterRoute);
 app.use('/phonecall', phonecallRoute);
 app.use('/ipo', ipoResult);
