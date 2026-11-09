@@ -21,12 +21,6 @@ const configSchema = Joi.object({
     AUTH_RATE_LIMIT_MAX_REQUESTS: Joi.number().default(5),
     
     // External APIs
-    EWELINK_EMAIL: Joi.string().email().optional(),
-    EWELINK_PASSWORD: Joi.string().optional(),
-    EWELINK_APP_ID: Joi.string().optional(),
-    EWELINK_APP_SECRET: Joi.string().optional(),
-    EWELINK_REGION: Joi.string().optional(),
-    TUBELIGHT_ID: Joi.string().optional(),
     NFTPORTAL_KEY: Joi.string().optional(),
     OPENSEA_KEY: Joi.string().optional(),
     JSONRPCPROVIDER_ETH: Joi.string().uri().optional(),

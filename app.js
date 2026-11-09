@@ -18,7 +18,6 @@ const { BaseError } = require('./utils/errors');
 //Import Routes
 const apiRoutes = require('./routes/api');
 const authRoute = require('./routes/auth/auth');
-const ewelinkRoute = require('./routes/smarthome/ewelink');
 const nftlisterRoute = require('./routes/nft/nftsearch');
 const ipoResult = require('./routes/iporesult/iporesult');
 const portfolioRoute = require('./routes/portfolio/portfolio');
@@ -89,7 +88,6 @@ if (config.isDevelopment()) {
 app.use(express.static("html"));
 
 app.use('/auth', authLimiter, authRoute);
-app.use('/api/v1/smarthome/ewelink', ewelinkRoute);
 app.use('/api/v1/nft', nftlisterRoute);
 app.use('/api/v1/ipo', ipoResult);
 app.use('/api/v1/portfolio', portfolioRoute);
@@ -99,7 +97,6 @@ app.use('/api/v1/kerkarcreations/attendance', attendanceRoute);
 app.use('/api', apiRoutes);
 
 // Legacy routes (for backward compatibility)
-app.use('/smarthome/ewelink', ewelinkRoute);
 app.use('/nft', nftlisterRoute);
 app.use('/ipo', ipoResult);
 app.use('/portfolio', portfolioRoute);
@@ -197,7 +194,6 @@ app.get('/api', (req, res) => {
             auth: '/auth',
             v1: {
                 nft: '/api/v1/nft',
-                smartHome: '/api/v1/smarthome',
                 portfolio: '/api/v1/portfolio',
                 ipo: '/api/v1/ipo',
                 attendance: '/api/v1/kerkarcreations/attendance'
@@ -205,7 +201,6 @@ app.get('/api', (req, res) => {
             legacy: {
                 note: 'Legacy endpoints maintained for backward compatibility',
                 nft: '/nft',
-                smartHome: '/smarthome',
                 portfolio: '/portfolio',
                 ipo: '/ipo',
                 attendance: '/kerkarcreations/attendance'
