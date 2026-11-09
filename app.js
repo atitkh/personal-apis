@@ -19,6 +19,7 @@ const { BaseError } = require('./utils/errors');
 const nftlisterRoute = require('./routes/nft/nftsearch');
 const portfolioRoute = require('./routes/portfolio/portfolio');
 const attendanceRoute = require('./routes/kerkarcreations/attendance');
+const { createAdminRouter } = require('./routes/admin/admin');
 
 //Middleware
 // Security middleware
@@ -52,7 +53,10 @@ const limiter = rateLimit({
     legacyHeaders: false,
     // The portfolio's data, images and demo pages are public and static: a page view fetches a dozen
     // of them. Only the ORCID lookup (it calls an outside service) stays limited.
-    skip: (req) => req.path.startsWith('/portfolio/') && !req.path.includes('/publications'),
+    // The admin dashboard has its own limits (a generous one for the page and a strict one for sign-in),
+    // because one page view makes several calls.
+    skip: (req) => req.path === '/admin' || req.path.startsWith('/admin/') ||
+        (req.path.startsWith('/portfolio/') && !req.path.includes('/publications')),
 });
 app.use(limiter);
 
@@ -73,6 +77,9 @@ if (config.isDevelopment()) {
 }
 
 app.use(express.static("html"));
+
+// Admin dashboard (off unless ADMIN_KEY is set in .env)
+app.use('/admin', createAdminRouter());
 
 app.use('/api/v1/nft', nftlisterRoute);
 app.use('/api/v1/portfolio', portfolioRoute);
