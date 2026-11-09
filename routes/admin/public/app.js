@@ -7,13 +7,14 @@
     const state = {
         session: null, view: 'overview', newKey: null, confirmRevoke: null, filter: '', confirmDomain: null,
         digestKind: 'daily', digestQuery: '', digest: null, viewRev: null, editing: false, showHistory: false,
-        compare: null, confirmRestore: null, activityFilter: 'all', backupMsg: '', backingUp: false,
+        compare: null, confirmRestore: null, activityFilter: 'all', backupMsg: '', backingUp: false, confirmMcp: null,
     };
 
     const VIEWS = [
         ['overview', 'Overview'],
         ['digests', 'Digests'],
         ['keys', 'API keys'],
+        ['agents', 'Agent access'],
         ['backups', 'Backups'],
         ['portfolio', 'Portfolio'],
         ['activity', 'Activity'],
@@ -93,7 +94,11 @@
     const fact = (label, ...value) => [h('dt', { text: label }), h('dd', {}, ...value)];
     const dot = (kind) => h('span', { class: `dot ${kind}`, 'aria-hidden': 'true' });
     const resetDigest = () => Object.assign(state, { digest: null, viewRev: null, editing: false, showHistory: false, compare: null, confirmRestore: null });
-    const go = (view) => { state.view = view; state.confirmRevoke = null; state.confirmDomain = null; resetDigest(); render(); };
+    const go = (view) => { state.view = view; state.confirmRevoke = null; state.confirmDomain = null; state.confirmMcp = null; resetDigest(); render(); };
+
+    const MCP_LABEL = { off: 'Off', read: 'Read', write: 'Read and write' };
+    const MCP_WRITE_WARNING = "Agents holding an edit or publish key will be able to change this domain's data. Digest changes keep every earlier version.";
+    const callName = (tool, action) => `${tool || 'unknown tool'}${action ? `.${action}` : ''}`;
 
     const SOURCE_LABEL = { generated: 'Generated', import: 'Imported', edit: 'Edited', restore: 'Restored' };
 
@@ -204,6 +209,27 @@
             state.confirmDomain = null;
             render();
         };
+        const setMcp = async (name, mode) => {
+            try { await api(`/domains/${name}/mcp`, { method: 'PUT', body: { mode } }); } catch (e) { /* the reload shows the real state */ }
+            state.confirmMcp = null;
+            render();
+        };
+        // Read and write asks first; Off and Read apply at once.
+        const agentCell = (d) => {
+            if (!d.mcpTool) return h('td', { class: 'muted', text: 'No agent tool' });
+            const pending = state.confirmMcp === d.name;
+            const select = h('select', {
+                class: `mcp-mode${d.enabled ? '' : ' dim'}`,
+                'aria-label': `Agent access for ${d.title}`,
+                onchange: (event) => {
+                    const mode = event.currentTarget.value;
+                    if (mode === 'write' && d.mcpMode !== 'write') { state.confirmMcp = d.name; render(); return; }
+                    setMcp(d.name, mode);
+                },
+            }, Object.entries(MCP_LABEL).map(([value, label]) => h('option', { value, text: label })));
+            select.value = pending ? 'write' : d.mcpMode;
+            return h('td', {}, select, d.enabled ? null : h('span', { class: 'cell-note', text: 'Off while the domain is off' }));
+        };
         const rows = list.map((d) => {
             const confirming = state.confirmDomain === d.name;
             let action;
@@ -221,18 +247,24 @@
                 h('tr', {},
                     h('td', { text: d.title }),
                     h('td', { text: d.sensitivity === 'public' ? 'Public' : 'Private' }),
-                    h('td', { text: d.storage === 'db' ? 'Database' : 'Files in git' }),
+                    h('td', { class: 'hide-narrow', text: d.storage === 'db' ? 'Database' : 'Files in git' }),
                     h('td', { text: contents }),
                     h('td', {}, dot(d.enabled ? 'good' : 'warn'), d.enabled ? 'On' : 'Off'),
+                    agentCell(d),
                     h('td', { class: 'num' }, action)),
-                confirming && d.confirmOff ? h('tr', {}, h('td', { colspan: '6', class: 'warn-note', text: d.confirmOff })) : null,
+                confirming && d.confirmOff ? h('tr', {}, h('td', { colspan: '7', class: 'warn-note', text: d.confirmOff })) : null,
+                state.confirmMcp === d.name && d.mcpTool ? h('tr', {}, h('td', { colspan: '7', class: 'warn-note' },
+                    h('p', { text: MCP_WRITE_WARNING }),
+                    h('span', { class: 'row' },
+                        h('button', { class: 'btn danger small', type: 'button', text: 'Yes, allow changes', onclick: () => setMcp(d.name, 'write') }),
+                        h('button', { class: 'btn quiet small', type: 'button', text: 'Cancel', onclick: () => { state.confirmMcp = null; render(); } })))) : null,
             ];
         });
         return h('section', {},
             h('h2', { text: 'Domains' }),
-            h('p', { class: 'note', text: 'Each kind of data the hub holds. Turning one off pauses it for every key and visitor. Nothing is deleted.' }),
-            h('div', { class: 'table-wrap' }, h('table', {},
-                h('thead', {}, h('tr', {}, ['Domain', 'Visibility', 'Stored in', 'Contents', 'State', ''].map((t) => h('th', { text: t })))),
+            h('p', { class: 'note', text: 'Each kind of data the hub holds. Turning one off pauses it for every key and visitor. Nothing is deleted. Agents sets what agents may do with it through Agent access.' }),
+            h('div', { class: 'table-wrap' }, h('table', { class: 'domains' },
+                h('thead', {}, h('tr', {}, ['Domain', 'Visibility', 'Stored in', 'Contents', 'State', 'Agents', ''].map((t) => h('th', { class: t === 'Stored in' ? 'hide-narrow' : null, text: t })))),
                 h('tbody', {}, rows))));
     }
 
@@ -262,6 +294,7 @@
         const tiles = h('div', { class: 'tiles' },
             tile('Domains on', `${on} of ${(o.domains || []).length}`, 'Switch them below', null),
             tile('Digests', String(o.digests ? o.digests.dailyCount : 0), o.digests && o.digests.latestDaily ? `Latest: ${o.digests.latestDaily}` : 'None yet', 'digests', o.digests && o.digests.missing ? 'warn' : ''),
+            o.agents ? tile('Agent calls, 24h', String(o.agents.calls24h), `${plural(o.agents.keysWithTools, 'key')} can see tools`, 'agents') : null,
             tile('API keys', String(o.keys.active), o.keys.lastUsedAt ? `Used ${ago(o.keys.lastUsedAt)}` : 'Never used', 'keys'),
             tile('Last backup', newest ? ago(newest.modifiedAt).replace(' ago', '') : 'None', newest ? `${plural(o.backups.count, 'copy', 'copies')} kept` : 'Make one in Backups', 'backups', !newest ? 'warn' : ''),
             tile('Portfolio', plural(o.portfolio.entryCount, 'entry', 'entries'), o.portfolio.problems ? plural(o.portfolio.problems, 'problem') : 'No problems', 'portfolio', o.portfolio.problems ? 'warn' : ''));
@@ -635,6 +668,8 @@
         key_created: (d) => `Created key ${d && d.name ? d.name : ''}${d && d.scopes ? ` (${d.scopes.join(', ')})` : ''}`,
         key_revoked: (d) => `Revoked key ${d && d.name ? d.name : ''}`,
         backup_run: () => 'Made a backup by hand',
+        mcp_call: (d) => (d ? `Agent ${d.key} called ${callName(d.tool, d.action)}${d.ok ? '' : ' (failed)'}` : 'Agent call'),
+        domain_mcp_changed: (d) => `Set agent access for ${d && d.name ? d.name : 'a domain'} to ${d && MCP_LABEL[d.to] ? MCP_LABEL[d.to] : 'an unknown mode'}`,
     };
 
     const GROUPS = [
@@ -644,6 +679,7 @@
         ['domains', 'Domains', ['domain_enabled', 'domain_disabled']],
         ['digests', 'Digests', ['digest_edited', 'digest_restored']],
         ['backups', 'Backups', ['backup_run']],
+        ['agents', 'Agents', ['mcp_call', 'domain_mcp_changed']],
     ];
 
     async function activity() {
@@ -653,7 +689,7 @@
         return h('div', {},
             h('header', {},
                 h('h1', { class: 'status', text: 'Activity' }),
-                h('p', { class: 'lede', text: 'Sign-ins, key and domain changes, digest edits and backups, newest first.' })),
+                h('p', { class: 'lede', text: 'Sign-ins, key and domain changes, digest edits, backups and agent calls, newest first.' })),
             h('section', {},
                 h('div', { class: 'row', role: 'group', 'aria-label': 'Filter activity' }, GROUPS.map(([id, label]) => h('button', {
                     class: `btn small ${state.activityFilter === id ? '' : 'quiet'}`,
@@ -672,7 +708,69 @@
                     : h('p', { class: 'muted', text: all.length ? 'Nothing of that kind in the recent events.' : 'Nothing has happened yet.' })));
     }
 
-    const VIEW_FN = { overview, digests, keys, backups, portfolio, activity };
+    async function agents() {
+        const a = await api('/agents');
+        const active = a.keys.filter((k) => !k.revoked);
+        const revoked = a.keys.length - active.length;
+        const domainTools = a.tools.filter((t) => !t.alwaysOn);
+
+        const toolRows = a.tools.map((t) => h('tr', {},
+            h('td', {}, h('code', { text: t.tool })),
+            h('td', { text: t.alwaysOn ? 'Every key' : (t.title || t.domain) }),
+            h('td', {}, t.alwaysOn
+                ? h('span', { class: 'muted', text: 'Lists what the key can reach and a short brief.' })
+                : t.actions.map((x, i) => [i ? ', ' : '', x.name, x.write ? h('span', { class: 'muted', text: ` (changes data, needs ${x.scope})` }) : null]))));
+
+        const keyRows = active.map((k) => {
+            const sees = k.visibleTools.length
+                ? k.visibleTools.map((t) => h('div', { text: `${t.tool}: ${t.actions.join(', ')}` }))
+                : h('span', { class: 'muted', text: 'Nothing: its scopes or the domain settings hide every tool' });
+            return h('tr', {},
+                h('td', { text: k.name }),
+                h('td', {}, h('span', { class: 'scopes', text: k.scopes.join(', ') })),
+                h('td', {}, k.canWrite ? h('div', { class: 'warn-text' }, dot('warn'), 'Can change data') : null, sees),
+                h('td', { class: 'num', text: String(k.calls30d) }),
+                h('td', { text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }));
+        });
+
+        const callRows = a.recent.map((c) => h('tr', {},
+            h('td', { text: when(c.at) }),
+            h('td', { text: c.key }),
+            h('td', {}, h('code', { text: callName(c.tool, c.action) })),
+            h('td', {}, dot(c.ok ? 'good' : 'bad'), c.ok ? 'OK' : 'Failed')));
+
+        return h('div', {},
+            h('header', {},
+                h('h1', { class: 'status', text: 'Agent access' }),
+                h('p', { class: 'lede', text: "Agents reach the hub through one MCP endpoint. What a key sees depends on its scopes, whether the domain is on, and the domain's Agents setting on the Overview." })),
+            h('section', {},
+                h('h2', { text: 'Endpoint' }),
+                h('p', {}, h('code', { class: 'endpoint', text: `${location.origin}${a.endpoint}` })),
+                h('p', { class: 'note', text: 'Send a hub API key as Authorization: Bearer <key>. Create keys on the API keys page.' })),
+            h('section', {},
+                h('h2', { text: 'Tools' }),
+                domainTools.length ? null : h('p', { class: 'muted', text: 'No domain has an agent tool yet, so agents only get the overview.' }),
+                h('div', { class: 'table-wrap' }, h('table', {},
+                    h('thead', {}, h('tr', {}, ['Tool', 'Domain', 'Actions'].map((t) => h('th', { text: t })))),
+                    h('tbody', {}, toolRows)))),
+            h('section', {},
+                h('h2', { text: 'Keys' }),
+                h('p', { class: 'note', text: `Worked out now from each key's scopes and the domain settings.${revoked ? ` ${plural(revoked, 'revoked key')} not shown.` : ''}` }),
+                active.length
+                    ? h('div', { class: 'table-wrap' }, h('table', {},
+                        h('thead', {}, h('tr', {}, [['Name'], ['Scopes'], ['Sees now'], ['Calls, 30 days', 'num'], ['Last call']].map(([t, c]) => h('th', { class: c || null, text: t })))),
+                        h('tbody', {}, keyRows)))
+                    : h('p', { class: 'muted', text: 'No active keys. Create one on the API keys page.' })),
+            h('section', {},
+                h('h2', { text: 'Recent calls' }),
+                a.recent.length
+                    ? h('div', { class: 'table-wrap' }, h('table', {},
+                        h('thead', {}, h('tr', {}, ['When', 'Key', 'Call', 'Result'].map((t) => h('th', { text: t })))),
+                        h('tbody', {}, callRows)))
+                    : h('p', { class: 'muted', text: 'No agent has called the hub yet.' })));
+    }
+
+    const VIEW_FN = { overview, digests, keys, agents, backups, portfolio, activity };
 
     /* ---------- render loop ---------- */
 

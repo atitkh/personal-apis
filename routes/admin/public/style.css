@@ -268,6 +268,25 @@ textarea:hover { border-color: var(--muted); }
 .diff .del::before { content: "\2212"; color: var(--bad); }
 
 .warn-note { color: var(--warn); padding-top: 0; }
+.warn-note p { margin: 0 0 8px; max-width: 64ch; }
+.warn-text { color: var(--warn); }
+
+/* ---------- agent access ---------- */
+
+select.mcp-mode {
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 3px 6px;
+}
+select.mcp-mode:hover { border-color: var(--muted); }
+select.mcp-mode.dim { color: var(--muted); border-style: dashed; }
+.cell-note { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 3px; }
+code.endpoint { overflow-wrap: anywhere; user-select: all; }
+@media (max-width: 760px) { .hide-narrow { display: none; } }
 .row.end { justify-content: flex-end; }
 .lede.muted { color: var(--muted); font-size: 0.98rem; }
 
