@@ -514,7 +514,7 @@
         const viewingOld = state.viewRev && d.rev !== d.revisions;
 
         const back = h('button', { class: 'link', type: 'button', text: 'All digests', onclick: () => { resetDigest(); render(); } });
-        const byline = `${SOURCE_LABEL[d.source] || d.source}${d.model ? ` by ${d.model}` : d.actor ? ` by ${d.actor}` : ''} on ${when(d.revisedAt)}${d.note ? `. Note: ${d.note}` : ''}`;
+        const byline = `${SOURCE_LABEL[d.source] || d.source}${d.model ? ` by ${d.model}` : d.actor ? ` by ${d.actor}` : ''} on ${when(d.revisedAt)}${d.note && d.source !== 'restore' ? `. Note: ${d.note}` : d.note ? `. ${d.note}` : ''}`;
 
         let content;
         if (state.editing) {
@@ -576,7 +576,7 @@
                     }
                     return h('tr', {},
                         h('td', { text: `${r.rev}${r.current ? ' (current)' : ''}` }),
-                        h('td', { text: `${SOURCE_LABEL[r.source] || r.source}${r.note ? `: ${r.note}` : ''}` }),
+                        h('td', { text: r.source === 'restore' && r.note ? r.note : `${SOURCE_LABEL[r.source] || r.source}${r.note ? `: ${r.note}` : ''}` }),
                         h('td', { text: r.model || r.actor }),
                         h('td', { text: when(r.at) }),
                         h('td', { class: 'num' }, h('span', { class: 'row end' }, actions)));
