@@ -1,21 +1,34 @@
 const router = require('express').Router();
 const publicationService = require('./publicationService');
+const path = require('path');
+const { readJson } = require('./freshJson');
+
+// atit.json is re-read when it changes on disk, so edits show up without restarting the container.
+const ATIT_JSON = path.join(__dirname, 'atit', 'atit.json');
+const ASHLESHA_JSON = path.join(__dirname, 'ashlesha', 'ashlesha.json');
+
+// <atit>/<folder>/<id><ext>, or null if the id would reach outside that folder.
+function assetPath(folder, id, ext) {
+    const dir = path.join(__dirname, 'atit', folder);
+    const file = path.join(dir, String(id) + ext);
+    return file.startsWith(dir + path.sep) ? file : null;
+}
 
 router.get('/', (req, res) => {
     res.send('Welcome to Portfolio API');
 });
 
 router.get('/atit', (req, res) => {
-    const atitPortfolio = require('./atit/atit.json');
+    const atitPortfolio = readJson(ATIT_JSON);
     res.json(atitPortfolio);
 });
 
 router.get('/atit/md', (req, res) => {
     const id = req.query.id;
     const fs = require('fs');
-    const path = require('path');
-    const filePath = path.join(__dirname, 'atit', 'md', id + '.md');
-    
+    const filePath = assetPath('md', id, '.md');
+    if (!filePath) return res.status(400).send('Error');
+
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
             return res.status(500).send('Error');
@@ -27,8 +40,8 @@ router.get('/atit/md', (req, res) => {
 router.get('/atit/pdf', (req, res) => {
     const id = req.query.id;
     const fs = require('fs');
-    const path = require('path');
-    const filePath = path.join(__dirname, 'atit', 'pdf', id + '.pdf');
+    const filePath = assetPath('pdf', id, '.pdf');
+    if (!filePath) return res.status(400).send('Error');
 
     fs.readFile(filePath, (err, data) => {
         if (err) {
@@ -42,8 +55,8 @@ router.get('/atit/pdf', (req, res) => {
 router.get('/atit/img', (req, res) => {
     const id = req.query.id;
     const fs = require('fs');
-    const path = require('path');
-    const filePath = path.join(__dirname, 'atit', 'img', id + '.png');
+    const filePath = assetPath('img', id, '.png');
+    if (!filePath) return res.status(400).send('Error');
 
     fs.readFile(filePath, (err, data) => {
         if (err) {
@@ -93,14 +106,14 @@ router.get('/atit/gif', (req, res) => {
 });
 
 router.get('/ashlesha', (req, res) => {
-    const ashleshaPortfolio = require('./ashlesha/ashlesha.json');
+    const ashleshaPortfolio = readJson(ASHLESHA_JSON);
     res.json(ashleshaPortfolio);
 });
 
 // NEW: Get publications from ORCID
 router.get('/atit/publications', async (req, res) => {
     try {
-        const atitPortfolio = require('./atit/atit.json');
+        const atitPortfolio = readJson(ATIT_JSON);
         const orcidId = atitPortfolio.social_links.orcid.split('/').pop(); // Extract ORCID ID from URL
         const useCache = req.query.cache !== 'false'; // Allow cache bypass with ?cache=false
         
@@ -127,7 +140,7 @@ router.get('/atit/full', async (req, res) => {
         const useCache = req.query.cache !== 'false';
         
         // Get static portfolio
-        const atitPortfolio = require('./atit/atit.json');
+        const atitPortfolio = readJson(ATIT_JSON);
         const orcidId = atitPortfolio.social_links.orcid.split('/').pop(); // Extract ORCID ID from URL
         
         // Get dynamic publications
@@ -161,7 +174,7 @@ router.get('/atit/full', async (req, res) => {
         res.json(merged);
     } catch (error) {
         // If publication fetch fails, return static portfolio only
-        const atitPortfolio = require('./atit/atit.json');
+        const atitPortfolio = readJson(ATIT_JSON);
         res.json(atitPortfolio);
     }
 });
