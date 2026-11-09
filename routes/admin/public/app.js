@@ -4,10 +4,15 @@
     'use strict';
 
     const root = document.getElementById('app');
-    const state = { session: null, view: 'overview', newKey: null, confirmRevoke: null, filter: '' };
+    const state = {
+        session: null, view: 'overview', newKey: null, confirmRevoke: null, filter: '', confirmDomain: null,
+        digestKind: 'daily', digestQuery: '', digest: null, viewRev: null, editing: false, showHistory: false,
+        compare: null, confirmRestore: null,
+    };
 
     const VIEWS = [
         ['overview', 'Overview'],
+        ['digests', 'Digests'],
         ['keys', 'API keys'],
         ['backups', 'Backups'],
         ['portfolio', 'Portfolio'],
@@ -25,7 +30,7 @@
             else if (key.startsWith('on')) el.addEventListener(key.slice(2), value);
             else el.setAttribute(key, value === true ? '' : value);
         }
-        for (const kid of kids.flat()) {
+        for (const kid of kids.flat(Infinity)) {
             if (kid == null || kid === false) continue;
             el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
         }
@@ -87,7 +92,43 @@
 
     const fact = (label, ...value) => [h('dt', { text: label }), h('dd', {}, ...value)];
     const dot = (kind) => h('span', { class: `dot ${kind}`, 'aria-hidden': 'true' });
-    const go = (view) => { state.view = view; state.confirmRevoke = null; render(); };
+    const resetDigest = () => Object.assign(state, { digest: null, viewRev: null, editing: false, showHistory: false, compare: null, confirmRestore: null });
+    const go = (view) => { state.view = view; state.confirmRevoke = null; state.confirmDomain = null; resetDigest(); render(); };
+
+    const SOURCE_LABEL = { generated: 'Generated', import: 'Imported', edit: 'Edited', restore: 'Restored' };
+
+    function periodTitle(kind, period) {
+        if (kind !== 'daily') return period;
+        return new Date(`${period}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    // Shows a search snippet, turning [matched] words into <mark> without using innerHTML.
+    function highlight(snippet) {
+        return snippet.split(/(\[[^\]]*\])/).filter(Boolean).map((part) => (/^\[.*\]$/.test(part) ? h('mark', { text: part.slice(1, -1) }) : part));
+    }
+
+    // Paragraph-level comparison of an older and a newer text.
+    function diffParagraphs(older, newer) {
+        const A = older.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+        const B = newer.split(/\n{2,}/).map((t) => t.trim()).filter(Boolean);
+        const n = A.length;
+        const m = B.length;
+        const L = Array.from({ length: n + 1 }, () => Array(m + 1).fill(0));
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+        }
+        const out = [];
+        let i = 0;
+        let j = 0;
+        while (i < n && j < m) {
+            if (A[i] === B[j]) { out.push(['same', A[i]]); i++; j++; }
+            else if (L[i + 1][j] >= L[i][j + 1]) out.push(['del', A[i++]]);
+            else out.push(['add', B[j++]]);
+        }
+        while (i < n) out.push(['del', A[i++]]);
+        while (j < m) out.push(['add', B[j++]]);
+        return out;
+    }
 
     /* ---------- sign in ---------- */
 
@@ -157,6 +198,44 @@
 
     /* ---------- views ---------- */
 
+    function domainsSection(list) {
+        const toggle = async (name, enabled) => {
+            try { await api(`/domains/${name}`, { method: 'PUT', body: { enabled } }); } catch (e) { /* the reload shows the real state */ }
+            state.confirmDomain = null;
+            render();
+        };
+        const rows = list.map((d) => {
+            const confirming = state.confirmDomain === d.name;
+            let action;
+            if (d.enabled && d.confirmOff) {
+                action = confirming
+                    ? h('span', { class: 'row' },
+                        h('button', { class: 'btn danger small', type: 'button', text: 'Yes, turn off', onclick: () => toggle(d.name, false) }),
+                        h('button', { class: 'btn quiet small', type: 'button', text: 'Cancel', onclick: () => { state.confirmDomain = null; render(); } }))
+                    : h('button', { class: 'btn quiet small', type: 'button', text: 'Turn off', onclick: () => { state.confirmDomain = d.name; render(); } });
+            } else {
+                action = h('button', { class: 'btn quiet small', type: 'button', text: d.enabled ? 'Turn off' : 'Turn on', onclick: () => toggle(d.name, !d.enabled) });
+            }
+            const contents = d.records == null ? '' : `${d.records} ${d.recordLabel}${d.lastChange ? `, changed ${ago(d.lastChange)}` : ''}`;
+            return [
+                h('tr', {},
+                    h('td', { text: d.title }),
+                    h('td', { text: d.sensitivity === 'public' ? 'Public' : 'Private' }),
+                    h('td', { text: d.storage === 'db' ? 'Database' : 'Files in git' }),
+                    h('td', { text: contents }),
+                    h('td', {}, dot(d.enabled ? 'good' : 'warn'), d.enabled ? 'On' : 'Off'),
+                    h('td', { class: 'num' }, action)),
+                confirming && d.confirmOff ? h('tr', {}, h('td', { colspan: '6', class: 'warn-note', text: d.confirmOff })) : null,
+            ];
+        });
+        return h('section', {},
+            h('h2', { text: 'Domains' }),
+            h('p', { class: 'note', text: 'Each kind of data the hub holds. Turning one off pauses it for every key and visitor. Nothing is deleted.' }),
+            h('div', { class: 'table-wrap' }, h('table', {},
+                h('thead', {}, h('tr', {}, ['Domain', 'Visibility', 'Stored in', 'Contents', 'State', ''].map((t) => h('th', { text: t })))),
+                h('tbody', {}, rows))));
+    }
+
     async function overview() {
         const o = await api('/overview');
         const issues = [];
@@ -164,6 +243,7 @@
         const newest = o.backups.newest;
         if (!newest) issues.push('No backup has been made yet.');
         else if (Date.now() - Date.parse(newest.modifiedAt) > 36 * 3600 * 1000) issues.push(`The last backup is ${ago(newest.modifiedAt).replace(' ago', '')} old.`);
+        if (o.digests && o.digests.missing) issues.push(`The daily digest for ${o.digests.expectedDaily} has not arrived.`);
         if (o.portfolio.problems) issues.push(`${plural(o.portfolio.problems, 'portfolio file')} ${o.portfolio.problems === 1 ? 'needs' : 'need'} a look.`);
 
         const headline = issues.length ? 'Needs attention.' : 'Everything is running.';
@@ -175,6 +255,7 @@
             h('header', {},
                 h('h1', { class: `status${issues.length ? ' warn' : ''}`, text: headline }),
                 h('p', { class: 'lede', text: lede })),
+            domainsSection(o.domains || []),
             h('section', {},
                 h('h2', { text: 'Database' }),
                 h('dl', { class: 'facts' },
@@ -368,7 +449,166 @@
                     body))));
     }
 
+    function sourceHealth(meta) {
+        const src = meta && meta.sources;
+        if (!src || typeof src !== 'object') return h('span', { class: 'muted', text: 'Not recorded' });
+        const names = Object.keys(src);
+        const ok = names.filter((k) => src[k] === 'ok').length;
+        const bad = names.filter((k) => src[k] === 'failed').length;
+        return [dot(bad ? 'warn' : 'good'), `${ok} of ${names.length} sources${bad ? `, ${bad} failed` : ''}`];
+    }
+
+    function kindSwitch() {
+        return h('div', { class: 'row', role: 'group', 'aria-label': 'Kind of digest' },
+            [['daily', 'Daily'], ['weekly', 'Weekly']].map(([kind, label]) => h('button', {
+                class: `btn small ${state.digestKind === kind ? '' : 'quiet'}`,
+                type: 'button',
+                'aria-pressed': state.digestKind === kind ? 'true' : 'false',
+                text: label,
+                onclick: () => { state.digestKind = kind; state.digestQuery = ''; render(); },
+            })));
+    }
+
+    async function digestList() {
+        const q = state.digestQuery.trim();
+        const data = await api(`/digests?${q ? `q=${encodeURIComponent(q)}&` : ''}kind=${state.digestKind}&limit=200`);
+        const open = (kind, period) => { state.digest = { kind, period }; render(); };
+
+        const input = h('input', { type: 'search', id: 'd-search', value: state.digestQuery, placeholder: 'Search the text of every digest', 'aria-label': 'Search digests' });
+        const search = h('form', {
+            class: 'row',
+            onsubmit: (event) => { event.preventDefault(); state.digestQuery = input.value; render(); },
+        }, input, h('button', { class: 'btn quiet', type: 'submit', text: 'Search' }),
+        q ? h('button', { class: 'btn quiet', type: 'button', text: 'Clear', onclick: () => { state.digestQuery = ''; render(); } }) : null);
+
+        let body;
+        if (q) {
+            body = data.results.length
+                ? h('ul', { class: 'results' }, data.results.map((r) => h('li', {},
+                    h('button', { class: 'link', type: 'button', text: periodTitle(r.kind, r.period), onclick: () => open(r.kind, r.period) }),
+                    h('p', { class: 'muted' }, highlight(r.snippet)))))
+                : h('p', { class: 'muted', text: `Nothing matches "${q}".` });
+        } else if (data.digests.length) {
+            body = h('div', { class: 'table-wrap' }, h('table', {},
+                h('thead', {}, h('tr', {}, ['Day', 'Version', 'Sources', 'Length'].map((t) => h('th', { text: t })))),
+                h('tbody', {}, data.digests.map((d) => h('tr', {},
+                    h('td', {}, h('button', { class: 'link', type: 'button', text: periodTitle(d.kind, d.period), onclick: () => open(d.kind, d.period) })),
+                    h('td', { text: `${SOURCE_LABEL[d.source] || d.source}${d.rev > 1 ? `, revision ${d.rev}` : ''}` }),
+                    h('td', {}, sourceHealth(d.meta)),
+                    h('td', { class: 'num', text: `${d.chars.toLocaleString()} characters` }))))));
+        } else {
+            body = h('p', { class: 'muted', text: `No ${state.digestKind} digests yet.` });
+        }
+
+        return h('div', {},
+            h('header', {},
+                h('h1', { class: 'status', text: 'Digests' }),
+                h('p', { class: 'lede', text: 'Written each night from your day, and each week from the days. You can read, correct and search them here.' })),
+            h('section', {}, h('div', { class: 'toolbar' }, kindSwitch(), search)),
+            h('section', {}, body));
+    }
+
+    async function digestDetail() {
+        const { kind, period } = state.digest;
+        const d = await api(`/digests/${kind}/${period}${state.viewRev ? `?rev=${state.viewRev}` : ''}`);
+        const viewingOld = state.viewRev && d.rev !== d.revisions;
+
+        const back = h('button', { class: 'link', type: 'button', text: 'All digests', onclick: () => { resetDigest(); render(); } });
+        const byline = `${SOURCE_LABEL[d.source] || d.source}${d.model ? ` by ${d.model}` : d.actor ? ` by ${d.actor}` : ''} on ${when(d.revisedAt)}${d.note ? `. Note: ${d.note}` : ''}`;
+
+        let content;
+        if (state.editing) {
+            const area = h('textarea', { id: 'd-body', rows: '14', 'aria-label': 'Digest text' });
+            area.value = d.body;
+            const note = h('input', { type: 'text', id: 'd-note', placeholder: 'What did you change? (optional)', maxlength: '200', 'aria-label': 'Note about this change' });
+            const error = h('p', { class: 'error', role: 'alert' });
+            const save = h('button', { class: 'btn', type: 'submit', text: 'Save changes' });
+            content = h('form', {
+                class: 'edit',
+                onsubmit: async (event) => {
+                    event.preventDefault();
+                    error.textContent = '';
+                    save.disabled = true;
+                    try {
+                        await api(`/digests/${kind}/${period}`, { method: 'PATCH', body: { body: area.value, note: note.value } });
+                        state.editing = false;
+                        render();
+                    } catch (err) {
+                        error.textContent = err.message;
+                        save.disabled = false;
+                    }
+                },
+            }, area, note, error, h('div', { class: 'row' }, save,
+                h('button', { class: 'btn quiet', type: 'button', text: 'Cancel', onclick: () => { state.editing = false; render(); } })));
+            setTimeout(() => area.focus(), 0);
+        } else if (state.compare) {
+            const older = await api(`/digests/${kind}/${period}?rev=${state.compare}`);
+            const parts = diffParagraphs(older.body, d.body);
+            content = h('div', {},
+                h('p', { class: 'banner' }, `Comparing revision ${older.rev} with the current text (revision ${d.rev}). `,
+                    h('button', { class: 'link', type: 'button', text: 'Close comparison', onclick: () => { state.compare = null; render(); } })),
+                h('div', { class: 'diff' }, parts.map(([kindOf, text]) => h('p', { class: kindOf, text }))));
+        } else {
+            content = h('div', { class: 'digest-body' }, d.body.split(/\n{2,}/).map((para) => h('p', { text: para.trim() })));
+        }
+
+        const history = state.showHistory && h('section', {},
+            h('h2', { text: 'History' }),
+            h('p', { class: 'note', text: 'Revision 1 is what first arrived and is never changed. Restoring adds a new revision with the old text.' }),
+            h('div', { class: 'table-wrap' }, h('table', {},
+                h('thead', {}, h('tr', {}, ['Revision', 'What', 'Who', 'When', ''].map((t) => h('th', { text: t })))),
+                h('tbody', {}, d.history.map((r) => {
+                    const actions = [];
+                    if (!r.current) {
+                        actions.push(h('button', { class: 'btn quiet small', type: 'button', text: 'View', onclick: () => { state.viewRev = r.rev; state.compare = null; state.editing = false; render(); } }));
+                        actions.push(h('button', { class: 'btn quiet small', type: 'button', text: 'Compare', onclick: () => { state.viewRev = null; state.compare = r.rev; state.editing = false; render(); } }));
+                        actions.push(state.confirmRestore === r.rev
+                            ? h('button', {
+                                class: 'btn danger small',
+                                type: 'button',
+                                text: 'Yes, restore',
+                                onclick: async () => {
+                                    try { await api(`/digests/${kind}/${period}/restore`, { method: 'POST', body: { rev: r.rev } }); } catch (e) { /* reload shows state */ }
+                                    state.confirmRestore = null; state.viewRev = null; state.compare = null; render();
+                                },
+                            })
+                            : h('button', { class: 'btn quiet small', type: 'button', text: 'Restore', onclick: () => { state.confirmRestore = r.rev; render(); } }));
+                    }
+                    return h('tr', {},
+                        h('td', { text: `${r.rev}${r.current ? ' (current)' : ''}` }),
+                        h('td', { text: `${SOURCE_LABEL[r.source] || r.source}${r.note ? `: ${r.note}` : ''}` }),
+                        h('td', { text: r.model || r.actor }),
+                        h('td', { text: when(r.at) }),
+                        h('td', { class: 'num' }, h('span', { class: 'row end' }, actions)));
+                })))));
+
+        return h('div', {},
+            h('header', {},
+                h('p', { class: 'crumb' }, back),
+                h('h1', { class: 'status', text: periodTitle(kind, period) }),
+                h('p', { class: 'lede muted', text: byline })),
+            viewingOld && h('p', { class: 'banner' }, `You are looking at revision ${d.rev}, not the current text. `,
+                h('button', { class: 'link', type: 'button', text: 'Back to the current text', onclick: () => { state.viewRev = null; render(); } })),
+            h('section', {},
+                content,
+                !state.editing && !viewingOld && !state.compare && h('div', { class: 'row actions' },
+                    h('button', { class: 'btn', type: 'button', text: 'Edit', onclick: () => { state.editing = true; render(); } }),
+                    h('button', { class: 'btn quiet', type: 'button', text: state.showHistory ? 'Hide history' : `History (${d.revisions} ${d.revisions === 1 ? 'revision' : 'revisions'})`, onclick: () => { state.showHistory = !state.showHistory; render(); } }))),
+            !state.editing && d.meta && d.meta.sources && h('section', {},
+                h('h2', { text: 'Sources used' }),
+                h('dl', { class: 'facts' }, Object.entries(d.meta.sources).map(([name, status]) => fact(name, dot(status === 'ok' ? 'good' : 'warn'), status)))),
+            history);
+    }
+
+    async function digests() {
+        return state.digest ? digestDetail() : digestList();
+    }
+
     const WHAT = {
+        domain_enabled: (d) => `Turned on ${d && d.name ? d.name : 'a domain'}`,
+        domain_disabled: (d) => `Turned off ${d && d.name ? d.name : 'a domain'}`,
+        digest_edited: (d) => `Edited the ${d ? `${d.kind} digest for ${d.period}` : 'digest'}`,
+        digest_restored: (d) => `Restored an older version of the ${d ? `${d.kind} digest for ${d.period}` : 'digest'}`,
         login: () => 'Signed in',
         logout: () => 'Signed out',
         login_failed: () => 'Tried a wrong key',
@@ -393,7 +633,7 @@
                     : h('p', { class: 'muted', text: 'Nothing has happened yet.' })));
     }
 
-    const VIEW_FN = { overview, keys, backups, portfolio, activity };
+    const VIEW_FN = { overview, digests, keys, backups, portfolio, activity };
 
     /* ---------- render loop ---------- */
 
