@@ -2,6 +2,7 @@ const router = require('express').Router();
 const publicationService = require('./publicationService');
 const path = require('path');
 const { readJson } = require('./freshJson');
+const { requireDomain } = require('../../middleware/domain');
 
 // atit.json is re-read when it changes on disk, so edits show up without restarting the container.
 const ATIT_JSON = path.join(__dirname, 'atit', 'atit.json');
@@ -13,6 +14,10 @@ function assetPath(folder, id, ext) {
     const file = path.join(dir, String(id) + ext);
     return file.startsWith(dir + path.sep) ? file : null;
 }
+
+// A domain the operator switched off in the dashboard answers 503. With no readable database the portfolio
+// stays on (see services/domains.js).
+router.use(requireDomain('portfolio'));
 
 router.get('/', (req, res) => {
     res.send('Welcome to Portfolio API');

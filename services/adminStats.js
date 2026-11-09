@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const db = require('../db');
 const apiKeys = require('./apiKeys');
+const domains = require('./domains');
 const { readJson } = require('../routes/portfolio/freshJson');
 
 const ATIT_DIR = path.join(__dirname, '..', 'routes', 'portfolio', 'atit');
@@ -66,6 +67,26 @@ function portfolio() {
     };
 }
 
+// The nightly job runs at 11 PM Central, so from 6 AM on, yesterday's daily digest should exist. Only
+// warns once the domain is on and at least one daily digest has ever arrived.
+function digestWatch(conn, now = new Date()) {
+    const tz = process.env.DIGEST_TZ || 'America/Chicago';
+
+    const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(now));
+    const day = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
+    const enabled = domains.isEnabled(conn, 'digests');
+    const latest = conn.prepare("SELECT MAX(period) AS p, COUNT(*) AS n FROM digests WHERE kind = 'daily'").get();
+    const expected = hour >= 6 ? day(new Date(now.getTime() - 24 * 3600 * 1000)) : null;
+    const have = expected && conn.prepare("SELECT 1 FROM digests WHERE kind = 'daily' AND period = ?").get(expected);
+    return {
+        enabled,
+        dailyCount: latest.n,
+        latestDaily: latest.p || null,
+        expectedDaily: expected,
+        missing: Boolean(enabled && latest.n > 0 && expected && !have),
+    };
+}
+
 function overview() {
     const conn = db.get();
     const health = db.health();
@@ -99,7 +120,9 @@ function overview() {
             updatedAt: p.updatedAt,
             problems: p.missingPages.length + p.orphanPages.length,
         },
+        digests: digestWatch(conn),
+        domains: domains.list(conn),
     };
 }
 
-module.exports = { overview, backups, portfolio };
+module.exports = { overview, backups, portfolio, digestWatch };

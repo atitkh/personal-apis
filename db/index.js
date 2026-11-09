@@ -30,6 +30,7 @@ function open(file = process.env.HUB_DB_FILE || DEFAULT_FILE) {
     db.pragma('foreign_keys = ON');
     db.pragma('busy_timeout = 5000');
     migrate(db);
+    require('../services/domains').sync(db);
     return db;
 }
 

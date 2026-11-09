@@ -20,6 +20,7 @@ const nftlisterRoute = require('./routes/nft/nftsearch');
 const portfolioRoute = require('./routes/portfolio/portfolio');
 const attendanceRoute = require('./routes/kerkarcreations/attendance');
 const { createAdminRouter } = require('./routes/admin/admin');
+const hubRoute = require('./routes/hub/hub');
 
 //Middleware
 // Security middleware
@@ -55,7 +56,7 @@ const limiter = rateLimit({
     // of them. Only the ORCID lookup (it calls an outside service) stays limited.
     // The admin dashboard has its own limits (a generous one for the page and a strict one for sign-in),
     // because one page view makes several calls.
-    skip: (req) => req.path === '/admin' || req.path.startsWith('/admin/') ||
+    skip: (req) => req.path === '/admin' || req.path.startsWith('/admin/') || req.path.startsWith('/hub/') ||
         (req.path.startsWith('/portfolio/') && !req.path.includes('/publications')),
 });
 app.use(limiter);
@@ -80,6 +81,9 @@ app.use(express.static("html"));
 
 // Admin dashboard (off unless ADMIN_KEY is set in .env)
 app.use('/admin', createAdminRouter());
+
+// Private hub API: key-protected, with its own limit, deliberately not listed in /api
+app.use('/hub', hubRoute);
 
 app.use('/api/v1/nft', nftlisterRoute);
 app.use('/api/v1/portfolio', portfolioRoute);

@@ -9,6 +9,8 @@ const adminAuth = require('../../services/adminAuth');
 const apiKeys = require('../../services/apiKeys');
 const audit = require('../../services/audit');
 const stats = require('../../services/adminStats');
+const domains = require('../../services/domains');
+const digests = require('../../services/digests');
 
 const COOKIE = 'hub_admin';
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -147,6 +149,56 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         audit.record(conn, 'admin', 'key_revoked', { id, name: row.name }, req.ip);
         res.json({ ok: true });
     });
+
+    // ---- domains ----
+    api.get('/domains', (req, res) => res.json({ domains: domains.list(db.get()) }));
+
+    api.put('/domains/:name', (req, res) => {
+        const conn = db.get();
+        const { name } = req.params;
+        if (!domains.exists(name)) return res.status(404).json({ error: 'No such domain.' });
+        if (typeof (req.body || {}).enabled !== 'boolean') return res.status(400).json({ error: 'enabled must be true or false.' });
+        const enabled = req.body.enabled;
+        domains.setEnabled(conn, name, enabled, 'admin');
+        audit.record(conn, 'admin', enabled ? 'domain_enabled' : 'domain_disabled', { name }, req.ip);
+        res.json({ ok: true, enabled });
+    });
+
+    // ---- digests (the dashboard may read and edit them even while the domain is switched off) ----
+    const digestHandler = (fn) => (req, res) => {
+        try {
+            fn(req, res, db.get());
+        } catch (err) {
+            if (err instanceof digests.DigestError) return res.status(err.status).json({ error: err.message });
+            console.error('admin digest error:', err);
+            res.status(500).json({ error: 'Something went wrong.' });
+        }
+    };
+
+    api.get('/digests', digestHandler((req, res, conn) => {
+        const { kind, q, limit, offset } = req.query;
+        if (q) return res.json({ results: digests.search(conn, q, { kind, limit }) });
+        res.json({ digests: digests.list(conn, { kind, limit, offset }) });
+    }));
+
+    api.get('/digests/:kind/:period', digestHandler((req, res, conn) => {
+        const d = digests.get(conn, req.params.kind, req.params.period, { rev: req.query.rev });
+        res.json({ ...d, history: digests.revisions(conn, req.params.kind, req.params.period) });
+    }));
+
+    api.patch('/digests/:kind/:period', digestHandler((req, res, conn) => {
+        const { kind, period } = req.params;
+        const result = digests.edit(conn, kind, period, { body: (req.body || {}).body, note: (req.body || {}).note, actor: 'admin' });
+        if (result.status === 'updated') audit.record(conn, 'admin', 'digest_edited', { kind, period, rev: result.rev }, req.ip);
+        res.json(result);
+    }));
+
+    api.post('/digests/:kind/:period/restore', digestHandler((req, res, conn) => {
+        const { kind, period } = req.params;
+        const result = digests.restore(conn, kind, period, (req.body || {}).rev, 'admin');
+        if (result.status === 'updated') audit.record(conn, 'admin', 'digest_restored', { kind, period, rev: result.rev }, req.ip);
+        res.json(result);
+    }));
 
     api.use((req, res) => res.status(404).json({ error: 'Not found' }));
     return router;

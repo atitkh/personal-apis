@@ -157,6 +157,63 @@ describe('dashboard API', () => {
     });
 });
 
+describe('dashboard: domains and digests', () => {
+    const app = buildApp({ loginMax: 1000 });
+    const digests = require('../services/digests');
+    const domains = require('../services/domains');
+
+    beforeAll(() => {
+        digests.put(db.get(), 'daily', '2026-11-08', { body: 'Generated text about the hub.', actor: 'digest-job' });
+    });
+
+    test('overview carries the domain list and the digest watch', async () => {
+        const agent = await signedIn(app);
+        const o = (await agent.get('/admin/api/overview').expect(200)).body;
+        expect(o.domains.map((d) => d.name).sort()).toEqual(['digests', 'portfolio']);
+        expect(o.digests).toHaveProperty('missing');
+        expect(o.digests.dailyCount).toBeGreaterThan(0);
+    });
+
+    test('domains can be switched off and on, and it is audited', async () => {
+        const agent = await signedIn(app);
+        await agent.put('/admin/api/domains/digests').send({ enabled: false }).expect(403); // needs the header
+        await agent.put('/admin/api/domains/digests').set(H).send({ enabled: false }).expect(200);
+        expect((await agent.get('/admin/api/domains').expect(200)).body.domains.find((d) => d.name === 'digests').enabled).toBe(false);
+
+        // the dashboard still reaches the data while the domain is off
+        await agent.get('/admin/api/digests/daily/2026-11-08').expect(200);
+
+        await agent.put('/admin/api/domains/digests').set(H).send({ enabled: true }).expect(200);
+        await agent.put('/admin/api/domains/nope').set(H).send({ enabled: true }).expect(404);
+        await agent.put('/admin/api/domains/digests').set(H).send({ enabled: 'yes' }).expect(400);
+        expect(domains.isEnabled(db.get(), 'digests')).toBe(true);
+        expect(audit.recent(db.get(), 10).map((e) => e.action)).toEqual(expect.arrayContaining(['domain_disabled', 'domain_enabled']));
+    });
+
+    test('digests can be listed, searched, read with history, edited and restored', async () => {
+        const agent = await signedIn(app);
+
+        const list = (await agent.get('/admin/api/digests?kind=daily').expect(200)).body.digests;
+        expect(list[0]).toMatchObject({ kind: 'daily', period: '2026-11-08' });
+        expect((await agent.get('/admin/api/digests?q=hub').expect(200)).body.results[0].period).toBe('2026-11-08');
+
+        const one = (await agent.get('/admin/api/digests/daily/2026-11-08').expect(200)).body;
+        expect(one).toMatchObject({ rev: 1, body: 'Generated text about the hub.' });
+        expect(one.history).toHaveLength(1);
+
+        await agent.patch('/admin/api/digests/daily/2026-11-08').send({ body: 'x' }).expect(403);
+        const edited = (await agent.patch('/admin/api/digests/daily/2026-11-08').set(H).send({ body: 'Corrected text.', note: 'fix' }).expect(200)).body;
+        expect(edited).toEqual({ status: 'updated', rev: 2 });
+        const after = (await agent.get('/admin/api/digests/daily/2026-11-08').expect(200)).body;
+        expect(after.history.map((r) => [r.rev, r.actor])).toEqual([[2, 'admin'], [1, 'digest-job']]);
+
+        await agent.post('/admin/api/digests/daily/2026-11-08/restore').set(H).send({ rev: 1 }).expect(200);
+        expect((await agent.get('/admin/api/digests/daily/2026-11-08').expect(200)).body.body).toBe('Generated text about the hub.');
+        await agent.get('/admin/api/digests/daily/2020-01-01').expect(404);
+        expect(audit.recent(db.get(), 10).map((e) => e.action)).toEqual(expect.arrayContaining(['digest_edited', 'digest_restored']));
+    });
+});
+
 describe('mounted in the real app', () => {
     const realApp = require('../app');
 
