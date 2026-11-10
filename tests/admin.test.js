@@ -100,6 +100,36 @@ describe('dashboard API', () => {
         expect(page.text).toMatch(/<script type="module" src="app.js">/);
     });
 
+    test('the CSP adds only manifest-src for the web app manifest', async () => {
+        const csp = (await request(app).get('/admin/').expect(200)).headers['content-security-policy'];
+        expect(csp).toMatch(/manifest-src 'self'(;|$)/);
+        const sources = csp.split(';').map((d) => d.trim().split(/\s+/)[0]).sort();
+        expect(sources).toEqual(['base-uri', 'connect-src', 'default-src', 'font-src', 'form-action', 'frame-ancestors',
+            'img-src', 'manifest-src', 'script-src', 'style-src']);
+        expect(csp).toMatch(/script-src 'self'(;|$)/);
+        expect(csp).toMatch(/style-src 'self'(;|$)/);
+    });
+
+    test('serves the web app manifest and its icons', async () => {
+        const page = await request(app).get('/admin/').expect(200);
+        expect(page.text).toMatch(/<link rel="manifest" href="manifest.webmanifest">/);
+        expect(page.text).toMatch(/<meta name="theme-color" content="#[0-9A-F]{6}" media="\(prefers-color-scheme: light\)">/);
+        expect(page.text).toMatch(/<meta name="theme-color" content="#[0-9A-F]{6}" media="\(prefers-color-scheme: dark\)">/);
+        const res = await request(app).get('/admin/manifest.webmanifest').expect(200);
+        expect(res.headers['content-type']).toMatch(/application\/manifest\+json/);
+        expect(res.headers['content-security-policy']).toMatch(/default-src 'none'/);
+        const manifest = JSON.parse(res.text);
+        expect(manifest.start_url).toBe('./#/overview');
+        expect(manifest.scope).toBe('./');
+        expect(manifest.display).toBe('standalone');
+        for (const icon of manifest.icons) {
+            expect(icon.src).not.toMatch(/^(https?:)?\/\//);
+            const file = await request(app).get(`/admin/${icon.src}`).expect(200);
+            expect(file.headers['content-type']).toMatch(icon.type === 'image/png' ? /image\/png/ : /image\/svg\+xml/);
+        }
+        expect(manifest.icons.some((i) => i.sizes === '512x512')).toBe(true);
+    });
+
     test('data needs a session', async () => {
         for (const url of ['overview', 'keys', 'backups', 'portfolio', 'activity']) {
             await request(app).get(`/admin/api/${url}`).expect(401);

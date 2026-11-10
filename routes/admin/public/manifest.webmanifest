@@ -1,0 +1,15 @@
+{
+    "name": "Personal hub",
+    "short_name": "Hub",
+    "description": "See what the hub holds and which agents can reach it.",
+    "start_url": "./#/overview",
+    "scope": "./",
+    "display": "standalone",
+    "background_color": "#E8ECEF",
+    "theme_color": "#E8ECEF",
+    "icons": [
+        { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+        { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+        { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    ]
+}

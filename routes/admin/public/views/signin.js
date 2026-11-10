@@ -3,7 +3,7 @@ import { h, button, icon } from '../ui.js';
 import { api } from '../api.js';
 
 export function renderSignIn(root, onSignedIn) {
-    document.title = 'Sign in, Personal hub';
+    document.title = 'Sign in - Personal hub';
     const error = h('p', { class: 'field-error', id: 'key-error', role: 'alert' });
     const input = h('input', {
         type: 'password', id: 'key', name: 'key', autocomplete: 'current-password', required: true,

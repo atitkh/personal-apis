@@ -22,6 +22,7 @@ const CSP = [
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
+    "manifest-src 'self'",
     "connect-src 'self'",
     "base-uri 'none'",
     "form-action 'self'",
@@ -77,7 +78,12 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         }
         next();
     });
-    router.use(express.static(PUBLIC_DIR, { index: 'index.html' }));
+    router.use(express.static(PUBLIC_DIR, {
+        index: 'index.html',
+        setHeaders: (res, file) => {
+            if (file.endsWith('.webmanifest')) res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+        },
+    }));
 
     const api = express.Router();
     router.use('/api', api);

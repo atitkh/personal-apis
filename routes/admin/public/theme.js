@@ -14,11 +14,22 @@ export function preference() {
     }
 }
 
+// The page colour of each theme; the browser bar (theme-color) matches the theme in use.
+const PAGE = { light: '#E8ECEF', dark: '#0D1320' };
+
+export function paintThemeColor(pref) {
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+        const own = (meta.getAttribute('media') || '').includes('dark') ? 'dark' : 'light';
+        meta.setAttribute('content', PAGE[pref === 'system' ? own : pref] || PAGE[own]);
+    }
+}
+
 function apply() {
     const pref = preference();
     const dark = pref === 'dark' || (pref === 'system' && media.matches);
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     document.documentElement.setAttribute('data-theme-pref', pref);
+    paintThemeColor(pref);
     for (const fn of listeners) fn(pref);
 }
 
@@ -33,3 +44,4 @@ export function onThemeChange(fn) {
 }
 
 media.addEventListener('change', () => { if (preference() === 'system') apply(); });
+paintThemeColor(preference());

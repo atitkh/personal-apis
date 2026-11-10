@@ -128,7 +128,7 @@ export function createShell({ session, onSignOut, openPalette }) {
         title,
         setRoute(name, text) {
             title.textContent = text;
-            document.title = `${text}, Personal hub`;
+            document.title = `${text} - Personal hub`;
             for (const [n, links] of navLinks) {
                 for (const a of links) {
                     if (n === name) a.setAttribute('aria-current', 'page');
