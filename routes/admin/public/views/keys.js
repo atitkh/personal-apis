@@ -2,7 +2,7 @@
 // revoke); #/keys?new=1 opens the create drawer (scope picker, the secret shown once with a copy button).
 // The URL is the truth: closing a drawer goes back to #/keys.
 import {
-    h, icon, button, plural, when, ago, dot, emptyState, toast, confirmDialog, openDrawer, copyButton, fact, hidden,
+    h, icon, button, plural, when, ago, dot, emptyState, errorState, toast, confirmDialog, openDrawer, copyButton, fact, hidden,
 } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 import { CATALOGUE, explain, scopeChip, scopeHue } from '../scopes.js';
@@ -82,14 +82,20 @@ function keyDrawer(ctx, k, use) {
             h('p', { class: 'note', text: 'Revoking ends access for whatever uses this key.' }), revoke) : null,
     ];
 
-    ctx.api(`/keys/${k.id}/calls?limit=15`).then(({ calls: list }) => {
+    const loadCalls = () => ctx.api(`/keys/${k.id}/calls?limit=15`).then(({ calls: list }) => {
         calls.replaceChildren(list.length
             ? h('ol', { class: 'call-list' }, list.map((c) => h('li', {},
                 h('time', { datetime: c.at, text: when(c.at) }),
                 h('code', { text: callName(c) }),
                 h('span', { class: `call-result ${c.ok ? 'ok' : 'failed'}` }, icon(c.ok ? 'good' : 'bad'), c.ok ? 'OK' : 'Failed'))))
-            : h('p', { class: 'muted', text: 'No agent calls from this key yet. Calls to the /hub REST routes only update "Last used".' }));
-    }).catch((err) => calls.replaceChildren(h('p', { class: 'error', text: `Could not load the calls. ${err.message}` })));
+            : emptyState({
+                title: 'No agent calls from this key yet.',
+                text: 'Calls to the /hub REST routes only update "Last used". Agents call the MCP endpoint.',
+                iconName: 'agents',
+                action: h('a', { class: 'btn quiet small', href: href('agents'), text: 'See the agent endpoint' }),
+            }));
+    }).catch((err) => { if (err.status !== 401) calls.replaceChildren(errorState({ err, what: 'The recent calls', retry: loadCalls })); });
+    loadCalls();
 
     return content;
 }
@@ -314,7 +320,12 @@ export async function render(ctx) {
             h('h2', { id: 'k-active', class: 'section-title', text: plural(active.length, 'active key') }),
             active.length
                 ? keyTable(active.map((k) => keyRow(k, usage.get(k.id))))
-                : emptyState({ title: 'No active keys.', text: 'Create one for the first service that needs the hub.', iconName: 'keys' })),
+                : emptyState({
+                    title: 'No active keys.',
+                    text: 'Create one for the first service or agent that needs the hub.',
+                    iconName: 'keys',
+                    action: h('a', { class: 'btn small', href: href('keys', [], { new: '1' }) }, icon('plus'), h('span', { text: 'Create key' })),
+                })),
         revoked.length ? h('details', { class: 'revoked-keys' },
             h('summary', {}, `${plural(revoked.length, 'revoked key')}`, hidden(', show')),
             keyTable(revoked.map((k) => keyRow(k, usage.get(k.id))), { revoked: true })) : null);

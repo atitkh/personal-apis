@@ -79,7 +79,9 @@ export async function render(ctx) {
             title: active.length ? 'No domain has an agent tool yet.' : 'No active keys.',
             text: active.length ? 'Agents only get the hub overview.' : 'Create a key for the agent first.',
             iconName: 'agents',
-            action: active.length ? null : h('a', { class: 'btn quiet small', href: href('keys', [], { new: '1' }), text: 'Create key' }),
+            action: active.length
+                ? h('a', { class: 'btn quiet small', href: href('overview'), text: 'Open the channel board' })
+                : h('a', { class: 'btn quiet small', href: href('keys', [], { new: '1' }), text: 'Create key' }),
         });
 
     const recent = a.recent.slice(0, 25);
@@ -91,7 +93,12 @@ export async function render(ctx) {
                 h('td', { 'data-label': 'Key' }, keyLink(c.key)),
                 h('td', { class: 'cell-main' }, h('code', { text: callName(c) })),
                 h('td', { class: 'cell-side' }, h('span', { class: `call-result ${c.ok ? 'ok' : 'failed'}` }, icon(c.ok ? 'good' : 'bad'), c.ok ? 'OK' : 'Failed')))))))
-        : emptyState({ title: 'No agent has called the hub yet.', text: 'Calls show up here as soon as a key uses the endpoint.' });
+        : emptyState({
+            title: 'No agent has called the hub yet.',
+            text: 'Calls show up here as soon as a key uses the endpoint below.',
+            iconName: 'agents',
+            action: h('a', { class: 'btn quiet small', href: '#ag-endpoint', onclick: (e) => { e.preventDefault(); const f = document.querySelector('.endpoint-panel input'); if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); } }, text: 'Go to the endpoint' }),
+        });
 
     const url = `${location.origin}${a.endpoint}`;
     const endpointField = h('input', { type: 'text', class: 'secret', readonly: true, value: url, 'aria-label': 'Agent endpoint URL', onfocus: (e) => e.target.select() });

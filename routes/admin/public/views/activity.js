@@ -144,5 +144,8 @@ export async function render(ctx) {
                 title: type === 'all' ? 'Nothing has happened yet.' : `No ${label} events yet.`,
                 text: type === 'all' ? 'Sign-ins, key changes and agent calls show up here.' : 'Pick All to see everything else.',
                 iconName: 'activity',
+                action: type === 'all'
+                    ? h('a', { class: 'btn quiet small', href: href('keys', [], { new: '1' }), text: 'Create a key' })
+                    : h('a', { class: 'btn quiet small', href: href('activity'), text: 'Show all events' }),
             }));
 }

@@ -185,7 +185,12 @@ function attention(list) {
                     h('p', { class: 'att-text' }, hidden(i.kind === 'bad' ? 'Problem: ' : 'Warning: '), i.text),
                     i.hint ? h('p', { class: 'att-hint', text: i.hint }) : null),
                 i.link ? h('a', { class: 'btn quiet small', href: href(i.link[0]), text: i.link[1] }) : null)))
-            : emptyState({ title: 'Nothing needs you right now.', text: 'Checked: the database, backups, the daily digest and the portfolio files.', iconName: 'good' }));
+            : emptyState({
+                title: 'Nothing needs you right now.',
+                text: 'Checked: the database, backups, the daily digest and the portfolio files.',
+                iconName: 'good',
+                action: h('a', { class: 'btn quiet small', href: href('activity'), text: 'See recent activity' }),
+            }));
 }
 
 const TOOL_HUE = (tool, domains) => {
@@ -218,7 +223,12 @@ function pulse(o, s) {
         total
             ? [dayBars({ data, ariaLabel: `Agent calls per day for 14 days: ${plural(total, 'call')} in total, ${today} today.` }),
                 legend(tools.map((t) => ({ hue: TOOL_HUE(t, domains), label: TOOL_LABEL(t, domains) })))]
-            : h('p', { class: 'muted', text: 'No agent has called the hub in the last 14 days.' }),
+            : emptyState({
+                title: 'No agent has called the hub in the last 14 days.',
+                text: 'Give an agent a key and the endpoint, and its calls show up here.',
+                iconName: 'agents',
+                action: h('a', { class: 'btn quiet small', href: href('agents'), text: 'Set up an agent' }),
+            }),
         cov && cov.total ? h('div', { class: 'coverage' },
             h('h3', { text: 'Daily digests, last 30 days' }),
             coverageStrip({ days: cov.days, ariaLabel: `${cov.present} of ${cov.total} days have a daily digest`, href: (day) => href('digests', ['daily', day]) }),
@@ -267,7 +277,8 @@ export async function render(ctx) {
             fetchedAt = Date.now();
             if (ctx.isCurrent()) paint();
         } catch (err) {
-            sub.textContent = `Could not refresh. Showing data from ${new Date(fetchedAt).toLocaleTimeString()}.`;
+            sub.replaceChildren(`Could not refresh${err.network ? ': the hub did not answer' : ''}. Showing data from ${new Date(fetchedAt).toLocaleTimeString()}. `,
+                h('button', { type: 'button', class: 'link', 'data-key': 'refresh-retry', onclick: () => refresh(), text: 'Retry' }));
         } finally {
             busy = false;
         }

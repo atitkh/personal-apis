@@ -57,7 +57,7 @@ export async function render(ctx) {
                     h('td', { class: 'cell-main' }, h('code', { text: b.name }), i === 0 ? h('span', { class: 'chip', text: 'Newest' }) : null),
                     h('td', { 'data-label': 'Saved', text: when(b.modifiedAt) }),
                     h('td', { 'data-label': 'Age', text: ago(b.modifiedAt) }),
-                    h('td', { class: 'num cell-side', text: bytes(b.bytes) }))))))) : emptyState({ title: 'No copies yet.', text: 'Use Back up now to make the first one.', iconName: 'backups' }),
+                    h('td', { class: 'num cell-side', text: bytes(b.bytes) }))))))) : emptyState({ title: 'No copies yet.', text: 'The first daily copy is made within a day of starting. Or make one now.', iconName: 'backups', action: button({ text: 'Back up now', variant: 'quiet', size: 'small', iconName: 'backup', onClick: () => run.click() }) }),
         h('section', { class: 'panel restore-guide', 'aria-labelledby': 'b-restore' },
             h('h2', { id: 'b-restore', text: 'Restoring a copy' }),
             h('p', { class: 'note', text: 'There is no restore button on purpose: the live database must not change under a running hub. On the server, in the personal-apis folder:' }),

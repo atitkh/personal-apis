@@ -411,6 +411,10 @@ dialog::backdrop { background: rgb(8 12 22 / .45); }
 }
 .signin-card h1 { font-size: var(--fs-xl); }
 .signin-lede { color: var(--muted); }
+.signin-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-ctl); background: var(--accent-soft); color: var(--ink); font-weight: 500; }
+.signin-note .icon { color: var(--accent); margin-top: 1px; }
+.error-state .empty-icon { color: var(--bad); }
+.error-state .btn { margin-top: 8px; }
 .field { display: grid; gap: 6px; }
 .field label { font-weight: 600; }
 .signin-foot { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: var(--fs-xs); }

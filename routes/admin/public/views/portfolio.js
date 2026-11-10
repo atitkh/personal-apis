@@ -1,6 +1,6 @@
 // Portfolio inventory: counts, a to-do list of missing and orphan detail pages, and the entries with a
 // search that lives in the URL (#/portfolio?q=...). The data is routes/portfolio/atit/atit.json plus md/, img/, pdf/.
-import { h, icon, plural, ago, when, bytes, emptyState } from '../ui.js';
+import { h, icon, button, plural, ago, when, bytes, emptyState } from '../ui.js';
 import { setQuery } from '../router.js';
 
 const DIR = 'routes/portfolio/atit';
@@ -34,7 +34,13 @@ export async function render(ctx) {
             h('td', { class: 'cell-side' }, r.hasPage
                 ? (r.pageExists ? h('span', { class: 'state good' }, icon('good'), 'Page') : h('span', { class: 'state warn' }, icon('warn'), 'Missing'))
                 : h('span', { class: 'muted', text: 'None' })))));
-        if (!shown.length) body.append(h('tr', {}, h('td', { colspan: '5', class: 'muted', text: 'Nothing matches that search.' })));
+        if (!shown.length) {
+            body.append(h('tr', {}, h('td', { colspan: '5' }, emptyState({
+                title: `Nothing matches "${filter.trim()}".`,
+                text: 'The search looks at ids, titles and categories.',
+                action: button({ text: 'Clear the search', variant: 'quiet', size: 'small', onClick: () => { search.value = ''; search.dispatchEvent(new Event('input')); search.focus(); } }),
+            }))));
+        }
         status.textContent = q ? `${plural(shown.length, 'entry', 'entries')} match.` : '';
     };
     const initial = ctx.route.query.get('q') || '';

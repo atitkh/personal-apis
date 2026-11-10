@@ -1,7 +1,7 @@
 // Personal hub admin. Plain ES modules, no build step, no framework.
 // app.js wires things together: session, shell, routes, command palette. Views live in views/*.js
 // and export render(ctx); a new view is one file plus one register() line below.
-import { h, toast, skeleton, emptyState, button, keepFocus } from './ui.js';
+import { h, toast, skeleton, emptyState, errorState, keepFocus } from './ui.js';
 import { api, setUnauthorizedHandler } from './api.js';
 import * as router from './router.js';
 import { createShell } from './shell.js';
@@ -37,20 +37,26 @@ async function signOut() {
     toast('Signed out', { kind: 'info' });
 }
 
-function endSession() {
+// `ended`: the server said the session is gone (expired, or signed out elsewhere). The sign-in screen
+// says so, and signing in returns to the same #/route.
+function endSession({ ended = false } = {}) {
+    const returnTo = location.hash;
     session = null;
     shell = null;
     current = null;
     renderToken++;
     runCleanups();
-    showSignIn();
+    for (const dlg of document.querySelectorAll('dialog[open]')) dlg.close();
+    showSignIn({ ended, returnTo });
 }
 
-function showSignIn() {
+function showSignIn({ ended = false, returnTo = '' } = {}) {
+    const title = router.get(router.parse(returnTo).name);
     renderSignIn(root, async () => {
         session = await api('/session');
+        if (returnTo && returnTo !== location.hash) history.replaceState(null, '', returnTo);
         startApp();
-    });
+    }, { note: ended ? `Your session ended. Sign in again to go back to ${title ? title.title : 'where you were'}.` : '' });
 }
 
 function notFound(name) {
@@ -89,12 +95,11 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
             });
         }
     } catch (err) {
-        if (!session) return;
-        node = emptyState({
-            title: 'That did not load.',
-            text: err.message,
-            iconName: 'bad',
-            action: button({ text: 'Try again', variant: 'quiet', onClick: () => renderRoute(router.parse()) }),
+        if (!session || err.status === 401) return;
+        node = errorState({
+            err,
+            what: def ? def.title : 'This page',
+            retry: () => renderRoute(router.parse(), { soft: true }),
         });
     }
     if (token !== renderToken || !shell) {
@@ -104,8 +109,12 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
     runCleanups();
     cleanups = mine;
     // A soft render (same section) keeps keyboard focus on the element with the same data-key.
-    if (soft) keepFocus(shell.content, () => shell.content.replaceChildren(node));
-    else shell.content.replaceChildren(node);
+    if (soft) {
+        const hadFocus = shell.content.contains(document.activeElement);
+        keepFocus(shell.content, () => shell.content.replaceChildren(node));
+        // The focused element went away (e.g. Retry worked): land on the page title, not on <body>.
+        if (hadFocus && !shell.content.contains(document.activeElement)) shell.title.focus({ preventScroll: true });
+    } else shell.content.replaceChildren(node);
     if (focus) shell.title.focus({ preventScroll: true });
     if (!soft) window.scrollTo(0, 0);
 }
@@ -166,7 +175,7 @@ addSource(() => [
         run: () => { setPreference(value); toast(`Theme set to ${label.toLowerCase()}`, { kind: 'info' }); },
     })),
     { id: 'act:signout', group: 'Actions', icon: 'signout', label: 'Sign out', keywords: 'log out logout', order: 20, run: signOut },
-    { id: 'act:shortcuts', group: 'Actions', icon: 'info', label: 'Keyboard shortcuts', keywords: 'keys keyboard help hotkeys', keys: ['?'], order: 21, run: () => showShortcuts() },
+    { id: 'act:shortcuts', group: 'Actions', icon: 'keyboard', label: 'Keyboard shortcuts', keywords: 'keys keyboard help hotkeys', keys: ['?'], order: 21, run: () => showShortcuts() },
     { id: 'act:rail', group: 'Actions', icon: 'collapse', label: 'Show or hide the side menu', keywords: 'rail sidebar menu collapse expand', keys: ['['], order: 22, run: () => shell && shell.toggleRail() },
 ]);
 
@@ -190,8 +199,7 @@ addSource(async () => {
 
 setUnauthorizedHandler(() => {
     if (!session) return;
-    endSession();
-    toast('Your session ended. Sign in again.', { kind: 'info' });
+    endSession({ ended: true });
 });
 installShortcut(() => Boolean(session && shell));
 installShortcuts({

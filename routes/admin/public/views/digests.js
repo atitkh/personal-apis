@@ -150,7 +150,11 @@ async function results(ctx, kind, q) {
             ? h('ol', { class: 'results' }, data.results.map((r) => h('li', {},
                 h('a', { class: 'link res-title', href: href('digests', [r.kind, r.period]), text: r.kind === 'daily' ? periodTitle(r.kind, r.period) : `${periodTitle(r.kind, r.period)}, ${weekRange(r.period)}` }),
                 h('p', { class: 'res-snippet' }, highlight(r.snippet)))))
-            : emptyState({ title: 'No digest has those words.', text: `Try fewer or different words, or search the ${kind === 'daily' ? 'weekly' : 'daily'} digests. Search looks at every revision.` }));
+            : emptyState({
+                title: 'No digest has those words.',
+                text: `Try fewer or different words, or search the ${kind === 'daily' ? 'weekly' : 'daily'} digests. Search looks at every revision.`,
+                action: h('a', { class: 'btn quiet small', href: href('digests', [], { kind: kind === 'daily' ? 'weekly' : null, q }), text: `Search the ${kind === 'daily' ? 'weekly' : 'daily'} digests` }),
+            }));
 }
 
 // The month calendar (one tab stop, arrows move by day, Page Up/Down by month). Used beside the list on
@@ -234,7 +238,9 @@ async function daily(ctx) {
             title: `No daily digests in ${monthLabel(month)}.`,
             text: first ? 'Pick another month, or search all of them.' : 'The nightly job publishes one each day at 11 PM. Until then, the weekly reviews may have something.',
             iconName: 'calendar',
-            action: first ? null : h('a', { class: 'btn quiet small', href: href('digests', [], { kind: 'weekly' }), text: 'Open weekly reviews' }),
+            action: first && data.bounds.last
+                ? h('a', { class: 'btn quiet small', href: href('digests', [], { month: data.bounds.last.slice(0, 7) === now.slice(0, 7) ? null : data.bounds.last.slice(0, 7) }), text: `Open ${monthLabel(data.bounds.last.slice(0, 7))}, the newest` })
+                : h('a', { class: 'btn quiet small', href: href('digests', [], { kind: 'weekly' }), text: 'Open weekly reviews' }),
         });
 
     return h('div', { class: 'digests-browse' },
@@ -254,7 +260,12 @@ async function weekly(ctx) {
             h('span', { class: 'muted', text: plural(data.bounds.count, 'week') })),
         data.digests.length
             ? h('ul', { class: 'digest-list' }, data.digests.map(digestItem))
-            : emptyState({ title: 'No weekly reviews yet.', text: 'The weekly review is published each Sunday from that week\'s daily digests.', iconName: 'calendar' }));
+            : emptyState({
+                title: 'No weekly reviews yet.',
+                text: 'The weekly review is published each Sunday from that week\'s daily digests.',
+                iconName: 'calendar',
+                action: h('a', { class: 'btn quiet small', href: href('digests'), text: 'Open daily digests' }),
+            }));
 }
 
 async function browse(ctx) {

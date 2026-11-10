@@ -112,6 +112,8 @@ const ICONS = {
     history: ['M3.5 12a8.5 8.5 0 1 0 2.5-6', 'M3 4v4h4', 'M12 8v4l3 2'],
     calendar: ['M4 6h16v14H4z', 'M4 10h16', 'M8 3v4', 'M16 3v4'],
     check: ['M5 12.5l4.5 4.5L19 7.5'],
+    retry: ['M20.5 12a8.5 8.5 0 1 1-2.5-6', 'M21 4v4h-4'],
+    offline: ['M3 3l18 18', 'M8.5 6.2A6 6 0 0 1 17.6 10H18a4 4 0 0 1 2 7.5', 'M16 19H7a4 4 0 0 1-1.6-7.7'],
     keyboard: ['M3 7h18v10H3z', 'M7 11h.01', 'M11 11h.01', 'M15 11h.01', 'M8 14h8'],
     prev: ['M15 6l-6 6 6 6'],
     next: ['M9 6l6 6-6 6'],
@@ -336,6 +338,27 @@ export function emptyState({ title, text, action, iconName = 'info' }) {
         h('p', { class: 'empty-title', text: title }),
         text ? h('p', { class: 'empty-text', text }) : null,
         action || null);
+}
+
+// A failed load, shown in place of what did not load, with Retry. Network failures say so plainly.
+export function errorState({ err, retry, what = 'This page' }) {
+    const net = Boolean(err && err.network);
+    return h('div', { class: 'empty error-state', role: 'alert' },
+        icon(net ? 'offline' : 'bad', 'empty-icon'),
+        h('p', { class: 'empty-title', text: net ? 'The hub did not answer.' : `${what} did not load.` }),
+        h('p', { class: 'empty-text', text: net ? 'The connection or the service may be down. Nothing was changed; try again in a moment.' : (err && err.message) || 'Something went wrong.' }),
+        retry ? button({
+            text: 'Retry', variant: 'quiet', iconName: 'retry', 'data-key': 'retry',
+            onClick: async (event) => {
+                const b = event.currentTarget;
+                if (b.getAttribute('aria-disabled') === 'true') return;
+                b.setAttribute('aria-disabled', 'true');
+                b.querySelector('span').textContent = 'Retrying…';
+                try { await retry(); } finally {
+                    if (b.isConnected) { b.removeAttribute('aria-disabled'); b.querySelector('span').textContent = 'Retry'; }
+                }
+            },
+        }) : null);
 }
 
 // Re-render part of the page without losing keyboard focus: elements carry data-key and the focused one

@@ -15,13 +15,17 @@ export async function api(path, { method = 'GET', body } = {}) {
             body: body ? JSON.stringify(body) : undefined,
         });
     } catch (e) {
-        throw new Error('The hub did not answer. Check that the service is running, then try again.');
+        const err = new Error('The hub did not answer. Check the connection and that the service is running, then try again.');
+        err.network = true;
+        throw err;
     }
     let data = null;
     try { data = await res.json(); } catch (e) { /* no body */ }
     if (res.status === 401 && path !== '/login') {
         onUnauthorized();
-        throw new Error('Your session ended. Sign in again.');
+        const err = new Error('Your session ended. Sign in again.');
+        err.status = 401;
+        throw err;
     }
     if (!res.ok) {
         const err = new Error((data && data.error) || `The request failed (${res.status}).`);
