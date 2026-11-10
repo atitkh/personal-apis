@@ -50,8 +50,32 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
   console errors, text contrast 4.5:1), calendar and strip arrows, drawer focus trap/Esc/focus return, revoke
   dialog focus return, copy button.
 
-## Next
+## Done (stage 3)
 
-- Stage 3: shortcuts (`g o`, `g d`, `g k`, `/`, `?`), mobile tables as stacked rows, contrast pass, error states.
-- Small open points: the rail is not collapsible by keyboard shortcut yet; at 390 px activity times sit under the
-  sentence (fine, could be tighter).
+- Web app manifest and icons (CSP gains only `manifest-src 'self'`), theme-color per theme, titles "View - Personal hub".
+- Overview: bolder channel board on one subgrid; System facts moved to the rail foot and Settings.
+- Digests: month calendar beside the reader from 1100 px (sticky), below it on narrower screens.
+- Keyboard shortcuts in `shortcuts.js`: `g o/d/k/a/s`, `/` (page search or the palette), `?` (list), `[` (rail);
+  ignored while typing or with a dialog open. Listed in Settings, the palette and the `?` dialog.
+- Phones: tables as stacked rows, More bottom sheet (other sections, search, sign out), 44 px targets.
+- A 401 mid-session shows sign-in with "Your session ended" and returns to the same `#/route` (drawers too).
+  Failed loads show an inline error with Retry; a view file that failed to download is imported again under a
+  fresh URL on Retry (browsers keep failed modules). Every empty state names the next action.
+- `skeletons.js`: loading placeholders shaped like each view (board, digests list and reader with calendar,
+  keys, agent access, backups, portfolio, activity, settings), measured against the loaded page at 1280 and 390 px.
+- Contrast and motion: text 4.5:1, control borders and cables 3:1 vs page and surface, in light and dark, at
+  1280 and 390 (scripted audit of every view, drawer, palette and `?` dialog: no failures). Focus rings on every
+  focusable in views, drawers, palette, calendar and switches. `prefers-reduced-motion` turns off cable draw-in,
+  drawer and sheet slides, toasts and skeleton pulse (one CSS rule plus a JS check for the draw-in).
+- Tests: 143 pass in node:20, including CSP manifest-src, manifest/icon serving, and a check that every admin
+  module parses, is served as JavaScript and imports only files that exist.
+- Verified in headless Chrome on a seeded scratch hub and an empty one: every shortcut, the 401 flow (cookies
+  cleared, sign in, back on `#/activity?type=agents` and on an open key drawer), Retry offline and on a 500,
+  stacked rows and the More sheet at 390 px, calendar beside at 1280/1400 and below at 900, empty states.
+
+## Open
+
+- Segmented options are 42 px tall on phones inside a 46 px control (the switch has a 44 px hit area);
+  fine in use, short of a strict 44 px per option.
+- Skeletons match the first screen; long lists (activity, portfolio) are naturally taller once loaded.
+- The admin rate limit (600 requests per 15 minutes) counts static files; heavy reloading can hit it.
