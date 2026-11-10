@@ -1,7 +1,7 @@
 // Personal hub admin. Plain ES modules, no build step, no framework.
 // app.js wires things together: session, shell, routes, command palette. Views live in views/*.js
 // and export render(ctx); a new view is one file plus one register() line below.
-import { h, toast, skeleton, emptyState, errorState, keepFocus } from './ui.js';
+import { h, toast, emptyState, errorState, keepFocus } from './ui.js';
 import { api, setUnauthorizedHandler } from './api.js';
 import * as router from './router.js';
 import { createShell } from './shell.js';
@@ -9,6 +9,7 @@ import { openPalette, installShortcut, addSource, digestCommand } from './palett
 import { THEMES, setPreference } from './theme.js';
 import { installShortcuts, showShortcuts, GO } from './shortcuts.js';
 import { renderSignIn } from './views/signin.js';
+import { pageSkeleton } from './skeletons.js';
 
 router.register('overview', { title: 'Overview', icon: 'overview', nav: true, mobile: true, load: () => import('./views/overview.js') });
 router.register('digests', { title: 'Digests', icon: 'digests', nav: true, mobile: true, load: () => import('./views/digests.js') });
@@ -77,7 +78,7 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
     shell.setRoute(route.name, def ? def.title : 'Not found');
     if (!soft) {
         runCleanups();
-        shell.content.replaceChildren(skeleton(4, 'page-skeleton'));
+        shell.content.replaceChildren(pageSkeleton(route));
     }
     let node;
     const mine = []; // this render's timers and listeners; they replace the previous render's once it shows

@@ -47,5 +47,5 @@ export async function render(ctx) {
         h('section', { class: 'panel', 'aria-labelledby': 's-keys' },
             h('h2', { id: 's-keys', text: 'Keyboard shortcuts' }),
             h('p', { class: 'note', text: 'Letter keys work anywhere except while you type in a field. Press ? to see this list from any page.' }),
-            shortcutList())));
+            shortcutList()));
 }

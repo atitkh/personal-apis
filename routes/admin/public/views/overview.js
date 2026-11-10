@@ -2,7 +2,7 @@
 // and an Off / Read / Read and write selector), what needs attention, and recent agent activity.
 // Refetches when the tab comes back and every 60 s while it is visible.
 import {
-    h, icon, toggleSwitch, segmented, confirmDialog, toast, emptyState, skeleton,
+    h, icon, toggleSwitch, segmented, confirmDialog, toast, emptyState,
     plural, ago, domainHue, hidden,
 } from '../ui.js';
 import { dayBars, coverageStrip, legend } from '../charts.js';
@@ -299,4 +299,3 @@ export async function render(ctx) {
         lower);
 }
 
-export const placeholder = () => skeleton(5);
