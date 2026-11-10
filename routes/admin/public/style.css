@@ -867,7 +867,6 @@ textarea.plain { font-family: var(--font-ui); font-size: var(--fs-sm); line-heig
 .rule-main { display: grid; gap: 4px; min-width: 0; flex: 1 1 260px; }
 .rule-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .rule-value { overflow-wrap: anywhere; }
-.rule.is-exclude .rule-value { text-decoration: line-through; text-decoration-color: var(--bad); }
 .rule-actions { display: flex; gap: 6px; align-items: flex-start; }
 .diff-plain { font-family: var(--font-ui); font-size: var(--fs-sm); line-height: 1.5; }
 .diff-plain p { overflow-wrap: anywhere; }
