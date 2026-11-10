@@ -9,6 +9,7 @@ export const GO = [
     ['o', 'overview', 'Overview'],
     ['d', 'digests', 'Digests'],
     ['p', 'places', 'Places'],
+    ['f', 'flights', 'Flights'],
     ['k', 'keys', 'API keys'],
     ['a', 'agents', 'Agent access'],
     ['s', 'settings', 'Settings'],

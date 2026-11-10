@@ -67,6 +67,24 @@ const SHAPES = {
                 h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
                 h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(5, 5)))),
 
+    flights: (route) => wrap('view flights',
+        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab'), bar('sk-tab')),
+        route.query.get('tab') === 'found'
+            ? h('div', { class: 'tab-panel' }, bar('sk-line w-80'),
+                h('section', { class: 'skel-stack' }, bar('sk-title w-20'),
+                    h('ul', { class: 'queue-list' }, rows(3, () => h('li', { class: 'queue-item' },
+                        h('div', { class: 'q-main' }, bar('sk-read w-40'), bar('sk-line w-70'), bar('sk-line w-50')),
+                        h('div', { class: 'q-actions' }, bar('sk-pill'), bar('sk-pill')))))))
+            : route.query.get('tab') === 'flights' || route.parts.length
+                ? h('div', { class: 'tab-panel' },
+                    h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
+                    h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(5, 6)))
+                : h('div', { class: 'tab-panel' },
+                    h('div', { class: 'row' }, rows(4, () => bar('sk-chip'))),
+                    h('div', { class: 'count-grid' }, rows(6, () => bar('sk-tile'))),
+                    bar('sk-map'))),
+
     keys: () => wrap('view keys',
         h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
         h('section', {}, bar('sk-title w-20'), tableRows(3)),

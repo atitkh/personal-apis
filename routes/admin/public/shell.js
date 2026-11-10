@@ -15,6 +15,12 @@ function brandMark() {
 
 export function createShell({ session, onSignOut, openPalette, api }) {
     const navLinks = new Map();
+    const badges = new Map();
+    const paintBadge = (a, n) => {
+        for (const old of a.querySelectorAll('.nav-badge, .nav-badge-text')) old.remove();
+        if (!n) return;
+        a.append(h('span', { class: 'nav-badge', 'aria-hidden': 'true', text: String(n) }), h('span', { class: 'visually-hidden nav-badge-text', text: `, ${n} waiting` }));
+    };
     const routes = router.all().filter((r) => r.nav);
 
     const rail = h('aside', { class: 'rail', 'aria-label': 'Main' },
@@ -128,7 +134,11 @@ export function createShell({ session, onSignOut, openPalette, api }) {
             title: 'More',
             content: h('nav', { class: 'sheet-nav', 'aria-label': 'More sections' },
                 h('ul', {},
-                    rest.map((r) => h('li', {}, h('a', { class: 'sheet-link', href: router.href(r.name), 'aria-current': r.name === currentName ? 'page' : null }, icon(r.icon), h('span', { text: r.title })))),
+                    rest.map((r) => {
+                        const a = h('a', { class: 'sheet-link', href: router.href(r.name), 'aria-current': r.name === currentName ? 'page' : null }, icon(r.icon), h('span', { text: r.title }));
+                        paintBadge(a, badges.get(r.name));
+                        return h('li', {}, a);
+                    }),
                     h('li', { class: 'sheet-sep' }, h('button', { type: 'button', class: 'sheet-link', onclick: (e) => { e.target.closest('dialog').close(); openPalette(); } }, icon('search'), h('span', { text: 'Search or jump to' }))),
                     h('li', {}, h('button', { type: 'button', class: 'sheet-link', onclick: (e) => { e.target.closest('dialog').close(); onSignOut(); } }, icon('signout'), h('span', { text: 'Sign out' }))))),
         });
@@ -156,6 +166,11 @@ export function createShell({ session, onSignOut, openPalette, api }) {
         toggleRail() {
             if (matchMedia('(max-width: 760px)').matches) return;
             setCollapsed(!collapsed);
+        },
+        // A small count on a menu entry (the rail, and the More sheet where the entry lives there). 0 hides it.
+        setBadge(name, n) {
+            badges.set(name, n);
+            for (const a of navLinks.get(name) || []) paintBadge(a, n);
         },
         setRoute(name, text) {
             currentName = name;

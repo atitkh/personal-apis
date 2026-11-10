@@ -30,6 +30,8 @@ export async function api(path, { method = 'GET', body } = {}) {
     if (!res.ok) {
         const err = new Error((data && data.error) || `The request failed (${res.status}).`);
         err.status = res.status;
+        if (data && data.code) err.code = data.code;
+        err.data = data;
         throw err;
     }
     return data;

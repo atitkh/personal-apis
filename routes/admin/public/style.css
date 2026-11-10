@@ -215,7 +215,7 @@ code, kbd { font-family: var(--font-mono); font-size: 0.92em; }
 /* ---------- forms ---------- */
 
 label { display: grid; gap: 6px; font-weight: 600; }
-input[type="text"], input[type="password"], input[type="search"], textarea, select {
+input[type="text"], input[type="password"], input[type="search"], input[type="datetime-local"], textarea, select {
     width: 100%; min-height: 38px; padding: 8px 10px;
     border: 1px solid var(--line-strong); border-radius: var(--r-ctl);
     background: var(--surface); color: var(--ink); font: inherit; font-weight: 400;
@@ -901,6 +901,112 @@ label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ac
 .skel .sk-tab { width: 110px; height: 40px; border-radius: var(--r-ctl) var(--r-ctl) 0 0; }
 .skel .sk-check { min-height: 52px; display: flex; align-items: center; padding: 0 20px; }
 
+/* ---------- flights ---------- */
+
+/* The Flights view uses its channel colour (teal) for the selected tab and the count badge. */
+.view.flights .vtab[aria-selected="true"] { box-shadow: inset 0 3px 0 var(--teal); }
+.view.flights .badge { background: var(--teal); }
+.nav-badge {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: auto;
+    border-radius: 999px; background: var(--teal); color: var(--surface); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.rail-collapsed .nav-badge { display: none; }
+.sheet-link .nav-badge { margin-left: auto; }
+
+/* Passport */
+.stat-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); }
+.stat-tile { padding: 16px 18px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.stat-tile + .stat-tile { border-left: 1px solid var(--line); }
+.stat-value { font-size: var(--fs-xl); font-weight: 600; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat-label { font-weight: 600; }
+.stat-sub { color: var(--muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.map-panel { display: grid; gap: 12px; padding: 16px; }
+.map-wrap { position: relative; width: 100%; aspect-ratio: 360 / 142; border-radius: var(--r-ctl); overflow: hidden; background: var(--surface-2); }
+.route-map { display: block; width: 100%; height: 100%; }
+.route-map .graticule { fill: none; stroke: var(--line-strong); stroke-width: .4; stroke-dasharray: 1 3; stroke-linecap: round; opacity: .55; vector-effect: non-scaling-stroke; }
+.route-map .land { fill: color-mix(in srgb, var(--muted) 24%, var(--surface)); stroke: var(--line-strong); stroke-width: .6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.route-map .arc { fill: none; stroke: var(--teal); stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.route-map .arc-weak { stroke-width: 1.4px; opacity: .55; }
+.route-map .arc-mid { stroke-width: 1.8px; opacity: .8; }
+.route-map .arc-strong { stroke-width: 2.4px; opacity: 1; }
+.route-map .pt { fill: none; stroke: var(--ink); stroke-width: 6px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.route-map .pt-home { stroke: var(--accent); stroke-width: 9px; }
+.map-label {
+    position: absolute; transform: translate(-50%, -135%); padding: 0 4px; border-radius: 4px; pointer-events: none;
+    background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: .02em; line-height: 16px;
+}
+.map-label.is-home { color: var(--accent); }
+.records-section { display: grid; gap: 12px; }
+.records { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.record { display: grid; gap: 2px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); }
+.record-title { color: var(--muted); font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.record-main { font-size: var(--fs-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.top-lists { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.top-list { padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); display: grid; gap: 8px; align-content: start; }
+.top-list h3 { font-size: var(--fs-sm); }
+.top-list ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.top-list li { display: flex; justify-content: space-between; gap: 10px; }
+.top-name { overflow-wrap: anywhere; }
+.top-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Flights tab */
+.upcoming { display: grid; gap: 10px; }
+.up-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.up-card { display: grid; gap: 4px; padding: 14px 16px; height: 100%; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--teal); border-radius: var(--r-panel); color: inherit; text-decoration: none; }
+.up-card:hover { background: var(--surface-2); }
+.up-route { font-size: var(--fs-lg); font-weight: 600; letter-spacing: .01em; }
+.route { white-space: nowrap; font-weight: 600; }
+.route-arrow { padding: 0 6px; color: var(--muted); }
+.status-chip.is-cancelled { border-style: dashed; border-color: var(--bad); color: var(--muted); text-decoration: line-through; }
+.status-chip.is-completed { background: var(--good-soft); }
+.status-chip.is-scheduled { background: var(--accent-soft); }
+.filter-bar { align-items: flex-start; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filters select { width: auto; min-width: 130px; }
+.home-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 16px; }
+.home-row > .icon { color: var(--teal); }
+.home-row > p { flex: 1 1 260px; }
+.flights-table tbody tr { cursor: pointer; }
+.flights-table tbody tr:hover td { background: var(--surface-2); }
+
+/* The flight form */
+.flight-form { gap: 16px; }
+.flight-group { border: 1px solid var(--line); border-radius: var(--r-panel); padding: 12px 14px 16px; margin: 0; min-width: 0; }
+.flight-group legend { padding: 0 6px; font-weight: 700; font-size: var(--fs-sm); }
+.group-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.group-grid .wide-field { grid-column: 1 / -1; }
+.flight-extra { border: 1px solid var(--line); border-radius: var(--r-panel); padding: 10px 14px; }
+.flight-extra > summary { cursor: pointer; font-weight: 600; min-height: 28px; }
+.flight-extra[open] > summary { margin-bottom: 12px; }
+.ref-row { display: flex; gap: 8px; align-items: center; }
+.ref-row .btn { flex: none; }
+input.iata { text-transform: uppercase; }
+input.iata::placeholder { text-transform: none; }
+.airport-hint:empty { display: none; }
+.q-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.skel .sk-tile { height: 92px; border-radius: var(--r-ctl); }
+.skel .count-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.skel .sk-map { height: 320px; border-radius: var(--r-panel); }
+
+@media (max-width: 1100px) {
+    .stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .stat-tile:nth-child(3n + 1) { border-left: 0; }
+    .stat-tile:nth-child(n + 4) { border-top: 1px solid var(--line); }
+    .top-lists { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .skel .count-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+    .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat-tile:nth-child(3n + 1) { border-left: 1px solid var(--line); }
+    .stat-tile:nth-child(2n + 1) { border-left: 0; }
+    .stat-tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
+    .records, .top-lists, .up-list, .group-grid { grid-template-columns: minmax(0, 1fr); }
+    .skel .count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .skel .sk-map { height: 160px; }
+    .filters select { flex: 1 1 140px; }
+    .map-label { font-size: 10px; line-height: 14px; }
+}
+
 /* ---------- agent access ---------- */
 
 .th-domain { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: var(--fs-sm); }
@@ -1066,7 +1172,7 @@ td .chip { margin-left: 8px; }
     /* Thumb-sized targets: 44px for buttons, fields, selectors, chips and switches. */
     .btn, .btn.small { min-height: 44px; }
     .btn.icon-only, .btn.small.icon-only { width: 44px; }
-    input[type="text"], input[type="password"], input[type="search"], select { min-height: 44px; }
+    input[type="text"], input[type="password"], input[type="search"], input[type="datetime-local"], select { min-height: 44px; }
     .seg { min-height: 42px; }
     .icon-seg .seg { width: 40px; }
     .chip-link { min-height: 44px; }

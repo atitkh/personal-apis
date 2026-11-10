@@ -15,6 +15,7 @@ const WRITE_WARNING = {
     digests: "Agents holding a digests edit or publish key will be able to change digests. Every earlier version is kept.",
     places: 'Agents holding a places suggest key can file streets into the Needs a name queue, and a places edit key can add and change places and their rules. Every earlier version is kept; deleting and naming the queue stay with you.',
 };
+WRITE_WARNING.flights = 'Agents holding a flights suggest key can file found flights into the review queue, and a flights edit key can add flights and change existing ones. Every earlier version is kept; accepting, dismissing and cancelling stay with you.';
 const writeWarning = (name) => WRITE_WARNING[name] || MCP_WRITE_WARNING;
 const REFRESH_MS = 60 * 1000;
 const UPCOMING = [{ name: 'flights', title: 'Flights', text: 'Next domain. Past and upcoming trips.' }];
@@ -180,7 +181,7 @@ function issues(o) {
     const waiting = o.places && o.places.suggestions ? o.places.suggestions.pending : 0;
     if (waiting) out.push({ kind: 'warn', text: `${plural(waiting, 'spot')} ${waiting === 1 ? 'needs' : 'need'} a name.`, hint: 'Streets the nightly digest saw that no place claims yet.', link: ['places', waiting === 1 ? 'Name it' : 'Name them', { tab: 'queue' }] });
     const found = o.flights && o.flights.candidates ? o.flights.candidates.pending : 0;
-    if (found) out.push({ kind: 'warn', text: `${plural(found, 'found flight')} ${found === 1 ? 'waits' : 'wait'} for review.`, hint: 'Flights a job or an agent found; accept or dismiss them.', link: ['activity', 'See activity', { type: 'flights' }] });
+    if (found) out.push({ kind: 'warn', text: `${plural(found, 'found flight')} ${found === 1 ? 'waits' : 'wait'} for review.`, hint: 'Flights a job or an agent found; accept or dismiss them.', link: ['flights', found === 1 ? 'Review it' : 'Review them', { tab: 'found' }] });
     if (o.portfolio.problems) out.push({ kind: 'warn', text: `${plural(o.portfolio.problems, 'portfolio file')} ${o.portfolio.problems === 1 ? 'needs' : 'need'} a look.`, link: ['portfolio', 'Open portfolio'] });
     return out;
 }
