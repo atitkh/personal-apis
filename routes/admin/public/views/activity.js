@@ -108,8 +108,10 @@ export async function render(ctx) {
         text: 'Show older events',
         variant: 'quiet',
         'data-key': 'load-more',
+        // aria-disabled, not disabled: a disabled button drops keyboard focus to the page.
         onClick: async () => {
-            loadMore.disabled = true;
+            if (loadMore.getAttribute('aria-disabled') === 'true') return;
+            loadMore.setAttribute('aria-disabled', 'true');
             try {
                 const next = await ctx.api(`/activity?type=${type}&limit=${PAGE}&before=${events[events.length - 1].id}`);
                 events.push(...next.events);
@@ -118,7 +120,7 @@ export async function render(ctx) {
             } catch (err) {
                 toast(`Could not load older events. ${err.message}`, { kind: 'bad' });
             }
-            loadMore.disabled = false;
+            loadMore.removeAttribute('aria-disabled');
         },
     });
 
@@ -126,7 +128,7 @@ export async function render(ctx) {
         list.replaceChildren(...groups(events).map((g) => h('section', { class: 'day', 'aria-labelledby': `day-${g.day}` },
             h('h2', { class: 'day-title', id: `day-${g.day}` }, h('span', { text: dayHeading(g.day) }), h('span', { class: 'day-count', text: String(g.events.length) }), hidden(g.events.length === 1 ? ' event' : ' events')),
             h('ol', { class: 'events' }, g.events.map(eventItem)))));
-        foot.replaceChildren(more ? loadMore : events.length > 8 ? h('p', { class: 'note', text: 'That is everything in the log.' }) : '');
+        foot.replaceChildren(more ? loadMore : events.length > 8 ? h('p', { class: 'note', tabindex: '-1', 'data-key': 'load-more', text: 'That is everything in the log.' }) : '');
     }
     paint();
 
