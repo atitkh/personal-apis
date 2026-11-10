@@ -69,7 +69,14 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         next();
     });
 
-    router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, standardHeaders: true, legacyHeaders: false }));
+    // Only API calls count: one page load fetches about 30 static files, which would use the budget up fast.
+    router.use(rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 600,
+        standardHeaders: true,
+        legacyHeaders: false,
+        skip: (req) => !req.path.startsWith('/api'),
+    }));
 
     // The page uses relative URLs, so /admin must become /admin/ first.
     router.use((req, res, next) => {
