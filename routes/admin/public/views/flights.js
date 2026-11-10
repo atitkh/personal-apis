@@ -16,6 +16,14 @@ import { passportTab, getUnit, distanceText } from '../passport.js';
 const TABS = [['passport', 'Passport'], ['flights', 'Flights'], ['found', 'Found flights']];
 const SHOW = [['pending', 'Waiting'], ['accepted', 'Added'], ['dismissed', 'Dismissed'], ['all', 'All']];
 const STATUS = { scheduled: 'Scheduled', completed: 'Completed', cancelled: 'Cancelled' };
+// A flight's status is automatic (scheduled until it has landed, then completed) unless set to completed or cancelled by hand.
+// `status` in every answer is the effective one, `status_override` the hand-set one (null = automatic). The form's Status
+// select is auto / completed / cancelled; the server also accepts 'auto'. The filter on the Flights tab is the effective status.
+const autoStatus = (f) => {
+    const end = f.actual_arr || f.sched_arr || f.sched_dep;
+    return end && Date.parse(end) < Date.now() ? 'completed' : 'scheduled';
+};
+const statusChoices = (f) => ({ auto: f ? `Automatic (${STATUS[autoStatus(f)].toLowerCase()})` : 'Automatic', completed: 'Completed', cancelled: 'Cancelled' });
 const SOURCE = { manual: 'Added by hand', gmail: 'Found in email', calendar: 'Found in the calendar', feed: 'From a feed' };
 const FORM_FIELDS = ['airline_iata', 'airline_name', 'flight_number', 'origin_iata', 'dest_iata', 'sched_dep', 'sched_arr', 'actual_dep', 'actual_arr',
     'aircraft_type', 'cabin', 'seat', 'booking_ref', 'status', 'trip_id', 'notes'];
@@ -206,7 +214,7 @@ function refField(value) {
 // The values the form starts from. `f` is a flight, a candidate (candidate: true) or nothing.
 function startValues(f, { candidate = false } = {}) {
     const v = Object.fromEntries(FORM_FIELDS.map((k) => [k, '']));
-    v.status = 'scheduled';
+    v.status = 'auto';
     if (!f) return v;
     Object.assign(v, {
         airline_iata: f.airline_iata || '',
@@ -222,10 +230,12 @@ function startValues(f, { candidate = false } = {}) {
         cabin: f.cabin || '',
         seat: f.seat || '',
         booking_ref: f.booking_ref || '',
-        status: candidate ? 'scheduled' : f.status || 'scheduled',
+        status: (candidate ? f.flight_status : f.status_override) || 'auto',
         trip_id: !candidate && f.trip_id ? String(f.trip_id) : '',
         notes: f.notes || '',
     });
+    // What Automatic resolves to is shown in the select; not a form field, so never sent.
+    v.statusOf = { actual_arr: candidate ? null : f.actual_arr, sched_arr: f.sched_arr, sched_dep: f.sched_dep };
     return v;
 }
 
@@ -246,7 +256,7 @@ function clean(v) {
         cabin: t(v.cabin),
         seat: t(v.seat) && t(v.seat).toUpperCase(),
         booking_ref: t(v.booking_ref) && t(v.booking_ref).toUpperCase(),
-        status: v.status || 'scheduled',
+        status: v.status || 'auto',
         trip_id: v.trip_id && /^\d+$/.test(String(v.trip_id)) ? Number(v.trip_id) : null,
         notes: t(v.notes),
     };
@@ -262,8 +272,8 @@ function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirt
     const dt = (name, label, help) => { f[name] = textInput(name, values[name], { type: 'datetime-local' }); return field(label, f[name], help); };
     const tx = (name, label, attrs, help) => { f[name] = textInput(name, values[name], attrs); return field(label, f[name], help); };
 
-    const status = h('select', { name: 'status', 'data-key': 'f-status' }, Object.entries(STATUS).map(([k, label]) => h('option', { value: k, text: label })));
-    status.value = values.status || 'scheduled';
+    const status = h('select', { name: 'status', 'data-key': 'f-status' }, Object.entries(statusChoices(values.statusOf)).map(([k, label]) => h('option', { value: k, text: label })));
+    status.value = values.status || 'auto';
     const trip = h('select', { name: 'trip_id', 'data-key': 'f-trip' },
         h('option', { value: '', text: 'No trip' }),
         trips.map((t) => h('option', { value: String(t.id), text: `${t.title}${t.start_date ? ` (${t.start_date})` : ''}` })),
@@ -343,7 +353,7 @@ function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirt
         dt('sched_dep', 'Departs', 'The clock at the departure airport.'),
         dt('sched_arr', 'Arrives', 'The clock at the arrival airport. Changing an airport does not move a time you leave alone.')),
     group('Details',
-        field('Status', status, 'Cancelled keeps the flight and its history but leaves it out of the Passport.'),
+        field('Status', status, 'Automatic is scheduled until the flight has landed, then completed. Cancelled keeps the flight and its history but leaves it out of the Passport.'),
         field('Trip', trip),
         newTripField,
         tx('aircraft_type', 'Aircraft', { maxlength: '40' }, 'For example B738.'),
@@ -371,7 +381,7 @@ function snapshotLines(f, tripName) {
         `Arrives: ${f.arr_local ? f.arr_local.replace('T', ' ') : 'not set'}`,
         `Actual departure: ${f.actual_dep ? localInput(f.actual_dep, f.dep_tz).replace('T', ' ') : 'none'}`,
         `Actual arrival: ${f.actual_arr ? localInput(f.actual_arr, f.arr_tz).replace('T', ' ') : 'none'}`,
-        `Status: ${STATUS[f.status] || f.status}`,
+        `Status: ${STATUS[f.status] || f.status}${f.status_override ? ' (set by hand)' : ' (automatic)'}`,
         `Trip: ${f.trip_id ? tripName(f.trip_id) : 'none'}`,
         `Aircraft: ${f.aircraft_type || 'none'}`,
         `Cabin: ${f.cabin || 'none'}`,
@@ -836,6 +846,7 @@ function queueItem(ctx, c, { next }) {
             h('p', { class: 'q-chips' },
                 chip(confidenceWord(c.confidence), { cls: c.confidence != null && c.confidence < 0.5 ? 'chip-exclude' : '' }),
                 chip(SOURCE[c.source] || c.source),
+                c.flight_status ? chip(STATUS[c.flight_status] || c.flight_status, { cls: c.flight_status === 'cancelled' ? 'chip-exclude' : '' }) : null,
                 c.booking_ref ? chip('Booking reference found') : null,
                 h('span', { class: 'muted', text: `Found ${ago(c.created_at)}` })),
             decided ? h('p', { class: 'q-status' },

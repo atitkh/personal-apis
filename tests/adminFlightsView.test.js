@@ -145,3 +145,30 @@ describe('admin flights view API: writing', () => {
         expect(r.counts).toBeDefined();
     });
 });
+
+describe('admin flights view API: effective status', () => {
+    const body = (n, extra = {}) => ({ airline_iata: 'UA', flight_number: String(n), origin_iata: 'DEN', dest_iata: 'SEA', sched_dep: '2024-08-01T08:00', sched_arr: '2024-08-01T10:00', ...extra });
+
+    test('an automatic past flight reads completed, a future one scheduled; status_override says if it was set by hand', async () => {
+        const past = (await agent.post('/admin/api/flights').set(H).send(body(500, { status: 'auto' })).expect(201)).body;
+        const future = (await agent.post('/admin/api/flights').set(H).send(body(501, { sched_dep: '2031-08-01T08:00', sched_arr: '2031-08-01T10:00' })).expect(201)).body;
+        expect((await agent.get(`/admin/api/flights/${past.id}`).expect(200)).body).toMatchObject({ status: 'completed', status_override: null });
+        expect((await agent.get(`/admin/api/flights/${future.id}`).expect(200)).body).toMatchObject({ status: 'scheduled', status_override: null });
+        const list = (await agent.get('/admin/api/flights').expect(200)).body.flights;
+        expect(list.find((f) => f.id === past.id)).toMatchObject({ status: 'completed', status_override: null });
+        expect((await agent.get('/admin/api/flights?status=scheduled').expect(200)).body.flights.map((f) => f.id)).toEqual(expect.arrayContaining([future.id]));
+        expect((await agent.get('/admin/api/flights?status=scheduled').expect(200)).body.flights.map((f) => f.id)).not.toContain(past.id);
+        expect((await agent.get('/admin/api/flights?status=bogus').expect(400)).body.code).toBe('bad_status');
+    });
+
+    test('forcing cancelled and back to auto through PATCH; history keeps the stored value', async () => {
+        const made = (await agent.post('/admin/api/flights').set(H).send(body(502, { sched_dep: '2031-09-01T08:00', sched_arr: '2031-09-01T10:00' })).expect(201)).body;
+        await agent.patch(`/admin/api/flights/${made.id}`).set(H).send({ status: 'cancelled' }).expect(200);
+        expect((await agent.get(`/admin/api/flights/${made.id}`).expect(200)).body).toMatchObject({ status: 'cancelled', status_override: 'cancelled' });
+        expect((await agent.get('/admin/api/flights?status=cancelled').expect(200)).body.flights.map((f) => f.id)).toContain(made.id);
+        await agent.patch(`/admin/api/flights/${made.id}`).set(H).send({ status: 'auto' }).expect(200);
+        expect((await agent.get(`/admin/api/flights/${made.id}`).expect(200)).body).toMatchObject({ status: 'scheduled', status_override: null });
+        expect((await agent.get(`/admin/api/flights/${made.id}?rev=2`).expect(200)).body).toMatchObject({ status: 'cancelled', status_override: 'cancelled' });
+        await agent.patch(`/admin/api/flights/${made.id}`).set(H).send({ status: 'landed' }).expect(400);
+    });
+});
