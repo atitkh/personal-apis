@@ -411,7 +411,9 @@ async function reader(ctx, kind, period) {
             readerHead(kind, period),
             emptyState({
                 title: future ? 'Not written yet.' : `No ${kind} digest for this ${kind === 'daily' ? 'day' : 'week'}.`,
-                text: future ? 'The nightly job writes the daily digest at 11 PM.' : 'The job did not deliver one. It shows as missing on the calendar.',
+                text: kind === 'weekly'
+                    ? (future ? "The weekly review is published each Sunday from that week's daily digests." : 'None was published for this week. Pick another one from the list.')
+                    : (future ? 'The nightly job writes the daily digest at 11 PM.' : 'The nightly job did not deliver one. Pick another day from the month.'),
                 iconName: future ? 'calendar' : 'warn',
                 action: h('a', { class: 'btn quiet small', href: listHref(kind, period), text: kind === 'daily' ? 'Open the month' : 'Open weekly reviews' }),
             }),

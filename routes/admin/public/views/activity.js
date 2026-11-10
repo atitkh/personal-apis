@@ -16,6 +16,8 @@ const TYPES = [
     ['digests', 'Digests'],
     ['signins', 'Sign-ins'],
 ];
+// Empty-state titles per chip, in words that fit the events ("No agents events" read badly).
+const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', signins: 'No sign-ins yet.' };
 const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', flights: 'Flights' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
@@ -141,7 +143,7 @@ export async function render(ctx) {
         events.length
             ? h('div', {}, list, foot)
             : emptyState({
-                title: type === 'all' ? 'Nothing has happened yet.' : `No ${label} events yet.`,
+                title: type === 'all' ? 'Nothing has happened yet.' : NONE[type] || `No ${label} events yet.`,
                 text: type === 'all' ? 'Sign-ins, key changes and agent calls show up here.' : 'Pick All to see everything else.',
                 iconName: 'activity',
                 action: type === 'all'
