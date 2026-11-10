@@ -432,6 +432,47 @@ function stats(db, { year, now: at = new Date() } = {}) {
     };
 }
 
+/* ---------- airports and the map ---------- */
+
+// Airports for the dashboard's autocomplete: IATA code first, then code or city prefix, then names. At most 20.
+function searchAirports(db, q, { limit } = {}) {
+    const term = String(q == null ? '' : q).trim().slice(0, 40);
+    if (!term) return [];
+    const n = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 20);
+    const esc = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+    return db.prepare(`SELECT iata, icao, name, city, country, lat, lon, tz FROM airports
+        WHERE iata = @u OR iata LIKE @p ESCAPE '\\' OR icao LIKE @p ESCAPE '\\' OR city LIKE @p ESCAPE '\\' OR name LIKE @c ESCAPE '\\'
+        ORDER BY (iata = @u) DESC, (iata LIKE @p ESCAPE '\\') DESC, (city LIKE @p ESCAPE '\\') DESC, name LIMIT @n`)
+        .all({ u: term.toUpperCase(), p: `${esc}%`, c: `%${esc}%`, n });
+}
+
+// What the Passport map draws: the airports visited (with coordinates) and the routes between them, direction
+// agnostic, for the flights `stats` counts (not cancelled, departed by now, optional year). Airports the hub
+// does not know are left out. No flight ids, numbers, dates or booking references.
+function mapData(db, { year, now: at = new Date() } = {}) {
+    const y = cleanYear(year);
+    const iso = new Date(at).toISOString();
+    const rows = db.prepare("SELECT origin_iata, dest_iata, dep_local_date FROM flights WHERE status != 'cancelled' AND sched_dep <= ?").all(iso)
+        .filter((r) => !y || r.dep_local_date.startsWith(y));
+    const visits = new Map();
+    const routes = new Map();
+    for (const r of rows) {
+        for (const c of [r.origin_iata, r.dest_iata]) visits.set(c, (visits.get(c) || 0) + 1);
+        const key = [r.origin_iata, r.dest_iata].sort().join('-');
+        routes.set(key, (routes.get(key) || 0) + 1);
+    }
+    const known = new Map();
+    for (const c of visits.keys()) {
+        const a = airport(db, c);
+        if (a) known.set(c, { iata: c, city: a.city, lat: a.lat, lon: a.lon, visits: visits.get(c) });
+    }
+    return {
+        airports: [...known.values()].sort((a, b) => (a.iata < b.iata ? -1 : 1)),
+        routes: [...routes.entries()].map(([k, n]) => ({ a: k.split('-')[0], b: k.split('-')[1], flights: n }))
+            .filter((r) => known.has(r.a) && known.has(r.b)).sort((a, b) => b.flights - a.flights || (a.a + a.b < b.a + b.b ? -1 : 1)),
+    };
+}
+
 /* ---------- writing ----------
    Each returns { status, id, label, rev }; status is created, updated or unchanged. */
 
@@ -732,7 +773,7 @@ module.exports = {
     CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, ACCEPT_ALL_MAX,
     suggest, listCandidates, candidateCounts, withoutRef, acceptCandidate, acceptAll, dismissCandidate, candidateAuditDetail,
     haversineKm, localToUtc, localIso,
-    list, get, history, upcoming, overview, stats,
+    list, get, history, upcoming, overview, stats, searchAirports, mapData,
     create, update, restore, auditDetail,
     listTrips, getTrip, createTrip, updateTrip,
     getSettings, putSettings,

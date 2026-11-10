@@ -401,6 +401,70 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         res.json(result);
     }));
 
+    // ---- flights: the list, one flight, the Passport, airports, trips and settings for the dashboard. Fixed words
+    // come before /flights/:id. The list leaves booking references out (has_booking_ref instead); one flight
+    // carries it. Changes are audited as `admin` with id, flight label and revision only. ----
+    const flightChanged = (req, res, conn, action, result, status = 200) => {
+        if (result.status !== 'unchanged') audit.record(conn, 'admin', action, flights.auditDetail(result), req.ip);
+        res.status(status).json(result);
+    };
+
+    api.get('/flights', flightHandler((req, res, conn) => {
+        const { year, airport, airline, trip, status, limit, offset } = req.query;
+        const out = flights.list(conn, { year, airport, airline, trip, status, limit: limit || 500, offset });
+        out.flights = out.flights.map(({ booking_ref: ref, ...rest }) => ({ ...rest, has_booking_ref: Boolean(ref) }));
+        res.json(out);
+    }));
+
+    // The Passport numbers plus what the map draws (airports with coordinates, routes with counts).
+    api.get('/flights/stats', flightHandler((req, res, conn) => {
+        res.json({ ...flights.stats(conn, { year: req.query.year }), map: flights.mapData(conn, { year: req.query.year }), settings: flights.getSettings(conn) });
+    }));
+
+    api.get('/flights/upcoming', flightHandler((req, res, conn) => {
+        res.json({ flights: flights.upcoming(conn, { limit: req.query.limit }).map(({ booking_ref: ref, ...rest }) => ({ ...rest, has_booking_ref: Boolean(ref) })) });
+    }));
+
+    api.get('/flights/airports', flightHandler((req, res, conn) => {
+        res.json({ airports: flights.searchAirports(conn, req.query.q) });
+    }));
+
+    api.get('/flights/trips', flightHandler((req, res, conn) => {
+        res.json({ trips: flights.listTrips(conn) });
+    }));
+
+    api.post('/flights/trips', flightHandler((req, res, conn) => {
+        const result = flights.createTrip(conn, req.body, 'admin');
+        audit.record(conn, 'admin', 'trip_created', { id: result.id, title: result.title }, req.ip);
+        res.status(201).json(result);
+    }));
+
+    api.get('/flights/settings', flightHandler((req, res, conn) => {
+        res.json(flights.getSettings(conn));
+    }));
+
+    api.put('/flights/settings', flightHandler((req, res, conn) => {
+        const result = flights.putSettings(conn, req.body, 'admin');
+        audit.record(conn, 'admin', 'flight_settings_changed', { keys: Object.keys(req.body || {}) }, req.ip);
+        res.json(result);
+    }));
+
+    api.post('/flights', flightHandler((req, res, conn) => {
+        flightChanged(req, res, conn, 'flight_created', flights.create(conn, req.body, 'admin'), 201);
+    }));
+
+    api.get('/flights/:id', flightHandler((req, res, conn) => {
+        res.json({ ...flights.get(conn, req.params.id, { rev: req.query.rev }), history: flights.history(conn, req.params.id) });
+    }));
+
+    api.patch('/flights/:id', flightHandler((req, res, conn) => {
+        flightChanged(req, res, conn, 'flight_updated', flights.update(conn, req.params.id, req.body, 'admin'));
+    }));
+
+    api.post('/flights/:id/restore', flightHandler((req, res, conn) => {
+        flightChanged(req, res, conn, 'flight_restored', flights.restore(conn, req.params.id, (req.body || {}).rev, 'admin'));
+    }));
+
     api.use((req, res) => res.status(404).json({ error: 'Not found' }));
     return router;
 }
