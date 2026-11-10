@@ -69,6 +69,26 @@ function notFound(name) {
     });
 }
 
+// A view file that failed to download (offline, hub down) stays failed in the browser's module map, so
+// later tries import it under a fresh URL and keep the module that loaded. A failed download reads like
+// any other network failure.
+const views = new Map();
+const failedViews = new Set();
+async function loadView(name, def) {
+    if (views.has(name)) return views.get(name);
+    try {
+        const mod = await (failedViews.has(name) ? import(`./views/${name}.js?retry=${Date.now()}`) : def.load());
+        views.set(name, mod);
+        return mod;
+    } catch (e) {
+        if (!(e instanceof TypeError)) throw e;
+        failedViews.add(name);
+        const err = new Error('The hub did not answer.');
+        err.network = true;
+        throw err;
+    }
+}
+
 // Renders the route. `soft` keeps the current content until the new one is ready (no skeleton flash);
 // used when a view refreshes itself or moves within the same section.
 async function renderRoute(route, { soft = false, focus = false } = {}) {
@@ -85,7 +105,7 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
     try {
         if (!def) node = notFound(route.name);
         else {
-            const mod = await def.load();
+            const mod = await loadView(route.name, def);
             node = await mod.render({
                 route,
                 api,
