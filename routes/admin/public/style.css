@@ -331,7 +331,7 @@ dialog::backdrop { background: rgb(8 12 22 / .45); }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 
 .drawer {
-    margin: 0 0 0 auto; height: 100vh; max-height: 100vh; width: min(520px, 100%); padding: 0;
+    margin: 0 0 0 auto; height: 100vh; max-height: 100vh; max-width: 100%; width: min(520px, 100%); padding: 0;
     background: var(--surface); border: 0; border-left: 1px solid var(--line-strong);
     animation: slide .2s var(--ease);
 }
@@ -822,7 +822,7 @@ td .chip { margin-left: 8px; }
     }
     .tab[aria-current="page"] { color: var(--accent); font-weight: 600; }
     .toast-stack { right: 12px; left: 12px; bottom: 76px; }
-    .drawer { width: 100%; border-left: 0; }
+    .drawer, .drawer.wide { width: 100%; border-left: 0; }
     .theme-cycle { display: inline-flex; }
     .digests-browse { grid-template-columns: 1fr; }
     .reader-title { font-size: var(--fs-xl); }

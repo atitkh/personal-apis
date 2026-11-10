@@ -246,7 +246,7 @@ function headline(o, s, list) {
     const on = ds.filter((d) => d.enabled).length;
     const first = list.length
         ? `${plural(list.length, 'thing')} ${list.length === 1 ? 'needs' : 'need'} a look.`
-        : on === ds.length ? `All ${plural(ds.length, 'domain')} on and healthy.` : `${on} of ${plural(ds.length, 'domain')} on, nothing needs you.`;
+        : on === ds.length ? (ds.length === 2 ? 'Both domains on and healthy.' : `All ${plural(ds.length, 'domain')} on and healthy.`) : `${on} of ${plural(ds.length, 'domain')} on, nothing needs you.`;
     const second = s.lastCallAt ? `Last agent call ${ago(s.lastCallAt)}.` : 'No agent has called yet.';
     return [first, second];
 }
