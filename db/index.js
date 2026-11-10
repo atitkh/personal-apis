@@ -30,6 +30,7 @@ function open(file = process.env.HUB_DB_FILE || DEFAULT_FILE) {
     db.pragma('foreign_keys = ON');
     db.pragma('busy_timeout = 5000');
     migrate(db);
+    require('./seed').run(db);
     require('../services/domains').sync(db);
     return db;
 }
@@ -52,7 +53,7 @@ function health() {
     try {
         const db = get();
         db.prepare('SELECT 1').get();
-        const migrations = db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get().n;
+        const migrations = db.prepare('SELECT COUNT(*) AS n FROM schema_migrations WHERE name NOT LIKE \'seed:%\'').get().n;
         return { status: 'healthy', migrations };
     } catch (err) {
         return { status: 'unhealthy', error: err.message };
