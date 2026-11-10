@@ -273,10 +273,12 @@ function keyRow(k, use) {
     const revoked = Boolean(k.revoked_at);
     const link = h('a', { class: 'row-link', href: href('keys', [String(k.id)]), 'data-key': `key:${k.id}` }, k.name);
     return h('tr', { class: revoked ? 'revoked' : null, onclick: (event) => { if (!event.target.closest('a, button')) link.click(); } },
-        h('td', { 'data-label': 'Name' }, h('div', { class: 'key-name' }, link, h('code', { class: 'key-prefix', text: `${k.key_prefix}…` }))),
+        h('td', { class: 'cell-main' }, h('div', { class: 'key-name' }, link, h('code', { class: 'key-prefix', text: `${k.key_prefix}…` }))),
         h('td', { 'data-label': 'May do' }, h('div', { class: 'chips' }, k.scopes.map(scopeChip))),
         h('td', { 'data-label': revoked ? 'Revoked' : 'Last used', text: revoked ? when(k.revoked_at) : (k.last_used_at ? ago(k.last_used_at) : 'Never used') }),
-        h('td', { 'data-label': 'Agent calls, 30 days', class: 'num', text: use ? use.calls30d.toLocaleString() : '0' }));
+        h('td', { 'data-label': 'Agent calls, 30 days', class: 'num', text: use ? use.calls30d.toLocaleString() : '0' }),
+        // Phones: a thumb-sized open button on the right (the name link is the keyboard and reader route).
+        h('td', { class: 'cell-side only-narrow' }, h('a', { class: 'btn ghost icon-only', href: link.getAttribute('href'), tabindex: '-1', 'aria-hidden': 'true' }, icon('next'))));
 }
 
 function keyTable(rows, { revoked = false } = {}) {

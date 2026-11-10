@@ -70,10 +70,11 @@ export async function render(ctx) {
                 h('th', { scope: 'col', class: 'num', text: 'Calls, 30 days' }),
                 h('th', { scope: 'col', text: 'Last call' }))),
             h('tbody', {}, active.map((k) => h('tr', {},
-                h('th', { scope: 'row', 'data-label': 'Key' }, h('a', { class: 'row-link', href: href('keys', [String(k.id)]), 'data-key': `ak:${k.id}` }, k.name)),
+                h('th', { scope: 'row', class: 'cell-main' }, h('a', { class: 'row-link', href: href('keys', [String(k.id)]), 'data-key': `ak:${k.id}` }, k.name)),
                 tools.map((t) => h('td', { 'data-label': t.title || t.domain }, accessCell(access(k, t, domainOf(t.domain))))),
                 h('td', { class: 'num', 'data-label': 'Calls, 30 days', text: k.calls30d.toLocaleString() }),
-                h('td', { 'data-label': 'Last call', text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }))))))
+                h('td', { 'data-label': 'Last call', text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }),
+                h('td', { class: 'cell-side only-narrow' }, h('a', { class: 'btn ghost icon-only', href: href('keys', [String(k.id)]), tabindex: '-1', 'aria-hidden': 'true' }, icon('next'))))))))
         : emptyState({
             title: active.length ? 'No domain has an agent tool yet.' : 'No active keys.',
             text: active.length ? 'Agents only get the hub overview.' : 'Create a key for the agent first.',
@@ -88,8 +89,8 @@ export async function render(ctx) {
             h('tbody', {}, recent.map((c) => h('tr', {},
                 h('td', { 'data-label': 'When' }, h('time', { datetime: c.at, title: when(c.at), text: ago(c.at) })),
                 h('td', { 'data-label': 'Key' }, keyLink(c.key)),
-                h('td', { 'data-label': 'Call' }, h('code', { text: callName(c) })),
-                h('td', { 'data-label': 'Result' }, h('span', { class: `call-result ${c.ok ? 'ok' : 'failed'}` }, icon(c.ok ? 'good' : 'bad'), c.ok ? 'OK' : 'Failed')))))))
+                h('td', { class: 'cell-main' }, h('code', { text: callName(c) })),
+                h('td', { class: 'cell-side' }, h('span', { class: `call-result ${c.ok ? 'ok' : 'failed'}` }, icon(c.ok ? 'good' : 'bad'), c.ok ? 'OK' : 'Failed')))))))
         : emptyState({ title: 'No agent has called the hub yet.', text: 'Calls show up here as soon as a key uses the endpoint.' });
 
     const url = `${location.origin}${a.endpoint}`;

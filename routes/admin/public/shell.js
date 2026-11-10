@@ -1,6 +1,6 @@
 // The app frame: left rail (bottom tab bar on phones), top bar with the page title, command palette
 // button, theme toggle and the account menu. Built once after sign-in; views render into `content`.
-import { h, icon, button, segmented, when, span, isMac } from './ui.js';
+import { h, icon, button, segmented, when, span, isMac, openSheet } from './ui.js';
 import * as router from './router.js';
 import { THEMES, preference, setPreference, onThemeChange } from './theme.js';
 
@@ -119,7 +119,20 @@ export function createShell({ session, onSignOut, openPalette, api }) {
 
     const content = h('main', { class: 'content', id: 'content', tabindex: '-1' });
 
-    // Phones: the four most used views plus More (which opens the palette).
+    // Phones: the four most used views plus More, a bottom sheet with the rest, search and sign out.
+    const rest = router.all().filter((r) => r.nav && !r.mobile);
+    let currentName = null;
+    const moreBtn = h('button', { type: 'button', class: 'tab', 'aria-haspopup': 'dialog', onclick: () => openMore() }, icon('more'), h('span', { text: 'More' }));
+    function openMore() {
+        openSheet({
+            title: 'More',
+            content: h('nav', { class: 'sheet-nav', 'aria-label': 'More sections' },
+                h('ul', {},
+                    rest.map((r) => h('li', {}, h('a', { class: 'sheet-link', href: router.href(r.name), 'aria-current': r.name === currentName ? 'page' : null }, icon(r.icon), h('span', { text: r.title })))),
+                    h('li', { class: 'sheet-sep' }, h('button', { type: 'button', class: 'sheet-link', onclick: (e) => { e.target.closest('dialog').close(); openPalette(); } }, icon('search'), h('span', { text: 'Search or jump to' }))),
+                    h('li', {}, h('button', { type: 'button', class: 'sheet-link', onclick: (e) => { e.target.closest('dialog').close(); onSignOut(); } }, icon('signout'), h('span', { text: 'Sign out' }))))),
+        });
+    }
     const tabbar = h('nav', { class: 'tabbar', 'aria-label': 'Sections' },
         h('ul', {},
             router.all().filter((r) => r.mobile).map((r) => {
@@ -127,7 +140,7 @@ export function createShell({ session, onSignOut, openPalette, api }) {
                 navLinks.get(r.name).push(a);
                 return h('li', {}, a);
             }),
-            h('li', {}, h('button', { type: 'button', class: 'tab', onclick: openPalette }, icon('more'), h('span', { text: 'More' })))));
+            h('li', {}, moreBtn)));
 
     frame.append(
         h('a', { class: 'skip', href: '#content', onclick: (e) => { e.preventDefault(); content.focus(); }, text: 'Skip to content' }),
@@ -145,6 +158,8 @@ export function createShell({ session, onSignOut, openPalette, api }) {
             setCollapsed(!collapsed);
         },
         setRoute(name, text) {
+            currentName = name;
+            moreBtn.classList.toggle('is-current', rest.some((r) => r.name === name));
             title.textContent = text;
             document.title = `${text} - Personal hub`;
             for (const [n, links] of navLinks) {

@@ -257,6 +257,19 @@ export function infoDialog({ title, content, cls = '' }) {
     return dlg;
 }
 
+// A bottom sheet (phones): the More menu. Returns the dialog; links inside close it when followed.
+export function openSheet({ title, content }) {
+    const id = nextId('sheet');
+    const dlg = modal('sheet', id, [
+        h('div', { class: 'sheet-top' },
+            h('h2', { id, text: title }),
+            button({ variant: 'ghost', iconName: 'close', label: 'Close', onClick: () => dlg.tryClose() })),
+        content,
+    ]);
+    dlg.addEventListener('click', (event) => { if (event.target.closest('a[href]')) dlg.close(); });
+    return dlg;
+}
+
 // Right-hand drawer (a full sheet on small screens). `close()` asks beforeClose first; `close(true)` does not.
 export function openDrawer({ title, subtitle, content, onClose, returnFocus, beforeClose, wide = false }) {
     const id = nextId('drawer');

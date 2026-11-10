@@ -28,10 +28,10 @@ export async function render(ctx) {
         const shown = p.rows.filter((r) => !q || `${r.id} ${r.title} ${r.category}`.toLowerCase().includes(q));
         body.replaceChildren(...shown.map((r) => h('tr', {},
             h('td', { 'data-label': 'Id', class: 'num', text: String(r.id) }),
-            h('td', { 'data-label': 'Title', text: r.title }),
+            h('td', { class: 'cell-main', text: r.title }),
             h('td', { 'data-label': 'Category', text: r.category || 'None' }),
             h('td', { 'data-label': 'Date', text: r.date }),
-            h('td', { 'data-label': 'Detail page' }, r.hasPage
+            h('td', { class: 'cell-side' }, r.hasPage
                 ? (r.pageExists ? h('span', { class: 'state good' }, icon('good'), 'Page') : h('span', { class: 'state warn' }, icon('warn'), 'Missing'))
                 : h('span', { class: 'muted', text: 'None' })))));
         if (!shown.length) body.append(h('tr', {}, h('td', { colspan: '5', class: 'muted', text: 'Nothing matches that search.' })));

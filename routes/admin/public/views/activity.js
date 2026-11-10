@@ -92,7 +92,9 @@ function eventItem(e) {
         h('time', { class: 'event-time', datetime: e.at, text: timeFmt.format(new Date(e.at)) }),
         h('span', { class: 'event-icon', 'aria-hidden': 'true' }, icon(bad ? 'warn' : ICON[e.action] || 'activity')),
         h('p', { class: 'event-text' }, bad ? hidden('Failed: ') : null, sentence(e),
-            ['login', 'login_failed'].includes(e.action) && e.ip ? h('span', { class: 'event-ip', text: ` from ${e.ip}` }) : null));
+            ['login', 'login_failed'].includes(e.action) && e.ip ? h('span', { class: 'event-ip', text: ` from ${e.ip}` }) : null,
+            // Phones show the time here instead: it floats to the end of the sentence's last line when it fits.
+            h('time', { class: 'event-time-inline', datetime: e.at, text: timeFmt.format(new Date(e.at)) })));
 }
 
 export async function render(ctx) {
