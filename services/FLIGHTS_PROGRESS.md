@@ -125,10 +125,47 @@ throwaway node:20 container; it is not a hub dependency. Rebuild: see the header
   arrows, cancel, dark mode, 390 px (tiles two across, table stacks, drawer full width), no console errors. Screenshots (6, JPEG
   900 px): `workspace/tmp/hub-flights-shots/`. Suite: 294 pass in node:20.
 
+## Done (stage 4: Gmail backfill; 2026-11-10)
+
+- `scripts/flights_scan.py` in the OpenClaw workspace (python3 -I, stdlib; `pdftotext` used if present). Reads
+  atit286@gmail.com through `gog` READ-ONLY (`--gmail-no-send`, only search/get/raw/attachment commands enabled; nothing
+  labelled, archived or marked read). Six Gmail queries (airline and travel-site senders, confirmation/itinerary/e-ticket
+  subjects, `.ics` attachments), deduped by message and thread. Per message: schema.org FlightReservation JSON-LD, then
+  `.ics`, then regex (a stop parser: code + time + nearby date, and a route-line parser: "(LGA) to (ATL)" + Depart/Arrive),
+  then PDF tickets via pdftotext. Legs are checked against the airports seed, dates near the mail date, 20 min to 20 h.
+- Files each leg as a candidate over REST (`flights_key` in `~/.config/personal-hub/config.json`, flights:read +
+  flights:suggest). source gmail, source_key = sha256(message id, leg index), confidence JSON-LD 0.95 (0.8 without an
+  arrival), ics 0.9, regex 0.7, PDF 0.65, partial 0.4, status-mail-only 0.35-0.5, probably replaced 0.3. Notes say which
+  airline's mail and its date, nothing from the body.
+- Merging: one candidate per flight key, best evidence wins, a later schedule-change mail overrides times; arrivals are
+  filled from other mails of the same flight; check-in/gate/delay mails only count when nothing firmer has the flight
+  (within a day); a leg an older mail lists but the newest multi-leg itinerary of the same booking does not is flagged
+  "probably replaced"; legs of a booking with a cancellation mail get "CANCELLED per ..." in notes (candidates have no
+  status field). Bookings made for someone else (passenger list or greeting without Atit) veto the same flights from
+  unnamed mails.
+- Re-run: `python3 -I scripts/flights_scan.py --dry-run [--verbose] [--max-threads N]` (prints only, no state change),
+  `python3 -I scripts/flights_scan.py` (new messages only; state `~/.config/personal-hub/flights_scan_state.json` = message
+  ids), `--rescan` (re-parse all; the hub answers already_suggested for what it has). `--verbose` adds thread id and notes.
+  Output never carries booking refs, addresses or body text; subjects in the human-look list have codes masked.
+- Backfill run 2026-11-10: 171 threads / 203 messages (96 skipped as marketing, passcodes, hotels), 42 candidates filed
+  (pending): Frontier 17, Korean Air 6, United 4, Southwest 3, Cathay 3, American 2, Delta 2, Nepal Airlines 2, Qatar 1 +
+  B6-coded Qatar leg 1, Spirit 1 (cancelled). By year: 2023 2, 2024 6, 2026 33, 2027 1. 7 mails were for other passengers.
+- Coverage: Frontier (both mail formats, connections "FLIGHT 4775 & 1450", JSON-LD in "Update regarding" mails), Delta
+  (trip details, receipts), United (.ics), Korean Air, Qatar trip summary, Southwest, Spirit (airports by name), American
+  rebook/delay, Cathay schedule changes, Nepal Airlines check-in. Needs a human look (4): an eSewa e-ticket (2023, same
+  trip as RA 201/202) and three American Airlines boarding-pass mails (2024-10-31, 11-04, 12-13) that carry no flight data.
+- For Atit to decide in Found flights: the 2026-03-26 return from Korea has competing versions (KE 35 + KE 3613 via ATL,
+  AA 9602, KE 5031 "probably replaced", AA 280 delayed to 03-28); F9 1450 2026-08-13 "probably replaced" by F9 3294; NK 910
+  2026-05-09 cancelled; B6 5566 DOH-DFW is the code Qatar's mail used for a Qatar-operated leg.
+- Known gaps: no cancelled status on candidates (notes only); a later change mail for an already-filed flight answers
+  already_suggested and does not update it; mails from booking sites that name no flight (CheapTripDesk, Flyus, "Print")
+  are not listed; PDF-only tickets parse only when the layout has codes next to times; no LLM fallback (none on this host;
+  the reachable one is on another machine and mail bodies stay here); Cathay's Jan 2027 HKG-DFW leg has no mail.
+
 ## Next
 
-- Stage 4: ingestion (`flights_scan.py`, `flights-job` key with flights:read + flights:suggest, posting to
-  `POST /hub/flights/candidates` over REST), briefing and digest mention upcoming flights.
+- Stage 4 rest: the watcher (scheduled `flights_scan.py` run, maybe calendar events), the briefing and digest mention
+  upcoming flights.
 - Open (small): map labels of airports close together can overlap (LIT/DFW); the Flights list loads the newest 500 only.
 - Later: admin-only real delete; trip delete; airlines seed. MCP add/edit are logged only as `mcp_call`.
 - Not deployed: local commits only, not pushed, container not restarted. Migrations 007 and 008 run on the
