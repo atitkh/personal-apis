@@ -162,6 +162,31 @@ throwaway node:20 container; it is not a hub dependency. Rebuild: see the header
   are not listed; PDF-only tickets parse only when the layout has codes next to times; no LLM fallback (none on this host;
   the reachable one is on another machine and mail bodies stay here); Cathay's Jan 2027 HKG-DFW leg has no mail.
 
+## Done (automatic status; 2026-11-10)
+
+- Stored `status` keeps its three values (no change to the flights table), but `scheduled` now means AUTOMATIC.
+  `services/flights.js` `effectiveStatus(row, now)` (and the same rule in SQL, `effectiveSql`): cancelled if stored
+  cancelled; completed if stored completed or `actual_arr` (else `sched_arr`, else `sched_dep`) is before now (UTC,
+  strict); else scheduled.
+- API shape: every flight object (REST, admin API, MCP, trips) has `status` = effective and `status_override` = null
+  (automatic) or the stored `completed`/`cancelled`. Inputs on create/edit accept `auto` (stored scheduled), `scheduled`
+  (same), `completed`, `cancelled`. Revision snapshots hold the stored value; `get(id, {rev})` shows the effective one.
+- `list({ status })` filters on the effective status (SQL, `now` parameterised; `list` and `get` take an optional `now`).
+  `upcoming` = effective scheduled and not landed. The Passport (`stats`, `mapData`): flown = not cancelled and
+  (departed by now OR completed, by hand or by landing); upcoming count = effective scheduled and not yet departed. So a
+  flight set to completed by hand counts as flown even when its date is in the future.
+- Candidates (migration 009): nullable `flight_status` (cancelled|completed; `auto`/`scheduled`/empty = null). `suggest`
+  takes it (REST, MCP), candidate objects carry it, accepting passes it on as the flight's status (an override in the
+  accept body wins, `status: auto` clears it). `flights_scan.py` (OpenClaw workspace) sends `flight_status=cancelled`
+  for cancelled bookings instead of only writing CANCELLED in notes. Already-filed candidates are not updated (still
+  `already_suggested`), so the cancelled Spirit NK 910 candidate filed earlier has no flight_status until filed again.
+- Dashboard: chip and drawer show the effective status; the form's Status select is Automatic (shows what it resolves to,
+  for example "Automatic (completed)") / Completed / Cancelled; the list filter uses effective values; the queue shows a
+  Cancelled/Completed chip. The Passport means the same as before. Not yet checked in a browser (syntax and API tests only).
+- Tests: effective-status block in `tests/flights.test.js` (future, past, in the air, boundary, actual_arr, forced,
+  filter, revisions, upcoming/stats), candidate flight_status in `flightsHub`, `adminFlights`, `mcpFlights`, admin API in
+  `adminFlightsView`. Suite: 306 pass in node:20. Migration 009 runs on the next start (not deployed).
+
 ## Next
 
 - Stage 4 rest: the watcher (scheduled `flights_scan.py` run, maybe calendar events), the briefing and digest mention
