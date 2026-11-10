@@ -66,16 +66,20 @@ rules are described at the top of `services/places.js`; this file says what exis
   container): read key sees list/get/resolve in both modes, write key gains suggest/add/edit after the admin
   switch; suggest, accept via admin API, resolve to the new place, edit; audit had no street or coordinate.
 
+## Done (stage 3: dashboard)
+
+- Places view in the admin app (`routes/admin/public/views/places.js`): table, drawer with rules, history and
+  restore, Check a location, Needs a name queue; plum channel and queue count on the overview. Details and
+  verification in `routes/admin/PROGRESS.md` (places view). No production data touched.
+
 ## Next
 
 1. Import the real table into production (a person runs it; `--dry-run` first, then the exclude rules
    the manual step lists). Nothing in stage 2 touched production data.
-2. Stage 3: dashboard Places view on the admin API above (table with rule chips, edit drawer with history
-   and restore, "Needs a name" queue, resolve box, plum board channel).
-3. Stage 4: daily-digest job resolves and suggests through the hub (`places_resolve.py` via
+2. Stage 4: daily-digest job resolves and suggests through the hub (`places_resolve.py` via
    `hub_client.mcp_call`; key needs places:read + places:suggest and Places in write mode for suggest),
    Workshop proposal for the skill, then retire `known-places.md`.
-4. Open: an MCP `edit` with several steps makes several revisions (restore is per step); MCP add/edit are
+3. Open: an MCP `edit` with several steps makes several revisions (restore is per step); MCP add/edit are
    logged only as `mcp_call` (the revision keeps the key name), like digests edit.
 
 ## How to add a domain (what places needed)

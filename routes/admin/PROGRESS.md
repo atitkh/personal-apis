@@ -9,7 +9,7 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
   `views/` + one `router.register()` line; it exports `render(ctx)` returning a node (ctx: route, api, rerender, onCleanup, isCurrent).
 - `router.js` hash router (`#/digests/daily/2026-11-08`, `#/activity?type=agents`, `#/keys/12`, `#/keys?new=1`).
 - `shell.js` rail (collapsible, remembered), top bar (title, palette button, theme toggle, account menu), phone tab bar.
-- `palette.js` Ctrl/Cmd+K: views, digests by date, keys by name, Back up now, Create key, theme, sign out.
+- `palette.js` Ctrl/Cmd+K: views, digests by date, keys and places by name, New place, the places queue, Back up now, Create key, theme, sign out.
 - `ui.js` kit: `h`/`svg`, formatting, icons, button, toggleSwitch, segmented, confirmDialog, openDrawer, toast (aria-live), skeleton, emptyState, keepFocus, domainHue.
 - `charts.js` dayBars (stacked SVG bars), coverageStrip, legend.
 - `theme.js` system/light/dark in localStorage `hub-theme`.
@@ -73,9 +73,25 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
   cleared, sign in, back on `#/activity?type=agents` and on an open key drawer), Retry offline and on a 500,
   stacked rows and the More sheet at 390 px, calendar beside at 1280/1400 and below at 900, empty states.
 
+## Done (places view, 2026-11-10)
+
+- `views/places.js` (`#/places`, `#/places/12`, `?tab=queue&show=`, `?q=`, `?kind=`, `?new=1`): tablist Places /
+  Needs a name (pending badge, arrows/Home/End), table with kind and rule-count chips, right drawer (details,
+  rules with Not this place and priority, history with compare and restore, delete dialog), Check a location
+  (address, point or zone; match, rule, confidence, alternatives, ruled out; never files), queue with Name it,
+  Add to existing place, Dismiss and the Named/Dismissed/All views. Rule values only in the drawer and the check.
+- Overview: Places channel in plum, "N spots need a name" in the attention list, headline counts domains, the
+  write-mode confirm says what write means for each domain. `g p`, palette (places by name, New place, queue).
+- Verified in headless Chrome on a scratch hub with invented places: 29 keyboard/flow checks (tabs, drawer trap,
+  Esc and focus return, dialogs, restore, delete, 401 back to an open drawer, toasts carry no rule value),
+  contrast and focus audit light/dark at 1280 and 390, stacked rows and full-sheet drawer at 390, empty states,
+  offline error with Retry, skeletons per tab, switch and selector on the board. Tests: 218 pass in node:20.
+
 ## Open
 
 - Segmented options are 42 px tall on phones inside a 46 px control (the switch has a 44 px hit area);
   fine in use, short of a strict 44 px per option.
 - Skeletons match the first screen; long lists (activity, portfolio) are naturally taller once loaded.
 - The admin rate limit (600 requests per 15 minutes) counts static files; heavy reloading can hit it.
+- Places skeletons match at 1280; at 390 the loaded list (stacked rows) is taller than its skeleton.
+- Deleting a place from a drawer opened off a list goes back to that list view (history back), queue included.
