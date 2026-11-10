@@ -574,8 +574,160 @@ function putSettings(db, input, actor) {
     return getSettings(db);
 }
 
+/* ---------- candidates: found flights waiting for a person (migration 008) ---------- */
+// A job or an agent files a candidate (suggest, flights:suggest); a person accepts it, which creates the flight
+// through create() (so the same cleaning and dedupe apply), or dismisses it. One candidate per source key and
+// one per flight key, whatever its status, so a dismissed flight found again stays dismissed. Filing something
+// that is already a flight or a candidate is not an error: the answer names what exists (200).
+
+const CANDIDATE_STATUSES = ['pending', 'accepted', 'dismissed'];
+const CANDIDATE_SOURCES = ['gmail', 'calendar', 'manual'];
+const CANDIDATE_FIELDS = ['airline_iata', 'airline_name', 'flight_number', 'origin_iata', 'dest_iata', 'sched_dep', 'sched_arr',
+    'booking_ref', 'cabin', 'seat', 'aircraft_type', 'notes'];
+const ACCEPT_ALL_MAX = 100;
+
+function cleanConfidence(v) {
+    if (v == null || v === '') return null;
+    const n = typeof v === 'number' ? v : Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > 1) throw bad('bad_confidence', 'confidence must be a number from 0 to 1.');
+    return Math.round(n * 1000) / 1000;
+}
+
+function shapeCandidate(row) {
+    return {
+        id: row.id,
+        ...Object.fromEntries(CANDIDATE_FIELDS.map((k) => [k, row[k] == null ? null : row[k]])),
+        dep_tz: row.dep_tz,
+        arr_tz: row.arr_tz,
+        dep_local: localIso(row.sched_dep, row.dep_tz),
+        arr_local: localIso(row.sched_arr, row.arr_tz),
+        dep_local_date: row.dep_local_date,
+        label: label(row),
+        source: row.source,
+        source_key: row.source_key,
+        confidence: row.confidence,
+        status: row.status,
+        decided_at: row.decided_at,
+        decided_by: row.decided_by,
+        accepted_flight_id: row.accepted_flight_id,
+        created_at: row.created_at,
+        created_by: row.created_by,
+    };
+}
+
+function needCandidate(db, id) {
+    const row = toId(id) && db.prepare('SELECT * FROM flight_candidates WHERE id = ?').get(toId(id));
+    if (!row) throw bad('not_found', `There is no flight candidate ${String(id).slice(0, 20)}.`, 404);
+    return row;
+}
+
+// File a found flight. Answers { status, candidate } where status is filed (new, 201 over REST), exists (it
+// is already flight `flight.id`; nothing filed) or already_suggested (the candidate that has it, any status).
+function suggest(db, input, actor) {
+    const given = input || {};
+    for (const k of Object.keys(given)) {
+        if (!CANDIDATE_FIELDS.includes(k) && !['source', 'source_key', 'confidence'].includes(k)) throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
+    }
+    const source = oneOf(given.source == null ? 'manual' : given.source, 'source', CANDIDATE_SOURCES);
+    const confidence = cleanConfidence(given.confidence);
+    const fields = Object.fromEntries(CANDIDATE_FIELDS.filter((k) => given[k] !== undefined).map((k) => [k, given[k]]));
+    const { fields: f, derived: d } = build(db, { ...fields, source, source_key: given.source_key });
+    return db.transaction(() => {
+        const flightId = twin(db, f, d, 0);
+        if (flightId) {
+            const row = db.prepare('SELECT * FROM flights WHERE id = ?').get(flightId);
+            return { status: 'exists', flight: { id: row.id, label: label(row) } };
+        }
+        const existing = db.prepare('SELECT * FROM flight_candidates WHERE airline_iata = ? AND flight_number = ? AND dep_local_date = ? AND origin_iata = ?')
+            .get(f.airline_iata, f.flight_number, d.dep_local_date, f.origin_iata)
+            || (f.source_key ? db.prepare('SELECT * FROM flight_candidates WHERE source = ? AND source_key = ?').get(source, f.source_key) : null);
+        if (existing) return { status: 'already_suggested', candidate: shapeCandidate(existing) };
+        const id = Number(db.prepare(`INSERT INTO flight_candidates (${CANDIDATE_FIELDS.join(', ')}, dep_tz, arr_tz, dep_local_date, source, source_key,
+            confidence, status, created_at, created_by) VALUES (${CANDIDATE_FIELDS.map((k) => `@${k}`).join(', ')}, @dep_tz, @arr_tz, @dep_local_date,
+            @source, @source_key, @confidence, 'pending', @at, @actor)`)
+            .run({ ...f, ...d, source, confidence, at: now(), actor: who(actor) }).lastInsertRowid);
+        return { status: 'filed', candidate: shapeCandidate(db.prepare('SELECT * FROM flight_candidates WHERE id = ?').get(id)) };
+    })();
+}
+
+function listCandidates(db, { status = 'pending', limit } = {}) {
+    const s = status == null || status === '' ? 'pending' : status;
+    if (s !== 'all') oneOf(s, 'status', CANDIDATE_STATUSES);
+    const n = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+    const rows = s === 'all'
+        ? db.prepare('SELECT * FROM flight_candidates ORDER BY sched_dep DESC, id DESC LIMIT ?').all(n)
+        : db.prepare('SELECT * FROM flight_candidates WHERE status = ? ORDER BY sched_dep DESC, id DESC LIMIT ?').all(s, n);
+    return rows.map(shapeCandidate);
+}
+
+function candidateCounts(db) {
+    const counts = Object.fromEntries(CANDIDATE_STATUSES.map((s) => [s, 0]));
+    for (const r of db.prepare('SELECT status, COUNT(*) AS n FROM flight_candidates GROUP BY status').all()) counts[r.status] = r.n;
+    return counts;
+}
+
+function decide(db, row, status, flightId, actor) {
+    db.prepare('UPDATE flight_candidates SET status = ?, accepted_flight_id = ?, decided_at = ?, decided_by = ? WHERE id = ?')
+        .run(status, flightId, now(), who(actor), row.id);
+    return shapeCandidate(db.prepare('SELECT * FROM flight_candidates WHERE id = ?').get(row.id));
+}
+
+// Turn a candidate into a flight through create(). `overrides` are flight fields that replace the found ones
+// (a person corrected them); source and source_key always come from the candidate. A flight that already
+// exists answers 409 duplicate with its id; the candidate stays as it was.
+function acceptCandidate(db, id, overrides, actor) {
+    const over = overrides || {};
+    for (const k of Object.keys(over)) {
+        if (!FIELDS.includes(k) || k === 'source' || k === 'source_key') throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
+    }
+    return db.transaction(() => {
+        const c = needCandidate(db, id);
+        if (c.status === 'accepted') throw bad('already_accepted', `Candidate ${c.id} is already accepted as flight ${c.accepted_flight_id}.`, 409, { id: c.accepted_flight_id });
+        const found = Object.fromEntries(CANDIDATE_FIELDS.map((k) => [k, c[k]]));
+        const flight = create(db, { ...found, ...over, source: c.source, source_key: c.source_key }, actor);
+        return { status: 'accepted', candidate: decide(db, c, 'accepted', flight.id, actor), flight };
+    })();
+}
+
+// Each id on its own: one failing (not found, duplicate, already accepted) does not stop the others.
+function acceptAll(db, ids, actor) {
+    if (!Array.isArray(ids) || ids.length === 0) throw bad('bad_request', 'Send ids: a list of candidate ids.');
+    if (ids.length > ACCEPT_ALL_MAX) throw bad('bad_request', `Send at most ${ACCEPT_ALL_MAX} ids at a time.`);
+    const results = ids.map((id) => {
+        try {
+            const r = acceptCandidate(db, id, null, actor);
+            return { id: r.candidate.id, status: 'accepted', flight_id: r.flight.id, label: r.flight.label, rev: r.flight.rev };
+        } catch (err) {
+            if (!(err instanceof FlightError)) throw err;
+            const out = { id: toId(id) || String(id).slice(0, 20), status: 'error', error: err.code, message: err.message };
+            if (err.extra && err.extra.id) out.flight_id = err.extra.id;
+            return out;
+        }
+    });
+    return { accepted: results.filter((r) => r.status === 'accepted').length, failed: results.filter((r) => r.status !== 'accepted').length, results };
+}
+
+function dismissCandidate(db, id, actor) {
+    return db.transaction(() => {
+        const c = needCandidate(db, id);
+        if (c.status === 'accepted') throw bad('already_accepted', `Candidate ${c.id} is already accepted as flight ${c.accepted_flight_id}; cancel the flight instead.`, 409, { id: c.accepted_flight_id });
+        if (c.status === 'dismissed') return { status: 'unchanged', candidate: shapeCandidate(c) };
+        return { status: 'dismissed', candidate: decide(db, c, 'dismissed', null, actor) };
+    })();
+}
+
+// What an audit row may say about a candidate: its id, the flight label and the flight it became. Never the
+// booking reference, seat or notes.
+const candidateAuditDetail = (c, flight) => {
+    const out = { id: c.id, flight: c.label };
+    if (flight) Object.assign(out, { flight_id: flight.id, rev: flight.rev });
+    return out;
+};
+
 module.exports = {
     STATUSES, SOURCES, FIELDS, SETTINGS, FlightError,
+    CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, ACCEPT_ALL_MAX,
+    suggest, listCandidates, candidateCounts, acceptCandidate, acceptAll, dismissCandidate, candidateAuditDetail,
     haversineKm, localToUtc, localIso,
     list, get, history, upcoming, overview, stats,
     create, update, restore, auditDetail,
