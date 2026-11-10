@@ -91,7 +91,7 @@ describe('flights over REST', () => {
 
         expect((await as(writer).patch(`/hub/flights/${made.id}`, { seat: '2A', status: 'completed' }).expect(200)).body).toMatchObject({ status: 'updated', rev: 2 });
         expect((await as(writer).patch(`/hub/flights/${made.id}`, { seat: '2A' }).expect(200)).body.status).toBe('unchanged');
-        expect((await as(reader).get(`/hub/flights/${made.id}?rev=1`).expect(200)).body).toMatchObject({ seat: '14C', status: 'scheduled' });
+        expect((await as(reader).get(`/hub/flights/${made.id}?rev=1`).expect(200)).body).toMatchObject({ seat: '14C', status: 'completed', status_override: null });
         expect((await as(writer).post(`/hub/flights/${made.id}/restore`, { rev: 1 }).expect(200)).body).toMatchObject({ status: 'updated', rev: 3 });
         expect((await as(reader).get(`/hub/flights/${made.id}`).expect(200)).body.seat).toBe('14C');
 

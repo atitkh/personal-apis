@@ -53,7 +53,7 @@ describe('creating and deduping', () => {
         expect(f).toMatchObject({
             airline_iata: 'AA', flight_number: '1234', dep_tz: 'America/Chicago', arr_tz: 'America/Chicago',
             dep_local: '2026-03-01T06:05', arr_local: '2026-03-01T07:20', dep_local_date: '2026-03-01',
-            status: 'scheduled', source: 'manual', booking_ref: 'XQ7K2P', rev: 1, revisions: 1,
+            status: 'completed', status_override: null, source: 'manual', booking_ref: 'XQ7K2P', rev: 1, revisions: 1,
         });
         // LIT to DFW is about 489 km.
         expect(f.distance_km).toBeGreaterThan(480);
@@ -144,13 +144,14 @@ describe('list and upcoming', () => {
         const trip = flights.createTrip(conn, { title: 'Spring', start_date: '2026-03-01', end_date: '2026-03-08' }, 'tester').id;
         const a = add({ trip_id: trip });
         const b = add({ airline_iata: 'DL', origin_iata: 'DFW', dest_iata: 'ATL', sched_dep: '2025-06-01T15:00:00Z', sched_arr: null });
-        const c = add({ flight_number: '77', sched_dep: '2026-04-01T15:00:00Z', sched_arr: null, status: 'completed' });
+        const c = add({ flight_number: '77', sched_dep: '2026-04-01T15:00:00Z', sched_arr: null, status: 'cancelled' });
         expect(flights.list(conn).flights.map((f) => f.id)).toEqual([c, a, b]);
         expect(flights.list(conn, { year: 2026 }).total).toBe(2);
         expect(flights.list(conn, { airport: 'atl' }).flights.map((f) => f.id)).toEqual([b]);
         expect(flights.list(conn, { airline: 'DL' }).flights.map((f) => f.id)).toEqual([b]);
         expect(flights.list(conn, { trip }).flights.map((f) => f.id)).toEqual([a]);
-        expect(flights.list(conn, { status: 'completed' }).flights.map((f) => f.id)).toEqual([c]);
+        expect(flights.list(conn, { status: 'cancelled' }).flights.map((f) => f.id)).toEqual([c]);
+        expect(flights.list(conn, { status: 'completed' }).flights.map((f) => f.id)).toEqual([a, b]);
         expect(flights.list(conn, { limit: 1, offset: 1 })).toMatchObject({ total: 3, limit: 1, offset: 1, flights: [{ id: a }] });
         expect(code(() => flights.list(conn, { year: '26' }))).toBe('bad_year');
         expect(code(() => flights.list(conn, { status: 'x' }))).toBe('bad_status');
@@ -236,5 +237,82 @@ describe('trips and settings', () => {
     test('the domain is registered, private, and its tile counts flights', () => {
         add();
         expect(domains.list(conn).find((d) => d.name === 'flights')).toMatchObject({ sensitivity: 'private', storage: 'db', enabled: true, records: 1, recordLabel: 'flight' });
+    });
+});
+
+describe('effective status', () => {
+    const at = (iso) => new Date(iso);
+    const row = (o) => ({ status: 'scheduled', sched_dep: '2026-12-01T12:00:00Z', sched_arr: '2026-12-01T14:00:00Z', actual_arr: null, ...o });
+
+    test('automatic: future is scheduled, past is completed, landing time decides, boundary is exclusive', () => {
+        expect(flights.effectiveStatus(row(), NOW)).toBe('scheduled');
+        expect(flights.effectiveStatus(row({ sched_dep: '2026-03-01T12:00:00Z', sched_arr: '2026-03-01T14:00:00Z' }), NOW)).toBe('completed');
+        // Departed but still in the air is scheduled; the arrival time decides.
+        expect(flights.effectiveStatus(row({ sched_dep: '2026-11-10T11:00:00Z', sched_arr: '2026-11-10T13:00:00Z' }), NOW)).toBe('scheduled');
+        // Exactly at the arrival time it has not yet landed; a millisecond later it has.
+        expect(flights.effectiveStatus(row({ sched_arr: '2026-11-10T12:00:00Z' }), at('2026-11-10T12:00:00.000Z'))).toBe('scheduled');
+        expect(flights.effectiveStatus(row({ sched_arr: '2026-11-10T12:00:00Z' }), at('2026-11-10T12:00:00.001Z'))).toBe('completed');
+        // No arrival: the departure time is used.
+        expect(flights.effectiveStatus(row({ sched_dep: '2026-11-10T11:00:00Z', sched_arr: null }), NOW)).toBe('completed');
+        expect(flights.effectiveStatus(row({ sched_dep: '2026-11-10T13:00:00Z', sched_arr: null }), NOW)).toBe('scheduled');
+    });
+
+    test('actual_arr beats sched_arr; stored cancelled and completed win', () => {
+        expect(flights.effectiveStatus(row({ sched_arr: '2026-12-01T14:00:00Z', actual_arr: '2026-11-10T10:00:00Z' }), NOW)).toBe('completed');
+        expect(flights.effectiveStatus(row({ sched_dep: '2026-03-01T12:00:00Z', sched_arr: '2026-03-01T14:00:00Z', actual_arr: '2026-12-02T10:00:00Z' }), NOW)).toBe('scheduled');
+        expect(flights.effectiveStatus(row({ status: 'cancelled', sched_arr: '2026-03-01T14:00:00Z' }), NOW)).toBe('cancelled');
+        expect(flights.effectiveStatus(row({ status: 'cancelled' }), NOW)).toBe('cancelled');
+        expect(flights.effectiveStatus(row({ status: 'completed' }), NOW)).toBe('completed');
+    });
+
+    test('answers carry the effective status and status_override; auto and scheduled store scheduled', () => {
+        const future = add({ sched_dep: '2026-12-01T12:00:00Z', sched_arr: '2026-12-01T14:00:00Z' });
+        const past = add({ flight_number: '2' });
+        const forced = add({ flight_number: '3', sched_dep: '2026-12-05T12:00:00Z', sched_arr: null, status: 'completed' });
+        const cancelled = add({ flight_number: '4', status: 'cancelled' });
+        const auto = add({ flight_number: '5', sched_dep: '2026-12-06T12:00:00Z', sched_arr: null, status: 'auto' });
+        const got = (id) => flights.get(conn, id, { now: NOW });
+        expect(got(future)).toMatchObject({ status: 'scheduled', status_override: null });
+        expect(got(past)).toMatchObject({ status: 'completed', status_override: null });
+        expect(got(forced)).toMatchObject({ status: 'completed', status_override: 'completed' });
+        expect(got(cancelled)).toMatchObject({ status: 'cancelled', status_override: 'cancelled' });
+        expect(got(auto)).toMatchObject({ status: 'scheduled', status_override: null });
+        expect(conn.prepare('SELECT status FROM flights WHERE id = ?').get(auto).status).toBe('scheduled');
+        expect(flights.list(conn, { now: NOW }).flights.find((f) => f.id === past)).toMatchObject({ status: 'completed', status_override: null });
+        expect(code(() => add({ flight_number: '6', status: 'landed' }))).toBe('bad_status');
+    });
+
+    test('list filters on the effective status', () => {
+        const future = add({ sched_dep: '2026-12-01T12:00:00Z', sched_arr: '2026-12-01T14:00:00Z' });
+        const past = add({ flight_number: '2' });
+        const forced = add({ flight_number: '3', sched_dep: '2026-12-05T12:00:00Z', sched_arr: null, status: 'completed' });
+        const cancelled = add({ flight_number: '4', status: 'cancelled' });
+        const ids = (status) => flights.list(conn, { status, now: NOW }).flights.map((f) => f.id).sort();
+        expect(ids('scheduled')).toEqual([future]);
+        expect(ids('completed')).toEqual([past, forced].sort());
+        expect(ids('cancelled')).toEqual([cancelled]);
+        expect(flights.list(conn, { status: 'scheduled', now: NOW }).total).toBe(1);
+    });
+
+    test('editing: clear the override with auto, revisions store the stored value, a past flight can be forced cancelled', () => {
+        const id = add({ sched_dep: '2026-12-01T12:00:00Z', sched_arr: null });
+        expect(flights.update(conn, id, { status: 'completed' }, 'tester').rev).toBe(2);
+        expect(flights.get(conn, id, { now: NOW })).toMatchObject({ status: 'completed', status_override: 'completed' });
+        expect(flights.update(conn, id, { status: 'auto' }, 'tester')).toMatchObject({ status: 'updated', rev: 3 });
+        expect(flights.update(conn, id, { status: 'scheduled' }, 'tester').status).toBe('unchanged');
+        expect(flights.get(conn, id, { now: NOW })).toMatchObject({ status: 'scheduled', status_override: null });
+        expect(JSON.parse(conn.prepare('SELECT snapshot FROM flight_revisions WHERE flight_id = ? AND rev = 2').get(id).snapshot).status).toBe('completed');
+        expect(flights.get(conn, id, { rev: 2, now: NOW })).toMatchObject({ status: 'completed', status_override: 'completed' });
+        expect(flights.get(conn, id, { rev: 1, now: NOW })).toMatchObject({ status: 'scheduled', status_override: null });
+    });
+
+    test('upcoming and the Passport follow the same rule; a flight set to completed counts as flown, not upcoming', () => {
+        add({ sched_dep: '2026-12-01T12:00:00Z', sched_arr: '2026-12-01T14:00:00Z' });                                  // upcoming
+        add({ flight_number: '2', sched_dep: '2026-12-05T12:00:00Z', sched_arr: null, status: 'completed' });          // forced completed
+        add({ flight_number: '3', sched_dep: '2026-12-06T12:00:00Z', sched_arr: null, status: 'cancelled' });          // cancelled
+        add({ flight_number: '4', sched_dep: '2026-12-02T12:00:00Z', sched_arr: '2026-12-02T14:00:00Z', actual_arr: '2026-11-01T10:00:00Z' }); // actual_arr in the past
+        expect(flights.upcoming(conn, { now: NOW }).map((f) => f.flight_number)).toEqual(['1234']);
+        expect(flights.stats(conn, { now: NOW })).toMatchObject({ flights: 2, upcoming: 1 });
+        expect(flights.mapData(conn, { now: NOW }).routes).toEqual([{ a: 'DFW', b: 'LIT', flights: 2 }]);
     });
 });

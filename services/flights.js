@@ -20,7 +20,12 @@
 // audit rows (auditDetail), error messages, stats() or overview(), and no error message echoes a value.
 const { HubError } = require('./errors');
 
+// Stored `status` has three values, but 'scheduled' means AUTOMATIC: the effective status (what every answer
+// shows as `status`) is cancelled if stored cancelled; completed if stored completed or the flight has landed
+// (actual_arr, else sched_arr, else sched_dep, is before now, UTC); otherwise scheduled. `status_override` is
+// null (automatic) or the stored completed/cancelled. Inputs also accept 'auto' (stored as 'scheduled').
 const STATUSES = ['scheduled', 'completed', 'cancelled'];
+const STATUS_INPUTS = ['auto', ...STATUSES];
 const SOURCES = ['manual', 'gmail', 'calendar', 'feed'];
 const FIELDS = ['trip_id', 'airline_iata', 'airline_name', 'flight_number', 'origin_iata', 'dest_iata', 'sched_dep', 'sched_arr',
     'actual_dep', 'actual_arr', 'aircraft_type', 'cabin', 'seat', 'booking_ref', 'status', 'source', 'source_key', 'notes'];
@@ -152,6 +157,24 @@ function oneOf(v, name, list) {
     return v;
 }
 
+function cleanStatus(v) {
+    const s = oneOf(v == null || v === '' ? 'auto' : v, 'status', STATUS_INPUTS);
+    return s === 'auto' ? 'scheduled' : s;
+}
+
+// The one place the effective status is worked out (see the top of the file). `at` is a Date, ISO string or ms.
+function effectiveStatus(row, at = new Date()) {
+    if (row.status === 'cancelled') return 'cancelled';
+    if (row.status === 'completed') return 'completed';
+    const end = row.actual_arr || row.sched_arr || row.sched_dep;
+    return end && Date.parse(end) < new Date(at).getTime() ? 'completed' : 'scheduled';
+}
+
+// The same rule in SQL; `p` is the placeholder (@now or ?) for now (ISO, UTC). Times are stored as ISO UTC strings,
+// so they compare as text.
+const effectiveSql = (p) => `(CASE WHEN status = 'cancelled' THEN 'cancelled'
+    WHEN status = 'completed' OR COALESCE(actual_arr, sched_arr, sched_dep) < ${p} THEN 'completed' ELSE 'scheduled' END)`;
+
 const airport = (db, iata) => (iata ? db.prepare('SELECT * FROM airports WHERE iata = ?').get(iata) || null : null);
 
 function cleanTrip(db, v) {
@@ -195,7 +218,7 @@ function build(db, input, current = {}) {
     f.cabin = text(pick('cabin'), 'cabin', 30);
     f.seat = text(pick('seat'), 'seat', 8, { upper: true });
     f.booking_ref = cleanBookingRef(pick('booking_ref'));
-    f.status = oneOf(pick('status') == null ? 'scheduled' : pick('status'), 'status', STATUSES);
+    f.status = cleanStatus(pick('status'));
     f.source = oneOf(pick('source') == null ? 'manual' : pick('source'), 'source', SOURCES);
     f.source_key = text(pick('source_key'), 'source_key', 128);
     f.notes = text(pick('notes'), 'notes', MAX_NOTES);
@@ -255,8 +278,10 @@ function commit(db, id, { source, actor, note }) {
     return rev;
 }
 
-function shape(row, airlines) {
+function shape(row, airlines, at) {
     const out = { id: row.id, ...editable(row) };
+    out.status = effectiveStatus(row, at);
+    out.status_override = row.status === 'scheduled' ? null : row.status;
     if (!out.airline_name && airlines) out.airline_name = airlines.get(row.airline_iata) || null;
     return {
         ...out,
@@ -284,9 +309,10 @@ function cleanYear(v) {
 }
 
 // Newest departure first. Filters: year (local departure year), airport (either end), airline, trip, status.
-function list(db, { year, airport: ap, airline, trip, status, limit, offset } = {}) {
+function list(db, { year, airport: ap, airline, trip, status, limit, offset, now: at = new Date() } = {}) {
     const where = [];
     const args = [];
+    const nowIso = new Date(at).toISOString();
     const y = cleanYear(year);
     if (y) { where.push('substr(dep_local_date, 1, 4) = ?'); args.push(y); }
     if (ap != null && ap !== '') { const c = cleanIata(ap, 'airport'); where.push('(origin_iata = ? OR dest_iata = ?)'); args.push(c, c); }
@@ -296,25 +322,25 @@ function list(db, { year, airport: ap, airline, trip, status, limit, offset } = 
         if (!t) throw bad('bad_request', 'trip must be a trip id.');
         where.push('trip_id = ?'); args.push(t);
     }
-    if (status != null && status !== '') { where.push('status = ?'); args.push(oneOf(status, 'status', STATUSES)); }
+    if (status != null && status !== '') { where.push(`${effectiveSql('?')} = ?`); args.push(nowIso, oneOf(status, 'status', STATUSES)); }
     const n = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
     const skip = Math.max(parseInt(offset, 10) || 0, 0);
     const cond = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const total = db.prepare(`SELECT COUNT(*) AS n FROM flights ${cond}`).get(...args).n;
     const names = airlineNames(db);
     const rows = db.prepare(`SELECT * FROM flights ${cond} ORDER BY sched_dep DESC, id DESC LIMIT ? OFFSET ?`).all(...args, n, skip);
-    return { flights: rows.map((r) => shape(r, names)), total, limit: n, offset: skip };
+    return { flights: rows.map((r) => shape(r, names, nowIso)), total, limit: n, offset: skip };
 }
 
 // One flight. `rev` gives it as it was at that revision.
-function get(db, id, { rev } = {}) {
+function get(db, id, { rev, now: at = new Date() } = {}) {
     const row = need(db, id);
     const names = airlineNames(db);
-    if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, names), revisions: row.current_rev };
+    if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, names, at), revisions: row.current_rev };
     const r = db.prepare('SELECT * FROM flight_revisions WHERE flight_id = ? AND rev = ?').get(row.id, toId(rev));
     if (!r) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
     const old = JSON.parse(r.snapshot);
-    return { ...shape({ ...row, ...old, current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, names), revisions: row.current_rev };
+    return { ...shape({ ...row, ...old, current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, names, at), revisions: row.current_rev };
 }
 
 // Newest first; what changed is read with get(id, { rev }).
@@ -324,14 +350,14 @@ function history(db, id) {
         .map((r) => ({ ...r, current: r.rev === row.current_rev }));
 }
 
-// Flights not cancelled that have not landed yet (in the air counts), soonest first.
+// Flights whose effective status is scheduled (not cancelled, not completed, not landed; in the air counts), soonest first.
 function upcoming(db, { now: at = new Date(), limit } = {}) {
     const iso = new Date(at).toISOString();
     const n = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 50);
     const names = airlineNames(db);
-    return db.prepare(`SELECT * FROM flights WHERE status != 'cancelled'
+    return db.prepare(`SELECT * FROM flights WHERE ${effectiveSql('@iso')} = 'scheduled'
             AND (sched_dep >= @iso OR (sched_arr IS NOT NULL AND sched_arr > @iso)) ORDER BY sched_dep, id LIMIT @n`)
-        .all({ iso, n }).map((r) => shape(r, names));
+        .all({ iso, n }).map((r) => shape(r, names, iso));
 }
 
 // For the dashboard tile and hub_overview: counts and the last change, nothing about any one flight.
@@ -347,6 +373,9 @@ function overview(db) {
    airports table count as flights but add no distance, country or record; they are listed under `unmatched`.
    Never carries booking references, seats or notes. */
 
+// Flown (the Passport): not cancelled, and departed by @iso or already completed (by hand or by landing).
+const FLOWN_SQL = `status != 'cancelled' AND (sched_dep <= @iso OR ${effectiveSql('@iso')} = 'completed')`;
+
 const hoursOf = (r) => (r.sched_dep && r.sched_arr ? (Date.parse(r.sched_arr) - Date.parse(r.sched_dep)) / 3600000 : 0);
 const round1 = (n) => Math.round(n * 10) / 10;
 const top = (map, n) => [...map.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, n);
@@ -354,8 +383,8 @@ const top = (map, n) => [...map.entries()].sort((a, b) => b[1] - a[1] || (a[0] <
 function stats(db, { year, now: at = new Date() } = {}) {
     const y = cleanYear(year);
     const iso = new Date(at).toISOString();
-    const flown = db.prepare("SELECT * FROM flights WHERE status != 'cancelled' AND sched_dep <= ? ORDER BY sched_dep").all(iso);
-    const upcomingCount = db.prepare("SELECT COUNT(*) AS n FROM flights WHERE status != 'cancelled' AND sched_dep > ?").get(iso).n;
+    const flown = db.prepare(`SELECT * FROM flights WHERE ${FLOWN_SQL} ORDER BY sched_dep`).all({ iso });
+    const upcomingCount = db.prepare(`SELECT COUNT(*) AS n FROM flights WHERE ${effectiveSql('@iso')} = 'scheduled' AND sched_dep > @iso`).get({ iso }).n;
     const airports = new Map();
     const known = (code) => {
         if (!airports.has(code)) airports.set(code, airport(db, code));
@@ -452,7 +481,7 @@ function searchAirports(db, q, { limit } = {}) {
 function mapData(db, { year, now: at = new Date() } = {}) {
     const y = cleanYear(year);
     const iso = new Date(at).toISOString();
-    const rows = db.prepare("SELECT origin_iata, dest_iata, dep_local_date FROM flights WHERE status != 'cancelled' AND sched_dep <= ?").all(iso)
+    const rows = db.prepare(`SELECT origin_iata, dest_iata, dep_local_date FROM flights WHERE ${FLOWN_SQL}`).all({ iso })
         .filter((r) => !y || r.dep_local_date.startsWith(y));
     const visits = new Map();
     const routes = new Map();
@@ -769,7 +798,7 @@ const candidateAuditDetail = (c, flight) => {
 };
 
 module.exports = {
-    STATUSES, SOURCES, FIELDS, SETTINGS, FlightError,
+    STATUSES, STATUS_INPUTS, SOURCES, FIELDS, SETTINGS, FlightError, effectiveStatus,
     CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, ACCEPT_ALL_MAX,
     suggest, listCandidates, candidateCounts, withoutRef, acceptCandidate, acceptAll, dismissCandidate, candidateAuditDetail,
     haversineKm, localToUtc, localIso,

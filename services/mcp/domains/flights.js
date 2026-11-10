@@ -48,11 +48,12 @@ module.exports = {
     description: "Atit's flights: past and upcoming flights, trips that group them, and the Passport (distance, hours, airports, countries, airlines). "
         + 'Times: sched_dep/sched_arr/actual_* are UTC (ISO with Z); dep_local/arr_local are the same times as the airport clock reads (origin for departure, destination for arrival), with dep_tz/arr_tz. '
         + 'When adding or suggesting, a time with Z or an offset is taken as given; one without an offset is read as the airport\'s local time. '
+        + 'status is worked out from the times (scheduled before landing, completed after), unless status_override says completed or cancelled was set by hand. '
         + 'Booking references are left out (has_booking_ref says one is stored).',
     actions: {
         list: { scope: 'flights:read', describe: `list: flights, newest departure first (optional year, airport, airline, trip_id, status; limit 1-${LIST_MAX}, offset)` },
         get: { scope: 'flights:read', describe: 'get: one flight (id); include_booking_ref=true adds its booking reference' },
-        upcoming: { scope: 'flights:read', describe: 'upcoming: flights not cancelled that have not landed yet, soonest first (limit 1-20)' },
+        upcoming: { scope: 'flights:read', describe: 'upcoming: scheduled flights (not cancelled, not completed) that have not landed yet, soonest first (limit 1-20)' },
         stats: { scope: 'flights:read', describe: 'stats: the Passport for flights flown so far (optional year): distance, hours, airports, countries, airlines, routes, per year' },
         trips: { scope: 'flights:read', describe: 'trips: the trips with how many flights each has' },
         candidates: { scope: 'flights:read', describe: `candidates: found flights in the review queue (status pending (default), accepted, dismissed or all; limit 1-${LIST_MAX})` },
@@ -71,7 +72,7 @@ module.exports = {
             shape.offset = z.number().int().min(0).optional().describe('list: skip this many');
         } else if (has('stats')) shape.year = z.string().regex(/^\d{4}$/).optional().describe('stats: a year, like 2026');
         if (has('list', 'upcoming', 'candidates')) shape.limit = z.number().int().min(1).max(LIST_MAX).optional().describe('list/upcoming/candidates: how many');
-        if (has('list', 'add', 'edit')) shape.status = z.string().max(20).optional().describe('list/add/edit: scheduled, completed or cancelled; candidates: pending, accepted, dismissed or all');
+        if (has('list', 'add', 'edit')) shape.status = z.string().max(20).optional().describe('list: filter by effective status (scheduled, completed, cancelled); add/edit: auto (default: scheduled until it has landed, then completed), completed or cancelled; candidates: pending, accepted, dismissed or all');
         else if (has('candidates')) shape.status = z.string().max(20).optional().describe('candidates: pending, accepted, dismissed or all');
         if (has('get', 'edit')) shape.id = z.number().int().positive().optional().describe('get/edit: the flight id');
         if (has('get')) shape.include_booking_ref = z.boolean().optional().describe('get: true to include the booking reference');
