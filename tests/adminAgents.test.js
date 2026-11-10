@@ -56,7 +56,7 @@ describe('PUT /admin/api/domains/:name/mcp', () => {
     });
 
     test('an unknown domain is 404', async () => {
-        await agent.put('/admin/api/domains/flights/mcp').set(H).send({ mode: 'read' }).expect(404);
+        await agent.put('/admin/api/domains/attendance/mcp').set(H).send({ mode: 'read' }).expect(404);
     });
 
     test('a domain without an agent tool is 400, and the domain list says it has none', async () => {

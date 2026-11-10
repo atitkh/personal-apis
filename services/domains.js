@@ -29,6 +29,13 @@ const REGISTRY = {
         defaultEnabled: true,
         stats: (db) => require('./places').stats(db),
     },
+    flights: {
+        title: 'Flights',
+        sensitivity: 'private',   // booking references, where and when Atit travels
+        storage: 'db',
+        defaultEnabled: true,
+        stats: (db) => require('./flights').overview(db),
+    },
 };
 
 const names = () => Object.keys(REGISTRY);

@@ -40,6 +40,7 @@ const ACTIVITY_TYPES = {
     digests: ['digest_edited', 'digest_restored'],
     places: ['place_created', 'place_updated', 'place_restored', 'place_deleted', 'place_rule_added', 'place_rule_updated', 'place_rule_removed',
         'place_suggestion_accepted', 'place_suggestion_dismissed'],
+    flights: ['flight_created', 'flight_updated', 'flight_restored', 'trip_created', 'trip_updated', 'flight_settings_changed'],
     signins: ['login', 'logout', 'login_failed'],
 };
 

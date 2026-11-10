@@ -28,7 +28,8 @@ const handle = (fn) => (req, res) => {
         fn(req, res, db.get());
     } catch (err) {
         if (err instanceof HubError) {
-            return res.status(err.status).json({ error: err.code, message: err.message });
+            // `extra` carries safe ids only (a duplicate flight's id), never a submitted value.
+            return res.status(err.status).json({ error: err.code, message: err.message, ...(err.extra || {}) });
         }
         console.error('hub error:', err);
         res.status(500).json({ error: 'server_error', message: 'Something went wrong.' });
@@ -81,6 +82,7 @@ router.post('/digests/:kind/:period/restore', write, handle((req, res, conn) => 
 
 // Other domains keep their routes in their own file.
 router.use('/places', require('./places')(handle));
+router.use('/flights', require('./flights')(handle));
 
 router.use((req, res) => res.status(404).json({ error: 'not_found', message: 'No such hub route.' }));
 

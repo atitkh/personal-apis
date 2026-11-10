@@ -32,6 +32,15 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'flights',
+        title: 'Flights',
+        scopes: [
+            { scope: 'flights:read', label: 'Read', text: 'Read your flights (booking references included), trips, upcoming flights and the Passport stats through /hub.' },
+            { scope: 'flights:suggest', label: 'Suggest', text: 'Reserved for filing found flights into a review queue. It grants nothing yet.', write: true },
+            { scope: 'flights:write', label: 'Write', text: 'Add and change flights and trips, restore older versions and change the flights settings through the /hub REST API. Needs Read as well.', write: true },
+        ],
+    },
+    {
         domain: 'attendance',
         title: 'Attendance',
         scopes: [
