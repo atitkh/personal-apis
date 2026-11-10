@@ -81,6 +81,25 @@ describe('dashboard API', () => {
         expect(res.headers['x-frame-options']).toBe('DENY');
     });
 
+    test('the CSP allows self-hosted fonts and nothing from elsewhere', async () => {
+        const csp = (await request(app).get('/admin/').expect(200)).headers['content-security-policy'];
+        expect(csp).toMatch(/default-src 'none'/);
+        expect(csp).toMatch(/font-src 'self'(;|$)/);
+        expect(csp).not.toMatch(/https?:|\*|unsafe-inline|unsafe-eval/);
+    });
+
+    test('serves fonts and ES modules with the right types', async () => {
+        const font = await request(app).get('/admin/fonts/instrument-sans-latin-wght-normal.woff2').expect(200);
+        expect(font.headers['content-type']).toMatch(/font\/woff2/);
+        await request(app).get('/admin/fonts/source-serif-4-latin-wght-normal.woff2').expect(200);
+        for (const file of ['app.js', 'router.js', 'ui.js', 'views/overview.js']) {
+            const res = await request(app).get(`/admin/${file}`).expect(200);
+            expect(res.headers['content-type']).toMatch(/javascript/);
+        }
+        const page = await request(app).get('/admin/').expect(200);
+        expect(page.text).toMatch(/<script type="module" src="app.js">/);
+    });
+
     test('data needs a session', async () => {
         for (const url of ['overview', 'keys', 'backups', 'portfolio', 'activity']) {
             await request(app).get(`/admin/api/${url}`).expect(401);
