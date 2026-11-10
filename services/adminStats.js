@@ -5,6 +5,7 @@ const db = require('../db');
 const apiKeys = require('./apiKeys');
 const domains = require('./domains');
 const agents = require('./mcp/agents');
+const places = require('./places');
 const { readJson } = require('../routes/portfolio/freshJson');
 
 const ATIT_DIR = path.join(__dirname, '..', 'routes', 'portfolio', 'atit');
@@ -136,6 +137,8 @@ function overview() {
         digests: digestWatch(conn),
         agents: { calls24h: agents.callCount(conn), keysWithTools: agents.keysWithTools(conn) },
         domains: agents.domainsWithTools(conn),
+        // Counts only (no streets): the overview's attention list links to the "needs a name" queue.
+        places: { suggestions: places.suggestionCounts(conn) },
     };
 }
 

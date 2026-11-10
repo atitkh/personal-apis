@@ -133,3 +133,15 @@ describe('admin places: resolve box and suggestions', () => {
         expect(JSON.stringify(audit.recent(db.get(), 500))).not.toMatch(/maple|ridge|springfield|brambleworth|quillfeather|wrenfold|flat|second floor/i);
     });
 });
+
+describe('admin places: overview', () => {
+    test('the overview carries the suggestion counts (for the attention list) and never a street', async () => {
+        const before = (await agent.get('/admin/api/overview').expect(200)).body;
+        file('77 Thistledown Lane, Invented Town');
+        const after = (await agent.get('/admin/api/overview').expect(200)).body;
+        expect(after.places.suggestions.pending).toBe(before.places.suggestions.pending + 1);
+        expect(Object.keys(after.places.suggestions).sort()).toEqual(['accepted', 'dismissed', 'pending']);
+        expect(JSON.stringify(after.places)).not.toMatch(/thistledown/i);
+        expect(after.domains.map((d) => d.name)).toContain('places');
+    });
+});
