@@ -171,6 +171,8 @@ function issues(o) {
     if (!newest) out.push({ kind: 'warn', text: 'No backup has been made yet.', link: ['backups', 'Open backups'] });
     else if (Date.now() - Date.parse(newest.modifiedAt) > 36 * 3600 * 1000) out.push({ kind: 'warn', text: `The last backup is ${ago(newest.modifiedAt).replace(' ago', '')} old.`, link: ['backups', 'Open backups'] });
     if (o.digests && o.digests.missing) out.push({ kind: 'warn', text: `The daily digest for ${o.digests.expectedDaily} has not arrived.`, hint: 'The nightly job runs at 11 PM.', link: ['digests', 'Open digests'] });
+    const waiting = o.places && o.places.suggestions ? o.places.suggestions.pending : 0;
+    if (waiting) out.push({ kind: 'warn', text: `${plural(waiting, 'spot')} ${waiting === 1 ? 'needs' : 'need'} a name.`, hint: 'Streets the nightly digest saw that no place claims yet.', link: ['places', waiting === 1 ? 'Name it' : 'Name them', { tab: 'queue' }] });
     if (o.portfolio.problems) out.push({ kind: 'warn', text: `${plural(o.portfolio.problems, 'portfolio file')} ${o.portfolio.problems === 1 ? 'needs' : 'need'} a look.`, link: ['portfolio', 'Open portfolio'] });
     return out;
 }
@@ -184,10 +186,10 @@ function attention(list) {
                 h('div', {},
                     h('p', { class: 'att-text' }, hidden(i.kind === 'bad' ? 'Problem: ' : 'Warning: '), i.text),
                     i.hint ? h('p', { class: 'att-hint', text: i.hint }) : null),
-                i.link ? h('a', { class: 'btn quiet small', href: href(i.link[0]), text: i.link[1] }) : null)))
+                i.link ? h('a', { class: 'btn quiet small', href: href(i.link[0], [], i.link[2] || null), text: i.link[1] }) : null)))
             : emptyState({
                 title: 'Nothing needs you right now.',
-                text: 'Checked: the database, backups, the daily digest and the portfolio files.',
+                text: 'Checked: the database, backups, the daily digest, the portfolio files and the places queue.',
                 iconName: 'good',
                 action: h('a', { class: 'btn quiet small', href: href('activity'), text: 'See recent activity' }),
             }));
@@ -235,12 +237,20 @@ function pulse(o, s) {
             h('p', { class: 'note', text: `${cov.present} of ${cov.total} days have one. Gaps are days the nightly job did not deliver.` })) : null);
 }
 
+// "The domain is", "Both domains are", "All 3 domains are": counted, never assumed.
+export function allOn(n) {
+    if (n === 0) return 'No domains yet.';
+    if (n === 1) return 'The one domain is on and healthy.';
+    if (n === 2) return 'Both domains on and healthy.';
+    return `All ${plural(n, 'domain')} on and healthy.`;
+}
+
 function headline(o, s, list) {
     const ds = o.domains || [];
     const on = ds.filter((d) => d.enabled).length;
     const first = list.length
         ? `${plural(list.length, 'thing')} ${list.length === 1 ? 'needs' : 'need'} a look.`
-        : on === ds.length ? (ds.length === 2 ? 'Both domains on and healthy.' : `All ${plural(ds.length, 'domain')} on and healthy.`) : `${on} of ${plural(ds.length, 'domain')} on, nothing needs you.`;
+        : on === ds.length ? allOn(ds.length) : `${on} of ${plural(ds.length, 'domain')} on, nothing needs you.`;
     const second = s.lastCallAt ? `Last agent call ${ago(s.lastCallAt)}.` : 'No agent has called yet.';
     return [first, second];
 }

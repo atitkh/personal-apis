@@ -52,6 +52,21 @@ const SHAPES = {
                 h('section', { class: 'panel dl-panel' }, h('div', { class: 'panel-head' }, bar('sk-title w-30')),
                     rows(5, () => h('div', { class: 'dl-item' }, bar('sk-read w-50'), bar('sk-line w-80'))))))),
 
+    places: (route) => wrap('view places',
+        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab')),
+        route.query.get('tab') === 'queue'
+            ? h('div', { class: 'tab-panel' }, bar('sk-line w-80'),
+                h('div', { class: 'row' }, rows(4, () => bar('sk-chip'))),
+                h('section', { class: 'skel-stack' }, bar('sk-title w-20'),
+                    h('ul', { class: 'queue-list' }, rows(3, () => h('li', { class: 'queue-item' },
+                        h('div', { class: 'q-main' }, bar('sk-read w-40'), bar('sk-line w-70'), bar('sk-line w-50')),
+                        h('div', { class: 'q-actions' }, bar('sk-pill'), bar('sk-pill')))))))
+            : h('div', { class: 'tab-panel' },
+                h('section', { class: 'panel check-box sk-check' }, bar('sk-line w-30')),
+                h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
+                h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(5, 5)))),
+
     keys: () => wrap('view keys',
         h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
         h('section', {}, bar('sk-title w-20'), tableRows(3)),

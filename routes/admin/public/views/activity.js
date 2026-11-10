@@ -14,18 +14,23 @@ const TYPES = [
     ['backups', 'Backups'],
     ['domains', 'Domains'],
     ['digests', 'Digests'],
+    ['places', 'Places'],
     ['signins', 'Sign-ins'],
 ];
 // Empty-state titles per chip, in words that fit the events ("No agents events" read badly).
-const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', signins: 'No sign-ins yet.' };
-const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', flights: 'Flights' };
+const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', signins: 'No sign-ins yet.' };
+const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
     key_created: 'keys', key_revoked: 'keys',
     domain_enabled: 'overview', domain_disabled: 'overview', domain_mcp_changed: 'agents',
     digest_edited: 'digests', digest_restored: 'digests',
     backup_run: 'backup', mcp_call: 'agents',
+    place_created: 'places', place_updated: 'places', place_restored: 'places', place_deleted: 'places',
+    place_rule_added: 'places', place_rule_updated: 'places', place_rule_removed: 'places',
+    place_suggestion_accepted: 'places', place_suggestion_dismissed: 'places',
 };
+const RULE_NAME = { street: 'street', zone: 'zone', radius: 'circle' };
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 const strong = (text) => h('strong', { text });
@@ -36,6 +41,13 @@ function keyRef(d) {
     const name = d && d.name ? d.name : 'a key';
     return d && d.id ? h('a', { class: 'link', href: href('keys', [String(d.id)]), text: name }) : strong(name);
 }
+
+// A place by its label (ids and labels are all the audit log keeps; never a street).
+function placeRef(d, { gone = false } = {}) {
+    const label = d && d.label ? d.label : 'a place';
+    return d && d.id && !gone ? h('a', { class: 'link', href: href('places', [String(d.id)]), text: label }) : strong(label);
+}
+const ruleWord = (d) => `a ${RULE_NAME[d.rule_type] || 'rule'}${RULE_NAME[d.rule_type] ? ' rule' : ''}`;
 
 function digestRef(d) {
     if (!d || !d.kind || !d.period) return 'a digest';
@@ -59,6 +71,15 @@ function sentence(e) {
     case 'digest_edited': return [who, ' edited ', digestRef(d)];
     case 'digest_restored': return [who, ' restored an older version of ', digestRef(d)];
     case 'backup_run': return [who, ' made a backup'];
+    case 'place_created': return [who, ' added the place ', placeRef(d)];
+    case 'place_updated': return [who, ' changed ', placeRef(d)];
+    case 'place_restored': return [who, ' restored an older version of ', placeRef(d)];
+    case 'place_deleted': return [who, ' deleted the place ', placeRef(d, { gone: true })];
+    case 'place_rule_added': return [who, ` added ${ruleWord(d)} to `, placeRef(d)];
+    case 'place_rule_updated': return [who, ` changed ${ruleWord(d)} of `, placeRef(d)];
+    case 'place_rule_removed': return [who, ` removed ${ruleWord(d)} from `, placeRef(d)];
+    case 'place_suggestion_accepted': return d.created ? [who, ' named a spot from the queue: ', placeRef(d)] : [who, ' added a spot from the queue to ', placeRef(d)];
+    case 'place_suggestion_dismissed': return [who, ' dismissed a spot in the places queue'];
     case 'mcp_call': return [strong(d.key || e.actor), ' called ', h('code', { text: `${d.tool || 'unknown'}${d.action ? `.${d.action}` : ''}` }), d.ok ? '' : ', which failed'];
     default: return [who, ` ${e.action.replace(/_/g, ' ')}`];
     }

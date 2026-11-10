@@ -8,6 +8,7 @@ const MOD = isMac ? '⌘' : 'Ctrl';
 export const GO = [
     ['o', 'overview', 'Overview'],
     ['d', 'digests', 'Digests'],
+    ['p', 'places', 'Places'],
     ['k', 'keys', 'API keys'],
     ['a', 'agents', 'Agent access'],
     ['s', 'settings', 'Settings'],
@@ -21,7 +22,7 @@ export const SHORTCUTS = [
     [['?'], '+', 'Show the keyboard shortcuts'],
     [['['], '+', 'Show or hide the side menu'],
     [['Esc'], '+', 'Close a drawer, dialog or the palette; cancel editing a digest'],
-    [['←', '→', '↑', '↓'], '/', 'Move between days in the digest calendar and the 30-day strip, and between options in a selector'],
+    [['←', '→', '↑', '↓'], '/', 'Move between days in the digest calendar and the 30-day strip, between options in a selector, and between tabs'],
     [['Page Up', 'Page Down'], '/', 'Previous or next month in the digest calendar'],
     [['Home', 'End'], '/', 'Start or end of the week in the calendar'],
     [[MOD, 'Enter'], '+', 'Save a digest while editing'],

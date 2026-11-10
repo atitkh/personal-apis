@@ -13,6 +13,7 @@ import { pageSkeleton } from './skeletons.js';
 
 router.register('overview', { title: 'Overview', icon: 'overview', nav: true, mobile: true, load: () => import('./views/overview.js') });
 router.register('digests', { title: 'Digests', icon: 'digests', nav: true, mobile: true, load: () => import('./views/digests.js') });
+router.register('places', { title: 'Places', icon: 'places', nav: true, load: () => import('./views/places.js') });
 router.register('keys', { title: 'API keys', short: 'Keys', icon: 'keys', nav: true, mobile: true, load: () => import('./views/keys.js') });
 router.register('agents', { title: 'Agent access', short: 'Agents', icon: 'agents', nav: true, mobile: true, load: () => import('./views/agents.js') });
 router.register('backups', { title: 'Backups', icon: 'backups', nav: true, load: () => import('./views/backups.js') });
@@ -187,6 +188,14 @@ addSource(() => [
         },
     },
     {
+        id: 'act:place', group: 'Actions', icon: 'plus', label: 'New place', keywords: 'add place location street', order: 3,
+        run: () => router.navigate(router.href('places', [], { new: '1' })),
+    },
+    {
+        id: 'act:queue', group: 'Actions', icon: 'places', label: 'Places that need a name', keywords: 'queue suggestions unnamed streets spots', order: 4,
+        run: () => router.navigate(router.href('places', [], { tab: 'queue' })),
+    },
+    {
         id: 'act:key', group: 'Actions', icon: 'plus', label: 'Create key', keywords: 'new api key', order: 2,
         run: () => router.navigate(router.href('keys', [], { new: '1' })),
     },
@@ -201,10 +210,11 @@ addSource(() => [
 ]);
 
 addSource(async () => {
-    const [daily, weekly, keys] = await Promise.all([
+    const [daily, weekly, keys, places] = await Promise.all([
         api('/digests?kind=daily&limit=200').catch(() => ({ digests: [] })),
         api('/digests?kind=weekly&limit=60').catch(() => ({ digests: [] })),
         api('/keys').catch(() => ({ keys: [] })),
+        api('/places').catch(() => ({ places: [] })),
     ]);
     return [
         ...daily.digests.map((d, i) => digestCommand(d, 100 + i)),
@@ -212,6 +222,11 @@ addSource(async () => {
         ...keys.keys.filter((k) => !k.revoked_at).map((k, i) => ({
             id: `key:${k.id}`, group: 'Keys', icon: 'keys', label: k.name, hint: k.scopes.join(', '), keywords: `key ${k.scopes.join(' ')}`, order: 600 + i,
             run: () => router.navigate(router.href('keys', [String(k.id)])),
+        })),
+        // Names and kinds only: rule values never go into the palette.
+        ...places.places.map((p, i) => ({
+            id: `place:${p.id}`, group: 'Places', icon: 'places', label: p.label, hint: p.kind, keywords: `place ${p.kind}`, order: 800 + i,
+            run: () => router.navigate(router.href('places', [String(p.id)])),
         })),
     ];
 });

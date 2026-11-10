@@ -117,6 +117,8 @@ const ICONS = {
     keyboard: ['M3 7h18v10H3z', 'M7 11h.01', 'M11 11h.01', 'M15 11h.01', 'M8 14h8'],
     prev: ['M15 6l-6 6 6 6'],
     next: ['M9 6l6 6-6 6'],
+    places: ['M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z', 'c12 10 2.3'],
+    trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13'],
 };
 
 export function icon(name, cls = '') {
@@ -244,6 +246,47 @@ export function confirmDialog({ title, body, confirm = 'Confirm', cancel = 'Canc
             h('div', { class: 'dialog-actions' }, no, yes),
         ]);
         dlg.addEventListener('close', () => resolve(ok));
+    });
+}
+
+// A modal form: `fields` are the form's contents (labels and inputs), `submit` the button text. `onSubmit(form)`
+// runs on submit; a thrown error is shown in the dialog (it stays open), anything it returns resolves the promise.
+// Cancel, Esc and the backdrop resolve null. Focus starts on the first field and returns to the opener.
+export function formDialog({ title, intro, fields, submit = 'Save', danger = false, onSubmit, cls = '' }) {
+    return new Promise((resolve) => {
+        const id = nextId('dlg');
+        let result = null;
+        const error = h('p', { class: 'error', role: 'alert' });
+        const yes = button({ text: submit, type: 'submit', variant: danger ? 'danger' : 'primary' });
+        const no = button({ text: 'Cancel', variant: 'quiet', onClick: () => dlg.tryClose() });
+        const form = h('form', {
+            class: 'dialog-form',
+            novalidate: true,
+            onsubmit: async (event) => {
+                event.preventDefault();
+                if (yes.disabled) return;
+                error.textContent = '';
+                yes.disabled = true;
+                try {
+                    result = await onSubmit(form);
+                    if (result === undefined) result = true;
+                    dlg.close();
+                } catch (err) {
+                    error.textContent = err.message || 'That did not work.';
+                    yes.disabled = false;
+                    const bad = err.field && form.querySelector(`[name="${err.field}"]`);
+                    if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.focus(); }
+                }
+            },
+        },
+        (Array.isArray(intro) ? intro : [intro]).filter(Boolean).map((t) => (typeof t === 'string' ? h('p', { class: 'dialog-intro', text: t }) : t)),
+        h('div', { class: 'dialog-fields' }, fields),
+        error,
+        h('div', { class: 'dialog-actions' }, no, yes));
+        const dlg = modal(`dialog form-dialog ${cls}`.trim(), id, [h('h2', { id, text: title }), form]);
+        dlg.addEventListener('close', () => resolve(result));
+        const first = form.querySelector('input:not([type="hidden"]):not([disabled]), select, textarea');
+        if (first) first.focus();
     });
 }
 
@@ -466,7 +509,7 @@ export const ADMIN_NAME = 'Atit';
 export const actorName = (actor) => (actor === 'admin' ? ADMIN_NAME : actor);
 
 // Domain colour slots. Known domains have fixed colours; new ones take the spare slots in order.
-const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal' };
+const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal', places: 'plum' };
 const SPARE = ['plum', 'brick'];
 export function domainHue(name, index = 0) {
     return DOMAIN_HUES[name] || SPARE[index % SPARE.length];

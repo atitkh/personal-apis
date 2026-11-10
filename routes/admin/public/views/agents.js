@@ -1,11 +1,11 @@
-// Agent access: per key and per domain what an agent can do right now (read, edit, publish) and why not,
+// Agent access: per key and per domain what an agent can do right now (read, suggest, edit, publish) and why not,
 // the latest MCP calls (tool.action, key, time, outcome; never content), and the endpoint itself.
 // Every key name links to its drawer on the Keys page.
 import { h, icon, plural, when, ago, emptyState, copyButton, hidden, domainHue } from '../ui.js';
 import { href } from '../router.js';
 import { MCP_LABEL } from './overview.js';
 
-const VERB = { read: 'Read', edit: 'Edit', publish: 'Publish', write: 'Write' };
+const VERB = { read: 'Read', suggest: 'Suggest', edit: 'Edit', publish: 'Publish', write: 'Write' };
 const verbOf = (scope) => scope.split(':')[1];
 const hasScope = (granted, required) => {
     const domain = required.split(':')[0];
