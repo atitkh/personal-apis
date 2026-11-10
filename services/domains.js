@@ -22,6 +22,13 @@ const REGISTRY = {
             return { records: p.entryCount, label: p.entryCount === 1 ? 'entry' : 'entries', lastChange: p.updatedAt };
         },
     },
+    places: {
+        title: 'Places',
+        sensitivity: 'private',   // rule values include the home address
+        storage: 'db',
+        defaultEnabled: true,
+        stats: (db) => require('./places').stats(db),
+    },
 };
 
 const names = () => Object.keys(REGISTRY);

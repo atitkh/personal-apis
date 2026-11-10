@@ -1,5 +1,7 @@
 // Digests: dated narratives of Atit's days and weeks. Every change adds a revision; revision 1 is never
 // touched, so a human edit can always be compared with what was generated.
+const { HubError } = require('./errors');
+
 const PERIOD_RE = {
     daily: /^\d{4}-\d{2}-\d{2}$/,   // 2026-11-08, the local (America/Chicago) date
     weekly: /^\d{4}-W\d{2}$/,       // 2026-W45
@@ -9,13 +11,7 @@ const MAX_META = 4 * 1024;
 const HUMAN = new Set(['edit', 'restore']);
 const SOURCES = new Set(['generated', 'import']);
 
-class DigestError extends Error {
-    constructor(status, code, message) {
-        super(message);
-        this.status = status;
-        this.code = code;
-    }
-}
+class DigestError extends HubError {}
 
 function check(kind, period) {
     if (!Object.prototype.hasOwnProperty.call(PERIOD_RE, kind)) {

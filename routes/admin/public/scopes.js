@@ -22,6 +22,15 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'places',
+        title: 'Places',
+        scopes: [
+            { scope: 'places:read', label: 'Read', text: 'Read your places and their rules (these include your home address) and ask which place a location is, through /hub.' },
+            { scope: 'places:suggest', label: 'Suggest', text: 'File a street that no place claims yet into the "needs a name" queue. It cannot change any place.', write: true },
+            { scope: 'places:write', label: 'Write', text: 'Create, edit, restore and delete places and their rules through the /hub REST API.', write: true },
+        ],
+    },
+    {
         domain: 'attendance',
         title: 'Attendance',
         scopes: [

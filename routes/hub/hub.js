@@ -3,6 +3,7 @@
 const express = require('express');
 const db = require('../../db');
 const digests = require('../../services/digests');
+const { HubError } = require('../../services/errors');
 const { requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
 
@@ -20,12 +21,13 @@ router.use((req, res, next) => {
 const read = [requireScope('digests:read'), requireDomain('digests')];
 const write = [requireScope('digests:write'), requireDomain('digests')];
 
-// Wraps a handler so DigestError becomes a clean JSON error and anything else a 500.
+// Wraps a handler so an error meant for the caller (DigestError, PlaceError: any HubError) becomes a clean
+// JSON error and anything else a 500.
 const handle = (fn) => (req, res) => {
     try {
         fn(req, res, db.get());
     } catch (err) {
-        if (err instanceof digests.DigestError) {
+        if (err instanceof HubError) {
             return res.status(err.status).json({ error: err.code, message: err.message });
         }
         console.error('hub error:', err);
@@ -76,6 +78,9 @@ router.patch('/digests/:kind/:period', write, handle((req, res, conn) => {
 router.post('/digests/:kind/:period/restore', write, handle((req, res, conn) => {
     res.json(digests.restore(conn, req.params.kind, req.params.period, (req.body || {}).rev, req.apiKey.name));
 }));
+
+// Other domains keep their routes in their own file.
+router.use('/places', require('./places')(handle));
 
 router.use((req, res) => res.status(404).json({ error: 'not_found', message: 'No such hub route.' }));
 
