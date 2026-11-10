@@ -34,7 +34,7 @@ exists and what comes next.
     `GET /trips/:id`, `GET /:id` (`?rev=`), `GET /:id/history`
   - `flights:write` (plus `flights:read`, because answers carry the booking reference):
     `POST /`, `PATCH /:id`, `POST /:id/restore`, `POST /trips`, `PATCH /trips/:id`, `PUT /settings`
-  - `flights:suggest` is reserved for stage 2 and grants nothing yet.
+  - `flights:suggest`: only `POST /candidates` (stage 2).
   - `hub.js` `handle()` now adds a HubError's `extra` (safe ids only) to the JSON error, for the duplicate id.
 - Privacy of `booking_ref`: stored (decision 4); only in flight answers, which all need `flights:read`.
   Audit rows carry `{ id, flight: "AA 1234 LIT-DFW 2026-03-01", rev }` (trips: id, title; settings: the
@@ -55,12 +55,47 @@ appears twice the bigger airport wins. Zones from `tz-lookup` 6.1.25 (lat/lon, o
 throwaway node:20 container; it is not a hub dependency. Rebuild: see the header of `scripts/airports-build.js`.
 `airlines` is empty: flights carry `airline_name` themselves; seed it later if wanted.
 
+## Done (stage 2: candidates queue, agent tool, admin API; 2026-11-10)
+
+- `db/migrations/008_flight_candidates.sql`: `flight_candidates` (the flight fields that can be found, derived
+  zones and `dep_local_date`, source gmail|calendar|manual, `source_key`, confidence 0..1, status
+  pending|accepted|dismissed, `decided_at`/`decided_by`, `accepted_flight_id`, `created_by`). Unique per flight
+  key and per (source, source_key), whatever the status: a dismissed flight found again stays dismissed.
+- `services/flights.js`: `suggest` (cleaned by the same `build()` as flights; answers 'filed', or 'exists' with
+  the flight id and label, or 'already_suggested' with the candidate; the answer never carries booking_ref),
+  `listCandidates` (status filter, `all`), `candidateCounts`, `acceptCandidate` (overrides are flight fields;
+  creates through `create()`, so a twin is 409 `duplicate` with its id and the candidate stays pending; source
+  and source_key come from the candidate), `acceptAll` (max 100 ids, each on its own, per-id result),
+  `dismissCandidate` (accepted = 409, repeat = unchanged), `candidateAuditDetail` (id, label, flight id, rev).
+- REST: `POST /hub/flights/candidates` (`flights:suggest` only; 201 filed, 200 otherwise; audited
+  `flight_candidate_filed`), `GET /hub/flights/candidates?status=` (`flights:read`, with counts, carries
+  booking_ref like every REST read). No accept/dismiss on /hub.
+- Admin API (session + X-Requested-With, works while the domain is off, audited as `admin`):
+  `GET /admin/api/flights/candidates`, `POST .../:id/accept` (body = overrides), `POST .../accept-all`
+  ({ids}), `POST .../:id/dismiss`. Overview carries `flights.candidates` counts; the attention list says
+  "N found flights wait for review" (links to activity until the Flights view exists). Activity chip and
+  sentences for the three candidate actions.
+- MCP tool `flights` (`services/mcp/domains/flights.js`, untrusted = DATA_NOTE; description says times are
+  UTC with dep_local/arr_local airport time): read `list`, `get`, `upcoming`, `stats`, `trips`,
+  `candidates`; write mode `suggest` (`flights:suggest`), `add` and `edit` (new scope `flights:edit`, as
+  places:edit; REST `flights:write` grants no MCP write). Tool needs `flights:read` to be seen (a suggest-only
+  key uses REST). booking_ref left out everywhere (`has_booking_ref: true` instead); `get` with
+  `include_booking_ref: true` adds it. No delete/restore/accept/dismiss. Audit stays `mcp_call` tool/action/ok.
+- Scopes text: `flights:suggest` and `flights:edit` in `routes/admin/public/scopes.js`.
+- Tests: `tests/mcpFlights.test.js`, `tests/adminFlights.test.js`, candidate blocks in `flightsHub.test.js`;
+  `mcp.test.js` / `adminAgents.test.js` now use `attendance:read` as the scope with no tool. Suite: 284 pass.
+- E2E on a scratch hub (/tmp copy, throwaway node:20 container, scratch DB, port 3999): tools/list showed
+  `flights` with read actions + suggest for a read+suggest key in write mode; suggest filed, repeat answered
+  already_suggested, candidates listed, admin accept created flight 1, get had has_booking_ref only, get with
+  include_booking_ref returned it; audit rows had no booking reference, app log neither.
+
 ## Next
 
-- Stage 2: MCP tool `flights` (list, get, upcoming, stats; add, edit, suggest), `flight_candidates` table
-  and queue (suggest, accept, dismiss), `flights:suggest`, audit, tests. Decide whether MCP answers carry
-  `booking_ref` (probably not by default).
-- Stage 3: dashboard Flights view (Passport, map, list + drawer, upcoming, found-flights queue), board channel.
-- Stage 4: ingestion (`flights_scan.py`, `flights-job` key), briefing and digest mention upcoming flights.
-- Later: admin-only real delete; trip delete; airlines seed.
-- Not deployed: local commits only, not pushed, container not restarted. Migration 007 runs on the next start.
+- Stage 3: dashboard Flights view (Passport, map, list + drawer, upcoming, found-flights queue using the admin
+  API above: accept one / accept all / edit before accepting / dismiss), board channel; point the overview's
+  found-flights attention link at the queue tab.
+- Stage 4: ingestion (`flights_scan.py`, `flights-job` key with flights:read + flights:suggest, posting to
+  `POST /hub/flights/candidates` over REST), briefing and digest mention upcoming flights.
+- Later: admin-only real delete; trip delete; airlines seed. MCP add/edit are logged only as `mcp_call`.
+- Not deployed: local commits only, not pushed, container not restarted. Migrations 007 and 008 run on the
+  next start; Flights MCP mode defaults to read.
