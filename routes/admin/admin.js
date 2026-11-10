@@ -37,7 +37,8 @@ const ACTIVITY_TYPES = {
     backups: ['backup_run'],
     domains: ['domain_enabled', 'domain_disabled', 'domain_mcp_changed'],
     digests: ['digest_edited', 'digest_restored'],
-    places: ['place_created', 'place_updated', 'place_restored', 'place_deleted', 'place_rule_added', 'place_rule_updated', 'place_rule_removed'],
+    places: ['place_created', 'place_updated', 'place_restored', 'place_deleted', 'place_rule_added', 'place_rule_updated', 'place_rule_removed',
+        'place_suggestion_accepted', 'place_suggestion_dismissed'],
     signins: ['login', 'logout', 'login_failed'],
 };
 

@@ -462,7 +462,9 @@ function fileSuggestion(db, street, q) {
         db.prepare(`UPDATE place_suggestions SET count = count + 1, last_seen = ?,
                         example_lat = COALESCE(example_lat, ?), example_lon = COALESCE(example_lon, ?), example_text = COALESCE(example_text, ?),
                         status = CASE status WHEN 'accepted' THEN 'pending' ELSE status END,
-                        resolved_place_id = CASE status WHEN 'accepted' THEN NULL ELSE resolved_place_id END
+                        resolved_place_id = CASE status WHEN 'accepted' THEN NULL ELSE resolved_place_id END,
+                        decided_at = CASE status WHEN 'accepted' THEN NULL ELSE decided_at END,
+                        decided_by = CASE status WHEN 'accepted' THEN NULL ELSE decided_by END
                     WHERE id = ?`).run(at, point.lat, point.lon, q.geocode, seen.id);
     }
     return db.prepare('SELECT * FROM place_suggestions WHERE street = ?').get(street);
@@ -511,9 +513,66 @@ function suggestions(db, { status = 'pending', limit = 100 } = {}) {
         : db.prepare('SELECT * FROM place_suggestions WHERE status = ? ORDER BY last_seen DESC, id DESC LIMIT ?').all(status, n);
 }
 
+// How many suggestions there are in each status (every status is listed, 0 included).
+function suggestionCounts(db) {
+    const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]));
+    for (const r of db.prepare('SELECT status, COUNT(*) AS n FROM place_suggestions GROUP BY status').all()) counts[r.status] = r.n;
+    return counts;
+}
+
+function needSuggestion(db, id) {
+    const s = toId(id) && db.prepare('SELECT * FROM place_suggestions WHERE id = ?').get(toId(id));
+    if (!s) throw bad('not_found', `There is no suggestion ${id}.`, 404);
+    return s;
+}
+
+function decide(db, s, status, placeId, actor) {
+    db.prepare('UPDATE place_suggestions SET status = ?, resolved_place_id = ?, decided_at = ?, decided_by = ? WHERE id = ?')
+        .run(status, placeId, now(), who(actor), s.id);
+    return db.prepare('SELECT * FROM place_suggestions WHERE id = ?').get(s.id);
+}
+
+// Names a suggested street. Either { place_id } adds the street as a street rule to that place, or
+// { label, kind, notes } creates a new place (source "suggested") with the street as its rule. Both store a
+// revision of the place. A pending or dismissed suggestion can be accepted; an accepted one cannot again.
+// Returns { status: 'accepted', suggestion, place } where place is the create/addRule result.
+function acceptSuggestion(db, id, input, actor) {
+    const given = input || {};
+    const attach = given.place_id != null;
+    if (attach && given.label != null) throw bad('bad_request', 'Send either place_id or a label for a new place, not both.');
+    if (!attach && given.label == null) throw bad('bad_request', 'Send place_id (attach to a place) or label (create a new place).');
+    return db.transaction(() => {
+        const s = needSuggestion(db, id);
+        if (s.status === 'accepted') throw bad('already_accepted', `Suggestion ${s.id} is already accepted.`, 409);
+        const rule = { type: 'street', value: s.street };
+        const place = attach
+            ? addRule(db, given.place_id, rule, actor, { source: 'suggestion' })
+            : create(db, { label: given.label, kind: given.kind, notes: given.notes, source: 'suggested', rules: [rule] }, actor, { source: 'suggestion' });
+        return { status: 'accepted', suggestion: decide(db, s, 'accepted', place.id, actor), place };
+    })();
+}
+
+// Says "not a place". The row stays as dismissed, so the street is never filed as pending again.
+function dismissSuggestion(db, id, actor) {
+    return db.transaction(() => {
+        const s = needSuggestion(db, id);
+        if (s.status === 'accepted') throw bad('already_accepted', `Suggestion ${s.id} is already accepted; remove the rule from its place instead.`, 409);
+        if (s.status === 'dismissed') return { status: 'unchanged', suggestion: s };
+        return { status: 'dismissed', suggestion: decide(db, s, 'dismissed', null, actor) };
+    })();
+}
+
+// What a suggestion decision may put in the audit log: ids, the place label and rule type. Never the street.
+function suggestionAuditDetail(result) {
+    const detail = { suggestion_id: result.suggestion.id, status: result.suggestion.status };
+    if (result.place) Object.assign(detail, auditDetail(result.place), { created: result.place.status === 'created' });
+    return detail;
+}
+
 module.exports = {
-    PlaceError, KINDS, RULE_TYPES,
+    PlaceError, KINDS, RULE_TYPES, STATUSES,
     list, get, history, stats,
     create, update, restore, remove, addRule, updateRule, removeRule, auditDetail,
-    resolve, suggestions, streetOf, haversine, fold, zoneId,
+    resolve, suggestions, suggestionCounts, acceptSuggestion, dismissSuggestion, suggestionAuditDetail,
+    streetOf, haversine, fold, zoneId,
 };

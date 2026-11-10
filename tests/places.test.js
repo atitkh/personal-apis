@@ -429,3 +429,73 @@ describe('importer', () => {
         expect(importer.print(report, { dryRun: true })).toMatch(/^Dry run/);
     });
 });
+
+describe('suggestion decisions', () => {
+    const file = (geocode) => places.resolve(conn, { geocode, suggest: true }).suggestion;
+
+    test('accept with a label creates a suggested place with the street rule, revision and decision', () => {
+        const s = file('77 Juniper Hollow, Springfield');
+        const out = places.acceptSuggestion(conn, s.id, { label: 'Book club', kind: 'friend', notes: 'Thursdays.' }, 'tester');
+        expect(out).toMatchObject({ status: 'accepted', place: { status: 'created', label: 'Book club', rev: 1 } });
+        expect(out.suggestion).toMatchObject({ id: s.id, status: 'accepted', resolved_place_id: out.place.id, decided_by: 'tester', decided_at: expect.any(String) });
+        const p = places.get(conn, out.place.id);
+        expect(p).toMatchObject({ kind: 'friend', notes: 'Thursdays.', source: 'suggested' });
+        expect(p.rules).toEqual([expect.objectContaining({ type: 'street', value: 'Juniper Hollow', exclude: false })]);
+        expect(places.history(conn, out.place.id)[0]).toMatchObject({ rev: 1, source: 'suggestion', actor: 'tester' });
+        // The street now resolves to the new place, and is not filed again.
+        expect(places.resolve(conn, { geocode: '80 Juniper Hollow', suggest: true })).toMatchObject({ match: { label: 'Book club' } });
+        expect(places.suggestionCounts(conn)).toEqual({ pending: 0, accepted: 1, dismissed: 0 });
+    });
+
+    test('accept with place_id adds the street to an existing place as a new revision', () => {
+        const cafe = add('Cafe', [zone('cafe')]);
+        const s = file('5 Tannery Row, Springfield');
+        const out = places.acceptSuggestion(conn, s.id, { place_id: cafe }, 'tester');
+        expect(out.place).toMatchObject({ status: 'updated', id: cafe, rev: 2, rule_type: 'street', rule_id: expect.any(Number) });
+        expect(places.get(conn, cafe).rules.map((r) => r.type)).toEqual(['zone', 'street']);
+        expect(places.history(conn, cafe)[0]).toMatchObject({ rev: 2, source: 'suggestion' });
+        expect(code(() => places.acceptSuggestion(conn, s.id, { place_id: cafe }, 'tester'))).toBe('already_accepted');
+    });
+
+    test('accept refuses unclear or bad input and changes nothing', () => {
+        const cafe = add('Cafe');
+        const s = file('5 Tannery Row');
+        expect(code(() => places.acceptSuggestion(conn, s.id, {}, 't'))).toBe('bad_request');
+        expect(code(() => places.acceptSuggestion(conn, s.id, { place_id: cafe, label: 'X' }, 't'))).toBe('bad_request');
+        expect(code(() => places.acceptSuggestion(conn, s.id, { place_id: 999 }, 't'))).toBe('not_found');
+        expect(code(() => places.acceptSuggestion(conn, s.id, { label: 'cafe' }, 't'))).toBe('label_taken');
+        expect(code(() => places.acceptSuggestion(conn, s.id, { label: 'New', kind: 'castle' }, 't'))).toBe('bad_kind');
+        expect(code(() => places.acceptSuggestion(conn, 999, { label: 'New' }, 't'))).toBe('not_found');
+        expect(places.suggestions(conn)[0]).toMatchObject({ id: s.id, status: 'pending', resolved_place_id: null });
+        expect(places.list(conn).map((p) => p.label)).toEqual(['Cafe']);
+    });
+
+    test('a dismissed street stays dismissed: later sightings only raise its count', () => {
+        const s = file('77 Juniper Hollow');
+        const out = places.dismissSuggestion(conn, s.id, 'tester');
+        expect(out).toMatchObject({ status: 'dismissed', suggestion: { status: 'dismissed', decided_by: 'tester' } });
+        expect(places.dismissSuggestion(conn, s.id, 'tester').status).toBe('unchanged');
+        expect(file('79 juniper hollow')).toMatchObject({ id: s.id, status: 'dismissed', count: 2 });
+        expect(places.suggestions(conn)).toEqual([]);
+        expect(places.suggestionCounts(conn)).toEqual({ pending: 0, accepted: 0, dismissed: 1 });
+        // Once a place claims the street there is no suggestion at all, and the count stays.
+        add('Club', [street('Juniper Hollow')]);
+        expect(places.resolve(conn, { geocode: '81 Juniper Hollow', suggest: true })).not.toHaveProperty('suggestion');
+        expect(places.suggestions(conn, { status: 'dismissed' })[0].count).toBe(2);
+    });
+
+    test('a dismissed suggestion can still be accepted; an accepted one cannot be dismissed', () => {
+        const s = file('5 Tannery Row');
+        places.dismissSuggestion(conn, s.id, 'tester');
+        const out = places.acceptSuggestion(conn, s.id, { label: 'Tannery' }, 'tester');
+        expect(out.suggestion.status).toBe('accepted');
+        expect(code(() => places.dismissSuggestion(conn, s.id, 'tester'))).toBe('already_accepted');
+    });
+
+    test('the audit detail of a decision has ids and labels, never the street', () => {
+        const s = file('77 Juniper Hollow, Springfield');
+        const detail = places.suggestionAuditDetail(places.acceptSuggestion(conn, s.id, { label: 'Book club' }, 'tester'));
+        expect(detail).toEqual({ suggestion_id: s.id, status: 'accepted', id: expect.any(Number), label: 'Book club', rev: 1, created: true });
+        expect(JSON.stringify(detail)).not.toMatch(/juniper|hollow|springfield/i);
+    });
+});

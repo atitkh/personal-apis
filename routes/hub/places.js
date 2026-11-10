@@ -2,7 +2,7 @@
 // body parser, no-store and `handle` (turns a PlaceError into a JSON error).
 //   places:read     list, get, history, resolve, the suggestions queue
 //   places:suggest  resolve with suggest: true (files an unnamed street; places:write also allows it)
-//   places:write    create, update, restore, delete, rules
+//   places:write    create, update, restore, delete, rules, accept or dismiss a suggestion
 // Resolve is a POST so that addresses travel in the body and never end up in the access log.
 // Changes are audited with ids and labels only (places.auditDetail), never with rule values.
 const express = require('express');
@@ -37,8 +37,23 @@ module.exports = (handle) => {
         res.json(places.resolve(conn, body));
     }));
 
+    // ?status=pending (default) | accepted | dismissed | all. `counts` has every status, whatever the filter.
     router.get('/suggestions', read, handle((req, res, conn) => {
-        res.json({ suggestions: places.suggestions(conn, { status: req.query.status || 'pending', limit: req.query.limit }) });
+        const status = req.query.status || 'pending';
+        res.json({ status, suggestions: places.suggestions(conn, { status, limit: req.query.limit }), counts: places.suggestionCounts(conn) });
+    }));
+
+    // Naming the queue is for a person (places:write); agents can only file suggestions.
+    router.post('/suggestions/:id/accept', write, handle((req, res, conn) => {
+        const result = places.acceptSuggestion(conn, req.params.id, req.body, req.apiKey.name);
+        audit.record(conn, req.apiKey.name, 'place_suggestion_accepted', places.suggestionAuditDetail(result), req.ip);
+        res.json(result);
+    }));
+
+    router.post('/suggestions/:id/dismiss', write, handle((req, res, conn) => {
+        const result = places.dismissSuggestion(conn, req.params.id, req.apiKey.name);
+        if (result.status !== 'unchanged') audit.record(conn, req.apiKey.name, 'place_suggestion_dismissed', places.suggestionAuditDetail(result), req.ip);
+        res.json(result);
     }));
 
     router.post('/', write, handle((req, res, conn) => {

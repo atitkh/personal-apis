@@ -167,10 +167,61 @@ describe('places over HTTP', () => {
     });
 });
 
+describe('suggestions over HTTP', () => {
+    const fileIt = async (geocode) => (await as(suggester).post('/hub/places/resolve', { geocode, suggest: true }).expect(200)).body.suggestion;
+
+    test('the queue filters by status and reports counts for every status', async () => {
+        await fileIt('3 Quillfeather Lane, Springfield');
+        const all = (await as(reader).get('/hub/places/suggestions?status=all').expect(200)).body;
+        expect(all.status).toBe('all');
+        expect(all.counts).toEqual({ pending: expect.any(Number), accepted: expect.any(Number), dismissed: expect.any(Number) });
+        expect(all.suggestions.length).toBe(all.counts.pending + all.counts.accepted + all.counts.dismissed);
+        const pending = (await as(reader).get('/hub/places/suggestions').expect(200)).body;
+        expect(pending.status).toBe('pending');
+        expect(pending.suggestions.every((s) => s.status === 'pending')).toBe(true);
+        expect(pending.suggestions.length).toBe(all.counts.pending);
+    });
+
+    test('accept and dismiss need places:write', async () => {
+        const s = await fileIt('9 Brambleworth Close');
+        for (const key of [reader, suggester, other]) {
+            await as(key).post(`/hub/places/suggestions/${s.id}/accept`, { label: 'Nope' }).expect(403);
+            await as(key).post(`/hub/places/suggestions/${s.id}/dismiss`, {}).expect(403);
+        }
+        const still = (await as(reader).get('/hub/places/suggestions').expect(200)).body.suggestions.find((x) => x.id === s.id);
+        expect(still.status).toBe('pending');
+    });
+
+    test('accept as a new place, accept onto an existing place, dismiss; all audited without the street', async () => {
+        const a = await fileIt('9 Brambleworth Close');
+        const made = (await as(writer).post(`/hub/places/suggestions/${a.id}/accept`, { label: 'Pottery class', kind: 'other', notes: 'Wednesdays.' }).expect(200)).body;
+        expect(made).toMatchObject({ status: 'accepted', suggestion: { id: a.id, status: 'accepted', resolved_place_id: made.place.id }, place: { status: 'created', label: 'Pottery class' } });
+        expect((await as(reader).post('/hub/places/resolve', { geocode: '11 Brambleworth Close' }).expect(200)).body.match.label).toBe('Pottery class');
+        await as(writer).post(`/hub/places/suggestions/${a.id}/accept`, { label: 'Again' }).expect(409);
+
+        const b = await fileIt('3 Quillfeather Lane');
+        const attached = (await as(writer).post(`/hub/places/suggestions/${b.id}/accept`, { place_id: made.place.id }).expect(200)).body;
+        expect(attached.place).toMatchObject({ status: 'updated', id: made.place.id, rev: 2, rule_type: 'street' });
+
+        const c = await fileIt('40 Wrenfold Mews');
+        expect((await as(writer).post(`/hub/places/suggestions/${c.id}/dismiss`, {}).expect(200)).body.status).toBe('dismissed');
+        expect((await as(writer).post(`/hub/places/suggestions/${c.id}/dismiss`, {}).expect(200)).body.status).toBe('unchanged');
+        expect(await fileIt('42 Wrenfold Mews')).toMatchObject({ id: c.id, status: 'dismissed', count: 2 });
+        await as(writer).post('/hub/places/suggestions/99999/dismiss', {}).expect(404);
+        expect((await as(writer).post(`/hub/places/suggestions/${c.id}/accept`, {}).expect(400)).body.error).toBe('bad_request');
+
+        const rows = audit.recent(db.get(), 200).filter((r) => r.action.startsWith('place_suggestion_'));
+        expect(rows.map((r) => r.action).sort()).toEqual(['place_suggestion_accepted', 'place_suggestion_accepted', 'place_suggestion_dismissed']);
+        expect(rows.find((r) => r.detail.suggestion_id === a.id)).toMatchObject({ actor: 'places-editor', detail: { status: 'accepted', label: 'Pottery class', created: true } });
+        expect(JSON.stringify(audit.recent(db.get(), 300))).not.toMatch(/brambleworth|quillfeather|wrenfold|wednesdays/i);
+    });
+});
+
 describe('domain switch', () => {
     afterEach(() => domains.setEnabled(db.get(), 'places', true, 'test'));
 
     test('a switched-off places domain answers 503 to valid keys, reads and writes, but keeps its data', async () => {
+        const before = (await as(reader).get('/hub/places').expect(200)).body.places.map((p) => p.label);
         domains.setEnabled(db.get(), 'places', false, 'test');
         expect((await as(reader).get('/hub/places').expect(503)).body.error).toBe('domain_disabled');
         await as(reader).post('/hub/places/resolve', { zone: 'home' }).expect(503);
@@ -181,6 +232,7 @@ describe('domain switch', () => {
 
         domains.setEnabled(db.get(), 'places', true, 'test');
         const list = (await as(reader).get('/hub/places').expect(200)).body.places;
-        expect(list.map((p) => p.label)).toEqual(['Home']);
+        expect(list.map((p) => p.label)).toEqual(before);
+        expect(before).toContain('Home');
     });
 });
