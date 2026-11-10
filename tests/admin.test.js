@@ -100,6 +100,28 @@ describe('dashboard API', () => {
         expect(page.text).toMatch(/<script type="module" src="app.js">/);
     });
 
+    test('every admin module parses, is served as JavaScript and imports only files that exist', async () => {
+        const fs = require('fs');
+        const path = require('path');
+        const { spawnSync } = require('child_process');
+        const root = path.join(__dirname, '../routes/admin/public');
+        const files = ['.', 'views'].flatMap((dir) => fs.readdirSync(path.join(root, dir))
+            .filter((f) => f.endsWith('.js')).map((f) => path.posix.join(dir, f).replace(/^\.\//, '')));
+        expect(files).toEqual(expect.arrayContaining(['app.js', 'skeletons.js', 'shortcuts.js', 'views/settings.js']));
+        for (const file of files) {
+            const source = fs.readFileSync(path.join(root, file), 'utf8');
+            const check = spawnSync(process.execPath, ['--input-type=module', '--check'], { input: source, encoding: 'utf8' });
+            expect({ file, error: check.status === 0 ? '' : check.stderr.split('\n').slice(0, 5).join('\n') }).toEqual({ file, error: '' });
+            for (const [, from, dynamic] of source.matchAll(/(?:^|\n)\s*(?:import|export)\b[^'"]*?from\s+'(\.[^']+)'|import\('(\.[^'$`]+)'\)/g)) {
+                const spec = from || dynamic;
+                const target = path.join(path.dirname(path.join(root, file)), spec);
+                expect({ file, spec, exists: fs.existsSync(target) }).toEqual({ file, spec, exists: true });
+            }
+            const res = await request(app).get(`/admin/${file}`).expect(200);
+            expect(res.headers['content-type']).toMatch(/javascript/);
+        }
+    });
+
     test('the CSP adds only manifest-src for the web app manifest', async () => {
         const csp = (await request(app).get('/admin/').expect(200)).headers['content-security-policy'];
         expect(csp).toMatch(/manifest-src 'self'(;|$)/);
