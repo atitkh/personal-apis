@@ -29,7 +29,7 @@ beforeAll(() => {
     make('digests-all', 'digests:*');
     make('everything', '*');
     make('portfolio-only', 'portfolio:read');
-    make('flights', 'flights:read');
+    make('flights', 'attendance:read');
 });
 afterAll(() => db.close());
 
@@ -123,13 +123,13 @@ describe('mcp: which tools a key sees', () => {
 
     test('mcp_mode off hides the tool', async () => {
         domains.setMcpMode(db.get(), 'digests', 'off', 'test');
-        expect(await toolNames('everything')).toEqual(['hub_overview', 'places', 'portfolio']);
+        expect(await toolNames('everything')).toEqual(['flights', 'hub_overview', 'places', 'portfolio']);
     });
 
     test('a disabled domain hides the tool even in write mode', async () => {
         domains.setMcpMode(db.get(), 'digests', 'write', 'test');
         domains.setEnabled(db.get(), 'digests', false, 'test');
-        expect(await toolNames('everything')).toEqual(['hub_overview', 'places', 'portfolio']);
+        expect(await toolNames('everything')).toEqual(['flights', 'hub_overview', 'places', 'portfolio']);
     });
 
     test('portfolio is read-only', async () => {
@@ -284,7 +284,7 @@ describe('mcp: size caps', () => {
 describe('mcp: hub_overview', () => {
     test('shows only the domains this key can reach', async () => {
         const all = jsonOf(await call('everything', 'hub_overview', {}));
-        expect(all.domains.map((d) => d.name)).toEqual(['digests', 'places', 'portfolio']);
+        expect(all.domains.map((d) => d.name)).toEqual(['digests', 'flights', 'places', 'portfolio']);
         const digestsRow = all.domains.find((d) => d.name === 'digests');
         expect(digestsRow).toMatchObject({ title: 'Digests', sensitivity: 'private', mcpMode: 'read', actions: ['recent', 'get', 'search'] });
         expect(digestsRow.records).toBeGreaterThan(0);

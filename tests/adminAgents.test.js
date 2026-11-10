@@ -15,7 +15,7 @@ const keys = {};
 
 let agent;
 beforeAll(async () => {
-    for (const [name, scopes] of [['ag-reader', 'digests:read'], ['ag-editor', 'digests:read, digests:edit'], ['ag-none', 'flights:read']]) {
+    for (const [name, scopes] of [['ag-reader', 'digests:read'], ['ag-editor', 'digests:read, digests:edit'], ['ag-none', 'attendance:read']]) {
         keys[name] = apiKeys.create(db.get(), { name, scopes });
     }
     agent = request.agent(app);
