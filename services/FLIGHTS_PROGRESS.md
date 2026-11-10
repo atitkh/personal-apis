@@ -89,13 +89,47 @@ throwaway node:20 container; it is not a hub dependency. Rebuild: see the header
   already_suggested, candidates listed, admin accept created flight 1, get had has_booking_ref only, get with
   include_booking_ref returned it; audit rows had no booking reference, app log neither.
 
+## Done (stage 3: dashboard; 2026-11-10)
+
+- Admin API additions (session + X-Requested-With, errors `{ error, code }`, audited as `admin`, work while the domain is off):
+  `GET /admin/api/flights` (filters year, airport, airline, trip, status; limit default 500; **no booking_ref**, only
+  `has_booking_ref`), `GET /flights/:id` (full flight with `booking_ref`, `?rev=`, plus `history`), `POST /flights`,
+  `PATCH /flights/:id`, `POST /flights/:id/restore`, `GET /flights/stats` (`?year=`; the stats plus `map` {airports with
+  lat/lon/visits, routes a/b/flights} and `settings`), `GET /flights/upcoming`, `GET /flights/airports?q=` (iata/icao/city
+  prefix or name substring, at most 20), `GET|POST /flights/trips`, `GET|PUT /flights/settings`. Services: `searchAirports`,
+  `mapData` (no flight numbers, dates or booking refs). Tests: `tests/adminFlightsView.test.js` (10).
+- View `routes/admin/public/views/flights.js` (`#/flights`): tabs Passport / Flights / Found flights (`?tab=found`, alias
+  `?tab=queue`; `?show=accepted|dismissed|all`), `#/flights/12` drawer, `?tab=flights&new=1` Add flight, `?year=` on the
+  Passport, filters `?year= ?airport= ?airline= ?status= ?q=` on the list. Passport (`passport.js`): six tiles, km/miles
+  toggle (localStorage), year chips, SVG map (equirectangular; land outline `worldmap.js` = Natural Earth 110m, 32 KB, built by
+  `scripts/worldmap-build.js`; quadratic arcs, repeated across the date line), records, top routes/aircraft/airports/airlines.
+  Flights tab: Upcoming strip (next 3), filters + search, table (stacks at 390 px), home airport card (validated by the
+  server), drawer with the edit form (times in airport-local time, only changed fields are sent), booking ref masked until
+  Show, history with compare and restore, trip picker with inline "New trip", Cancel (status only, no delete). Add flight
+  form with datalist airport autocomplete. Found flights: parsed fields, confidence, source, Accept, Edit and accept (drawer),
+  Dismiss (confirm), Accept all shown (confirm; per-id toasts, duplicate = "already in your flights"), count badges on the tab
+  and the side menu (`shell.setBadge`; also in the More sheet).
+- Registered: nav item with an airplane icon (`ui.js`), `g f`, skeleton, palette (Add flight, Flights waiting for review, a
+  palette entry per flight: number, route and date only), overview attention line now links to `?tab=found`, write-mode
+  confirm wording for Flights. `api.js` keeps `err.code` and `err.data` (the duplicate id travels in it).
+- Overview board needed no change: Flights already showed (teal, switch, Off/Read/Read and write). Activity sentences and the
+  Flights filter existed from stages 1 and 2 and were checked in the browser.
+- Browser checks (36 flow checks + 5 empty-hub checks, all pass): headless Google Chrome through `playwright-core` (from the
+  OpenClaw install) against a SCRATCH hub: a throwaway `node:20` container (`pa-scratch`, port 3999, scratch DB under
+  `/tmp/pa-scratch-data`, repo copy in `/tmp/pa-flights`). Scripts are in the OpenClaw workspace, not in the repo:
+  `workspace/tmp/hub-flights-e2e/{seed.js,more.js,reset.sh,run.mjs}` (`./reset.sh [empty]` then `node run.mjs [empty]`, MORE=
+  command adds candidates mid-run). Covered: board row, attention link, nav badge and `g f`, Passport tiles vs the seeded data
+  (distance recomputed with haversine), records, map arcs, units, year switch, filters, drawer and masked booking ref,
+  edit + restore + compare, trip creation, Esc and focus return, Add flight (validation, autocomplete, twin 409 link), home
+  airport (unknown refused), queue accept (duplicate message), edit and accept, dismiss, accept all, palette, deep links, tab
+  arrows, cancel, dark mode, 390 px (tiles two across, table stacks, drawer full width), no console errors. Screenshots (6, JPEG
+  900 px): `workspace/tmp/hub-flights-shots/`. Suite: 294 pass in node:20.
+
 ## Next
 
-- Stage 3: dashboard Flights view (Passport, map, list + drawer, upcoming, found-flights queue using the admin
-  API above: accept one / accept all / edit before accepting / dismiss), board channel; point the overview's
-  found-flights attention link at the queue tab.
 - Stage 4: ingestion (`flights_scan.py`, `flights-job` key with flights:read + flights:suggest, posting to
   `POST /hub/flights/candidates` over REST), briefing and digest mention upcoming flights.
+- Open (small): map labels of airports close together can overlap (LIT/DFW); the Flights list loads the newest 500 only.
 - Later: admin-only real delete; trip delete; airlines seed. MCP add/edit are logged only as `mcp_call`.
 - Not deployed: local commits only, not pushed, container not restarted. Migrations 007 and 008 run on the
   next start; Flights MCP mode defaults to read.

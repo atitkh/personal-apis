@@ -87,6 +87,12 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
   contrast and focus audit light/dark at 1280 and 390, stacked rows and full-sheet drawer at 390, empty states,
   offline error with Retry, skeletons per tab, switch and selector on the board. Tests: 218 pass in node:20.
 
+## Done (flights view, 2026-11-10)
+
+- `views/flights.js` + `passport.js` + `worldmap.js` (`#/flights`): Passport, Flights, Found flights; details in
+  `services/FLIGHTS_PROGRESS.md` (stage 3). Teal channel, `g f`, nav and tab badges for found flights, palette entries.
+- Verified in headless Chrome on a scratch hub: 36 flow checks and 5 empty-hub checks (see the progress file). Tests: 294 pass.
+
 ## Open
 
 - Segmented options are 42 px tall on phones inside a 46 px control (the switch has a 44 px hit area);
