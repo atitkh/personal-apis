@@ -49,8 +49,8 @@ const metres = (m) => (m >= 1000 ? `${(m / 1000).toLocaleString(undefined, { max
 function ruleValue(r) {
     if (r.type === 'street') return `“${r.value}” in the address`;
     if (r.type === 'zone') return `Home Assistant zone ${r.value}`;
-    const where = r.lat != null ? `${r.lat}, ${r.lon}` : 'a point';
-    return `Within ${metres(r.radius_m)} of ${where}${r.value ? ` (${r.value})` : ''}`;
+    const where = r.lat != null ? ` of ${r.lat}, ${r.lon}` : ' of its centre';
+    return `Within ${metres(r.radius_m)}${where}${r.value ? ` (${r.value})` : ''}`;
 }
 
 const confidenceText = (c) => (c === 'exact'
