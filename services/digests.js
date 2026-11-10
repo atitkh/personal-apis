@@ -205,4 +205,12 @@ function stats(db) {
     return { records: total, label: total === 1 ? 'digest' : 'digests', lastChange: last };
 }
 
-module.exports = { DigestError, put, edit, restore, get, latest, revisions, list, recent, range, search, stats, PERIOD_RE };
+// The first and last period of a kind and how many there are (the dashboard calendar uses it to tell
+// "missing" days from days before digests began).
+function bounds(db, kind) {
+    check(kind, kind === 'daily' ? '2000-01-01' : '2000-W01');
+    const r = db.prepare('SELECT MIN(period) AS first, MAX(period) AS last, COUNT(*) AS count FROM digests WHERE kind = ?').get(kind);
+    return { first: r.first || null, last: r.last || null, count: r.count };
+}
+
+module.exports = { DigestError, put, edit, restore, get, latest, revisions, list, recent, range, search, stats, bounds, PERIOD_RE };

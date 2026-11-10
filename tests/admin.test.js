@@ -270,6 +270,59 @@ describe('dashboard: coverage, manual backup, activity', () => {
     });
 });
 
+describe('dashboard: calendar, activity paging, key calls', () => {
+    const app = buildApp({ loginMax: 1000 });
+    const digests = require('../services/digests');
+
+    test('digests can be listed for a date range, with the bounds of the kind', async () => {
+        const conn = db.get();
+        for (const p of ['2026-09-30', '2026-10-01', '2026-10-15', '2026-10-31', '2026-11-01']) {
+            digests.put(conn, 'daily', p, { body: `Day ${p}.`, actor: 'test' });
+        }
+        const agent = await signedIn(app);
+        const res = (await agent.get('/admin/api/digests?kind=daily&from=2026-10-01&to=2026-10-31&limit=62').expect(200)).body;
+        expect(res.digests.map((d) => d.period)).toEqual(['2026-10-31', '2026-10-15', '2026-10-01']);
+        expect(res.bounds.first <= '2026-09-30').toBe(true);
+        expect(res.bounds.last >= '2026-11-01').toBe(true);
+        expect(res.bounds.count).toBeGreaterThanOrEqual(5);
+        await agent.get('/admin/api/digests?kind=monthly').expect(400);
+    });
+
+    test('activity filters by type and pages back with before', async () => {
+        const conn = db.get();
+        for (let i = 0; i < 5; i++) audit.record(conn, 'admin', 'backup_run', null, '127.0.0.1');
+        audit.record(conn, 'admin', 'key_created', { id: 99, name: 'pager', scopes: ['digests:read'] }, '127.0.0.1');
+        const agent = await signedIn(app);
+
+        const first = (await agent.get('/admin/api/activity?type=backups&limit=3').expect(200)).body;
+        expect(first.events).toHaveLength(3);
+        expect(first.events.every((e) => e.action === 'backup_run')).toBe(true);
+        expect(first.more).toBe(true);
+
+        const older = (await agent.get(`/admin/api/activity?type=backups&limit=3&before=${first.events[2].id}`).expect(200)).body;
+        expect(older.events.every((e) => e.id < first.events[2].id && e.action === 'backup_run')).toBe(true);
+
+        const keys = (await agent.get('/admin/api/activity?type=keys').expect(200)).body.events;
+        expect(keys[0]).toMatchObject({ action: 'key_created', detail: { name: 'pager' } });
+        await agent.get('/admin/api/activity?type=nope').expect(400);
+    });
+
+    test("a key's agent calls are listed without content, only from its own lifetime", async () => {
+        const conn = db.get();
+        audit.record(conn, 'callme', 'mcp_call', { key: 'callme', tool: 'digests', action: 'get', ok: true }, null);
+        conn.prepare("UPDATE audit_log SET at = '2000-01-01T00:00:00.000Z' WHERE id = (SELECT MAX(id) FROM audit_log)").run();
+        const agent = await signedIn(app);
+        const key = (await agent.post('/admin/api/keys').set(H).send({ name: 'callme', scopes: 'digests:read' }).expect(201)).body;
+        audit.record(conn, 'callme', 'mcp_call', { key: 'callme', tool: 'digests', action: 'search', ok: false }, null);
+        audit.record(conn, 'other', 'mcp_call', { key: 'other', tool: 'digests', action: 'get', ok: true }, null);
+
+        const calls = (await agent.get(`/admin/api/keys/${key.id}/calls`).expect(200)).body.calls;
+        expect(calls).toEqual([expect.objectContaining({ key: 'callme', tool: 'digests', action: 'search', ok: false })]);
+        await agent.get('/admin/api/keys/999999/calls').expect(404);
+        await agent.get('/admin/api/keys/abc/calls').expect(404);
+    });
+});
+
 describe('mounted in the real app', () => {
     const realApp = require('../app');
 

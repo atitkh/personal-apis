@@ -28,6 +28,17 @@ const CSP = [
     "frame-ancestors 'none'",
 ].join('; ');
 
+// Activity filters: which audit actions each chip shows.
+const ACTIVITY_TYPES = {
+    all: null,
+    keys: ['key_created', 'key_revoked'],
+    agents: ['mcp_call', 'domain_mcp_changed'],
+    backups: ['backup_run'],
+    domains: ['domain_enabled', 'domain_disabled', 'domain_mcp_changed'],
+    digests: ['digest_edited', 'digest_restored'],
+    signins: ['login', 'logout', 'login_failed'],
+};
+
 function readCookie(req, name) {
     for (const part of (req.headers.cookie || '').split(';')) {
         const i = part.indexOf('=');
@@ -138,7 +149,16 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         }
     });
     api.get('/portfolio', (req, res) => res.json(stats.portfolio()));
-    api.get('/activity', (req, res) => res.json({ events: audit.recent(db.get(), req.query.limit) }));
+    // ?type= one of ACTIVITY_TYPES, ?before=<id> for older events. `more` says whether older ones exist.
+    api.get('/activity', (req, res) => {
+        const type = req.query.type || 'all';
+        if (!Object.prototype.hasOwnProperty.call(ACTIVITY_TYPES, type)) {
+            return res.status(400).json({ error: `type must be one of: ${Object.keys(ACTIVITY_TYPES).join(', ')}.` });
+        }
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 199);
+        const rows = audit.recent(db.get(), limit + 1, { before: req.query.before, actions: ACTIVITY_TYPES[type] });
+        res.json({ events: rows.slice(0, limit), more: rows.length > limit });
+    });
 
     api.get('/keys', (req, res) => res.json({ keys: apiKeys.list(db.get()) }));
 
@@ -153,6 +173,15 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
             const dup = /UNIQUE/i.test(err.message);
             res.status(dup ? 409 : 400).json({ error: dup ? `A key named "${name}" is already active.` : err.message });
         }
+    });
+
+    // A key's latest agent calls for its detail drawer: tool, action, outcome and time, never content.
+    api.get('/keys/:id/calls', (req, res) => {
+        const conn = db.get();
+        const id = Number(req.params.id);
+        const key = Number.isInteger(id) ? apiKeys.list(conn).find((k) => k.id === id) : null;
+        if (!key) return res.status(404).json({ error: 'No key with that id.' });
+        res.json({ calls: agents.callsFor(conn, key, req.query.limit) });
     });
 
     api.delete('/keys/:id', (req, res) => {
@@ -207,9 +236,11 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
     };
 
     api.get('/digests', digestHandler((req, res, conn) => {
-        const { kind, q, limit, offset } = req.query;
+        const { kind, q, limit, offset, from, to } = req.query;
         if (q) return res.json({ results: digests.search(conn, q, { kind, limit }) });
-        res.json({ digests: digests.list(conn, { kind, limit, offset }) });
+        const out = { digests: digests.list(conn, { kind, limit, offset, from, to }) };
+        if (kind) out.bounds = digests.bounds(conn, kind);
+        res.json(out);
     }));
 
     api.get('/digests/:kind/:period', digestHandler((req, res, conn) => {

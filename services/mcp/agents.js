@@ -72,13 +72,25 @@ function summary(conn, now = new Date()) {
 
     const recent = conn.prepare(
         "SELECT at, actor, detail FROM audit_log WHERE action = 'mcp_call' ORDER BY id DESC LIMIT 50",
-    ).all().map((r) => {
-        let d = {};
-        try { d = JSON.parse(r.detail) || {}; } catch (err) { d = {}; }
-        return { at: r.at, key: d.key || r.actor, tool: d.tool || null, action: d.action || null, ok: d.ok === true };
-    });
+    ).all().map(callRow);
 
     return { endpoint: ENDPOINT, tools: tools(), keys, recent };
 }
 
-module.exports = { ENDPOINT, hasTool, domainsWithTools, tools, visibleFor, callCount, keysWithTools, summary };
+function callRow(r) {
+    let d = {};
+    try { d = JSON.parse(r.detail) || {}; } catch (err) { d = {}; }
+    return { at: r.at, key: d.key || r.actor, tool: d.tool || null, action: d.action || null, ok: d.ok === true };
+}
+
+// One key's latest agent calls (tool, action, outcome; never content). Calls are logged by key name, so only
+// calls made while this key existed count, in case an older revoked key had the same name.
+function callsFor(conn, key, limit = 20) {
+    const n = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const until = key.revoked_at || null;
+    return conn.prepare(
+        "SELECT at, actor, detail FROM audit_log WHERE action = 'mcp_call' AND actor = ? AND at >= ? AND (? IS NULL OR at <= ?) ORDER BY id DESC LIMIT ?",
+    ).all(key.name, key.created_at, until, until, n).map(callRow);
+}
+
+module.exports = { ENDPOINT, hasTool, domainsWithTools, tools, visibleFor, callCount, keysWithTools, summary, callsFor };
