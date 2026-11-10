@@ -631,8 +631,8 @@ function placesTab(ctx, data) {
     return h('div', { class: 'tab-panel', id: 'panel-places', role: 'tabpanel', 'aria-labelledby': 'tab-places' },
         checkBox(ctx, kinds),
         all.length ? h('div', { class: 'toolbar' }, kindNav, searchForm) : null,
-        h('section', { 'aria-labelledby': 'p-count', class: 'places-list' },
-            h('h2', { id: 'p-count', class: 'section-title', text: shown.length === all.length ? plural(all.length, 'place') : `${shown.length} of ${plural(all.length, 'place')}` }),
+        h('section', { 'aria-labelledby': all.length ? 'p-count' : null, 'aria-label': all.length ? null : 'Places', class: 'places-list' },
+            all.length ? h('h2', { id: 'p-count', class: 'section-title', text: shown.length === all.length ? plural(all.length, 'place') : `${shown.length} of ${plural(all.length, 'place')}` }) : null,
             body));
 }
 
