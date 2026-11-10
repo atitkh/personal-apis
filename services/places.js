@@ -31,6 +31,9 @@
 //      place_suggestions (count + 1 per call). The street is the text before the first comma or line
 //      break with a leading house number removed ("12 Example Ave, Springfield" gives "Example Ave"), see streetOf().
 //      A dismissed street stays dismissed; an accepted one whose place no longer matches is pending again.
+//   5. A person works the queue off (acceptSuggestion, dismissSuggestion; REST places:write and the admin
+//      API, never the agent tool): accept adds the street as a street rule to a place or creates a place with
+//      it (revision source "suggestion"); dismiss keeps the row, so later sightings only raise its count.
 //
 // JSON uses the column names (updated_at, radius_m, matched_rule). Audit entries carry ids and labels only,
 // never rule values: a rule value can be the home address. Use auditDetail() for them.
