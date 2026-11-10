@@ -24,7 +24,9 @@ export async function api(path, { method = 'GET', body } = {}) {
         throw new Error('Your session ended. Sign in again.');
     }
     if (!res.ok) {
-        throw new Error((data && data.error) || `The request failed (${res.status}).`);
+        const err = new Error((data && data.error) || `The request failed (${res.status}).`);
+        err.status = res.status;
+        throw err;
     }
     return data;
 }

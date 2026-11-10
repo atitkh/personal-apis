@@ -63,7 +63,20 @@ export function createShell({ session, onSignOut, openPalette }) {
         options: THEMES.map(([value, label]) => ({ value, label: `${label} theme`, icon: THEME_ICONS[value] })),
         onChange: (v) => setPreference(v),
     });
-    onThemeChange((pref) => theme.setValue(pref));
+    // Phones get one small button that steps through system, light and dark.
+    const themeName = (v) => (THEMES.find(([id]) => id === v) || THEMES[0])[1];
+    const themeCycle = h('button', { type: 'button', class: 'btn ghost icon-only theme-cycle' });
+    const paintCycle = (pref) => {
+        const i = THEMES.findIndex(([id]) => id === pref);
+        const next = THEMES[(i + 1) % THEMES.length][0];
+        themeCycle.replaceChildren(icon(THEME_ICONS[pref] || 'system'));
+        themeCycle.setAttribute('aria-label', `Theme: ${themeName(pref).toLowerCase()}. Switch to ${themeName(next).toLowerCase()}`);
+        themeCycle.title = themeCycle.getAttribute('aria-label');
+        themeCycle.dataset.next = next;
+    };
+    themeCycle.addEventListener('click', () => setPreference(themeCycle.dataset.next));
+    paintCycle(preference());
+    onThemeChange((pref) => { theme.setValue(pref); paintCycle(pref); });
 
     // Account menu: a disclosure button with a small popover.
     const menuId = 'account-menu';
@@ -73,6 +86,7 @@ export function createShell({ session, onSignOut, openPalette }) {
     }, icon('user'));
     const menu = h('div', { class: 'menu', id: menuId, hidden: true },
         h('p', { class: 'menu-note', text: session && session.expiresAt ? `Signed in until ${when(session.expiresAt)}` : 'Signed in' }),
+        h('a', { class: 'btn quiet small', href: router.href('settings'), onclick: () => toggleMenu(false) }, icon('settings'), h('span', { text: 'Settings' })),
         button({ text: 'Sign out', variant: 'quiet', size: 'small', iconName: 'signout', onClick: onSignOut }));
     const account = h('div', { class: 'account' }, accountBtn, menu);
     function toggleMenu(open = menu.hidden) {
@@ -88,7 +102,7 @@ export function createShell({ session, onSignOut, openPalette }) {
     const topbar = h('header', { class: 'topbar' },
         h('a', { class: 'brand brand-small', href: router.href('overview'), 'aria-label': 'Personal hub, overview' }, brandMark()),
         title,
-        h('div', { class: 'topbar-tools' }, paletteBtn, theme, account));
+        h('div', { class: 'topbar-tools' }, paletteBtn, theme, themeCycle, account));
 
     const content = h('main', { class: 'content', id: 'content', tabindex: '-1' });
 

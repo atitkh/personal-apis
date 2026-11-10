@@ -1,19 +1,70 @@
-// Digests: list and search (#/digests?kind=weekly&q=...), reader with edit, history, compare and restore
-// (#/digests/daily/2026-11-08). Ported as is from the old single-file app; stage 2 redesigns it.
-import { h, when, fact, dot, emptyState, toast } from '../ui.js';
+// Digests.
+//   #/digests?month=2026-11      coverage calendar for the month plus that month's digests
+//   #/digests?kind=weekly        the weekly reviews
+//   #/digests?q=words            full-text search (keeps ?kind)
+//   #/digests/daily/2026-11-08   reader (serif), previous/next day, edit mode, history drawer
+//   #/digests/weekly/2026-W45    the same for a week
+// History, compare and restore live in a right-hand drawer so the text keeps its place.
+import {
+    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, openDrawer, chipNav, dayLabel, hidden, actorName,
+} from '../ui.js';
+import { monthCalendar, isoDay, parseDay, addDays, addMonths, monthLabel } from '../charts.js';
 import { href, navigate } from '../router.js';
 
 const SOURCE_LABEL = { generated: 'Generated', import: 'Imported', edit: 'Edited', restore: 'Restored' };
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const WEEK_RE = /^\d{4}-W\d{2}$/;
+const MONTH_RE = /^\d{4}-\d{2}$/;
+const pad = (n) => String(n).padStart(2, '0');
 
-// Detail state, reset whenever another digest opens.
-let detail = { id: null, viewRev: null, editing: false, showHistory: false, compare: null, confirmRestore: null };
+/* ---------- periods ---------- */
 
-function periodTitle(kind, period) {
-    if (kind !== 'daily') return period;
-    return new Date(`${period}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+// 2026-11-08 -> 2026-W45 (ISO week: Monday start, week 1 holds the first Thursday).
+export function isoWeek(day) {
+    const d = parseDay(day);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 3);
+    const year = d.getFullYear();
+    const firstThu = new Date(year, 0, 4, 12);
+    firstThu.setDate(firstThu.getDate() - ((firstThu.getDay() + 6) % 7) + 3);
+    return `${year}-W${pad(1 + Math.round((d - firstThu) / (7 * 86400000)))}`;
 }
 
-// Shows a search snippet, turning [matched] words into <mark> without using innerHTML.
+// 2026-W45 -> the Monday, 2026-11-02
+export function weekStart(period) {
+    const [y, w] = period.split('-W').map(Number);
+    const jan4 = new Date(y, 0, 4, 12);
+    jan4.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + (w - 1) * 7);
+    return isoDay(jan4);
+}
+
+const addWeeks = (period, n) => isoWeek(addDays(weekStart(period), 7 * n));
+const today = () => isoDay(new Date());
+
+function periodTitle(kind, period) {
+    if (kind === 'daily') return dayLabel(period, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const [y, w] = period.split('-W');
+    return `Week ${Number(w)}, ${y}`;
+}
+
+function periodShort(kind, period) {
+    if (kind === 'daily') return dayLabel(period, { weekday: 'short', month: 'short', day: 'numeric' });
+    return `Week ${Number(period.split('-W')[1])}`;
+}
+
+function weekRange(period) {
+    const start = weekStart(period);
+    const end = addDays(start, 6);
+    const opts = { month: 'long', day: 'numeric' };
+    return `${dayLabel(start, opts)} to ${dayLabel(end, start.slice(5, 7) === end.slice(5, 7) ? { day: 'numeric' } : opts)}`;
+}
+
+const listHref = (kind, period) => (kind === 'daily'
+    ? href('digests', [], { month: period ? period.slice(0, 7) : null })
+    : href('digests', [], { kind: 'weekly' }));
+
+/* ---------- small pieces ---------- */
+
+// Turns [matched] words of a search snippet into <mark>, without innerHTML.
 function highlight(snippet) {
     return snippet.split(/(\[[^\]]*\])/).filter(Boolean).map((part) => (/^\[.*\]$/.test(part) ? h('mark', { text: part.slice(1, -1) }) : part));
 }
@@ -32,8 +83,7 @@ function diffParagraphs(older, newer) {
     let i = 0;
     let j = 0;
     while (i < n && j < m) {
-        if (A[i] === B[j]) { out.push(['same', A[i]]); i++; j++; }
-        else if (L[i + 1][j] >= L[i][j + 1]) out.push(['del', A[i++]]);
+        if (A[i] === B[j]) { out.push(['same', A[i]]); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) out.push(['del', A[i++]]);
         else out.push(['add', B[j++]]);
     }
     while (i < n) out.push(['del', A[i++]]);
@@ -41,167 +91,360 @@ function diffParagraphs(older, newer) {
     return out;
 }
 
-function sourceHealth(meta) {
+function sourceSummary(meta) {
     const src = meta && meta.sources;
-    if (!src || typeof src !== 'object') return h('span', { class: 'muted', text: 'Not recorded' });
+    if (!src || typeof src !== 'object') return null;
     const names = Object.keys(src);
-    const ok = names.filter((k) => src[k] === 'ok').length;
-    const bad = names.filter((k) => src[k] === 'failed').length;
-    return [dot(bad ? 'warn' : 'good'), `${ok} of ${names.length} sources${bad ? `, ${bad} failed` : ''}`];
+    const bad = names.filter((k) => src[k] !== 'ok').length;
+    return { text: `${names.length - bad} of ${plural(names.length, 'source')}${bad ? `, ${bad} failed` : ''}`, bad };
 }
 
-async function list(ctx) {
+function versionText(d) {
+    const what = SOURCE_LABEL[d.source] || d.source;
+    return d.rev > 1 ? `${what}, revision ${d.rev}` : what;
+}
+
+function digestItem(d) {
+    const src = sourceSummary(d.meta);
+    return h('li', {}, h('a', { class: 'dl-item', href: href('digests', [d.kind, d.period]), 'data-key': `d:${d.kind}:${d.period}` },
+        h('span', { class: 'dl-title', text: d.kind === 'daily' ? dayLabel(d.period, { weekday: 'long', month: 'long', day: 'numeric' }) : `${periodTitle(d.kind, d.period)}, ${weekRange(d.period)}` }),
+        h('span', { class: 'dl-meta' },
+            h('span', { text: versionText(d) }),
+            src ? h('span', {}, dot(src.bad ? 'warn' : 'good'), src.text) : null,
+            h('span', { text: `${Math.max(1, Math.round(d.chars / 6)).toLocaleString()} words` }))));
+}
+
+function kindNav(kind, q) {
+    return chipNav({
+        label: 'Kind of digest',
+        current: kind,
+        items: [
+            { id: 'daily', label: 'Daily', href: href('digests', [], { q: q || null }) },
+            { id: 'weekly', label: 'Weekly', href: href('digests', [], { kind: 'weekly', q: q || null }) },
+        ],
+    });
+}
+
+function searchForm(kind, q) {
+    const input = h('input', { type: 'search', id: 'd-search', name: 'q', value: q, placeholder: `Search ${kind} digests`, 'aria-label': `Search the text of ${kind} digests`, 'data-key': 'd-search', enterkeyhint: 'search' });
+    return h('form', {
+        class: 'search-form',
+        role: 'search',
+        onsubmit: (event) => {
+            event.preventDefault();
+            navigate(href('digests', [], { kind: kind === 'weekly' ? 'weekly' : null, q: input.value.trim() }));
+        },
+    }, icon('search', 'search-icon'), input,
+    q ? h('a', { class: 'btn ghost small', href: href('digests', [], { kind: kind === 'weekly' ? 'weekly' : null }), text: 'Clear' }) : null);
+}
+
+/* ---------- list, calendar, search ---------- */
+
+let pendingFocus = null; // a day to focus once the calendar for its month is on screen
+
+async function results(ctx, kind, q) {
+    const data = await ctx.api(`/digests?q=${encodeURIComponent(q)}&kind=${kind}&limit=50`);
+    return h('section', { class: 'panel', 'aria-labelledby': 'res-title' },
+        h('h2', { id: 'res-title', text: data.results.length ? `${plural(data.results.length, 'match', 'matches')} for "${q}"` : `Nothing matches "${q}"` }),
+        data.results.length
+            ? h('ol', { class: 'results' }, data.results.map((r) => h('li', {},
+                h('a', { class: 'link res-title', href: href('digests', [r.kind, r.period]), text: r.kind === 'daily' ? periodTitle(r.kind, r.period) : `${periodTitle(r.kind, r.period)}, ${weekRange(r.period)}` }),
+                h('p', { class: 'res-snippet' }, highlight(r.snippet)))))
+            : emptyState({ title: 'No digest has those words.', text: `Try fewer or different words, or search the ${kind === 'daily' ? 'weekly' : 'daily'} digests. Search looks at every revision.` }));
+}
+
+async function daily(ctx) {
+    const now = today();
+    const asked = ctx.route.query.get('month');
+    const month = asked && MONTH_RE.test(asked) && asked <= now.slice(0, 7) ? asked : now.slice(0, 7);
+    const data = await ctx.api(`/digests?kind=daily&from=${month}-01&to=${month}-31&limit=62`);
+    const have = new Map(data.digests.map((d) => [d.period, d]));
+    const first = data.bounds.first;
+
+    const status = (day) => {
+        if (have.has(day)) return 'have';
+        if (day > now) return 'future';
+        if (day === now) return 'today';
+        if (!first || day < first) return 'before';
+        return 'gap';
+    };
+    const minMonth = first ? first.slice(0, 7) : now.slice(0, 7);
+    const go = (m) => navigate(href('digests', [], { month: m === now.slice(0, 7) ? null : m }));
+
+    const cal = monthCalendar({
+        month,
+        status,
+        href: (day) => href('digests', ['daily', day]),
+        focusDay: pendingFocus,
+        onLeave: (day) => {
+            const m = day.slice(0, 7);
+            if (m < minMonth || m > now.slice(0, 7)) return;
+            pendingFocus = day;
+            go(m);
+        },
+    });
+    if (pendingFocus && pendingFocus.startsWith(month)) {
+        const day = pendingFocus;
+        setTimeout(() => cal.focus(day), 0);
+    }
+    pendingFocus = null;
+
+    const days = Array.from({ length: new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate() }, (_, i) => `${month}-${pad(i + 1)}`);
+    const counted = days.filter((d) => ['have', 'gap'].includes(status(d)));
+    const gaps = counted.filter((d) => status(d) === 'gap');
+    const summary = !counted.length
+        ? (first ? 'No days to count in this month yet.' : 'No daily digest has arrived yet. The nightly job publishes one each day at 11 PM.')
+        : `${counted.length - gaps.length} of ${plural(counted.length, 'day')} have a digest.`;
+
+    const prev = button({ variant: 'ghost', size: 'small', iconName: 'prev', label: `Previous month, ${monthLabel(addMonths(month, -1))}`, onClick: () => go(addMonths(month, -1)), disabled: month <= minMonth, 'data-key': 'cal-prev' });
+    const next = button({ variant: 'ghost', size: 'small', iconName: 'next', label: `Next month, ${monthLabel(addMonths(month, 1))}`, onClick: () => go(addMonths(month, 1)), disabled: month >= now.slice(0, 7), 'data-key': 'cal-next' });
+
+    const calendarPanel = h('section', { class: 'panel cal-panel', 'aria-labelledby': 'cal-title' },
+        h('div', { class: 'cal-top' },
+            h('h2', { id: 'cal-title', text: monthLabel(month) }),
+            h('div', { class: 'cal-nav' }, prev,
+                month !== now.slice(0, 7) ? h('a', { class: 'btn ghost small', href: href('digests'), text: 'This month' }) : null,
+                next)),
+        cal.el,
+        h('ul', { class: 'cal-legend', 'aria-label': 'Key' },
+            h('li', {}, h('span', { class: 'cal-key have', 'aria-hidden': 'true' }), 'Digest'),
+            h('li', {}, h('span', { class: 'cal-key gap', 'aria-hidden': 'true' }), 'Missing'),
+            h('li', {}, h('span', { class: 'cal-key none', 'aria-hidden': 'true' }), 'Nothing expected')),
+        h('p', { class: 'cal-summary' }, summary,
+            gaps.length ? h('span', { class: 'cal-gaps' }, ` Missing: ${gaps.map((d) => dayLabel(d, { month: 'short', day: 'numeric' })).join(', ')}.`) : null));
+
+    const list = data.digests.length
+        ? h('ul', { class: 'digest-list' }, data.digests.map(digestItem))
+        : emptyState({ title: `No daily digests in ${monthLabel(month)}.`, text: first ? 'Pick another month, or search all of them.' : 'The nightly job publishes one each day at 11 PM.', iconName: 'calendar' });
+
+    return h('div', { class: 'digests-browse' },
+        calendarPanel,
+        h('section', { class: 'panel dl-panel', 'aria-labelledby': 'dl-title' },
+            h('div', { class: 'panel-head' },
+                h('h2', { id: 'dl-title', text: `${monthLabel(month)}` }),
+                h('span', { class: 'muted', text: plural(data.digests.length, 'digest') })),
+            list));
+}
+
+async function weekly(ctx) {
+    const data = await ctx.api('/digests?kind=weekly&limit=104');
+    return h('section', { class: 'panel dl-panel', 'aria-labelledby': 'dl-title' },
+        h('div', { class: 'panel-head' },
+            h('h2', { id: 'dl-title', text: 'Weekly reviews' }),
+            h('span', { class: 'muted', text: plural(data.bounds.count, 'week') })),
+        data.digests.length
+            ? h('ul', { class: 'digest-list' }, data.digests.map(digestItem))
+            : emptyState({ title: 'No weekly reviews yet.', text: 'The weekly review is published each Sunday from that week\'s daily digests.', iconName: 'calendar' }));
+}
+
+async function browse(ctx) {
     const kind = ctx.route.query.get('kind') === 'weekly' ? 'weekly' : 'daily';
     const q = (ctx.route.query.get('q') || '').trim();
-    const data = await ctx.api(`/digests?${q ? `q=${encodeURIComponent(q)}&` : ''}kind=${kind}&limit=200`);
-    const open = (k, p) => href('digests', [k, p]);
+    const body = q ? await results(ctx, kind, q) : kind === 'daily' ? await daily(ctx) : await weekly(ctx);
+    return h('div', { class: 'view digests' },
+        h('div', { class: 'view-intro' },
+            h('p', { class: 'lede', text: 'Written each night from your day, and each Sunday from the week. Read them, correct them, search them.' })),
+        h('div', { class: 'toolbar' }, kindNav(kind, q), searchForm(kind, q)),
+        body);
+}
 
-    const kindSwitch = h('div', { class: 'row', role: 'group', 'aria-label': 'Kind of digest' },
-        [['daily', 'Daily'], ['weekly', 'Weekly']].map(([k, label]) => h('a', {
-            class: `btn small ${kind === k ? '' : 'quiet'}`,
-            href: href('digests', [], { kind: k === 'daily' ? null : k }),
-            'aria-current': kind === k ? 'true' : null,
-            text: label,
-        })));
+/* ---------- reader ---------- */
 
-    const input = h('input', { type: 'search', id: 'd-search', value: q, placeholder: 'Search the text of every digest', 'aria-label': 'Search digests' });
-    const search = h('form', {
-        class: 'row',
-        role: 'search',
-        onsubmit: (event) => { event.preventDefault(); navigate(href('digests', [], { kind: kind === 'daily' ? null : kind, q: input.value.trim() })); },
-    }, input, h('button', { class: 'btn quiet', type: 'submit', text: 'Search' }),
-    q ? h('a', { class: 'btn quiet', href: href('digests', [], { kind: kind === 'daily' ? null : kind }), text: 'Clear' }) : null);
+// Reader state for the open digest; reset when another one opens.
+let st = { id: null, viewRev: null, editing: false };
+let historyDrawer = null;
 
-    let body;
-    if (q) {
-        body = data.results.length
-            ? h('ul', { class: 'results' }, data.results.map((r) => h('li', {},
-                h('a', { class: 'link', href: open(r.kind, r.period), text: periodTitle(r.kind, r.period) }),
-                h('p', { class: 'muted' }, highlight(r.snippet)))))
-            : emptyState({ title: `Nothing matches "${q}".`, text: 'Try fewer or different words. Search looks at every revision of every digest.' });
-    } else if (data.digests.length) {
-        body = h('div', { class: 'table-wrap' }, h('table', {},
-            h('thead', {}, h('tr', {}, ['Day', 'Version', 'Sources', 'Length'].map((t) => h('th', { text: t, class: t === 'Length' ? 'num' : null })))),
-            h('tbody', {}, data.digests.map((d) => h('tr', {},
-                h('td', {}, h('a', { class: 'link', href: open(d.kind, d.period), text: periodTitle(d.kind, d.period) })),
-                h('td', { text: `${SOURCE_LABEL[d.source] || d.source}${d.rev > 1 ? `, revision ${d.rev}` : ''}` }),
-                h('td', {}, sourceHealth(d.meta)),
-                h('td', { class: 'num', text: `${d.chars.toLocaleString()} characters` }))))));
-    } else {
-        body = emptyState({ title: `No ${kind} digests yet.`, text: kind === 'daily' ? 'The nightly job publishes one each day at 11 PM.' : 'The weekly review publishes one each Sunday.' });
+function pager(kind, period) {
+    const isDaily = kind === 'daily';
+    const prevP = isDaily ? addDays(period, -1) : addWeeks(period, -1);
+    const nextP = isDaily ? addDays(period, 1) : addWeeks(period, 1);
+    const nextAllowed = isDaily ? nextP <= today() : weekStart(nextP) <= today();
+    const unit = isDaily ? 'day' : 'week';
+    const link = (p, which, iconName, allowed) => (allowed
+        ? h('a', { class: `btn quiet small pager-${which}`, href: href('digests', [kind, p]), 'data-key': `pager-${which}`, rel: which === 'prev' ? 'prev' : 'next' },
+            which === 'prev' ? icon(iconName) : null,
+            h('span', {}, h('span', { class: 'pager-word', text: which === 'prev' ? `Previous ${unit}` : `Next ${unit}` }), hidden(', '), h('span', { class: 'pager-date', text: periodShort(kind, p) })),
+            which === 'next' ? icon(iconName) : null)
+        : h('span', { class: `btn quiet small pager-${which}`, 'aria-disabled': 'true' }, h('span', { class: 'pager-word', text: `No next ${unit} yet` })));
+    return h('nav', { class: 'pager', 'aria-label': `Other ${unit}s` },
+        link(prevP, 'prev', 'prev', true), link(nextP, 'next', 'next', nextAllowed));
+}
+
+function readerHead(kind, period, byline) {
+    return h('header', { class: 'reader-head' },
+        h('p', { class: 'crumb' }, h('a', { class: 'link', href: listHref(kind, period), text: kind === 'daily' ? `Digests, ${monthLabel(period.slice(0, 7))}` : 'Weekly reviews' })),
+        h('h2', { class: 'reader-title', text: periodTitle(kind, period) }),
+        kind === 'weekly' ? h('p', { class: 'reader-range', text: weekRange(period) }) : null,
+        byline ? h('p', { class: 'reader-byline', text: byline }) : null);
+}
+
+function openHistory(ctx, kind, period, d, base) {
+    const reload = () => ctx.rerender();
+    const listView = () => [
+        h('p', { class: 'note', text: 'Revision 1 is what first arrived and is never changed. Restoring adds a new revision with the older text, so nothing is lost.' }),
+        h('ol', { class: 'rev-list', reversed: true }, d.history.map((r) => h('li', { class: `rev${r.current ? ' current' : ''}` },
+            h('div', { class: 'rev-main' },
+                h('p', { class: 'rev-title' }, `Revision ${r.rev}`, r.current ? h('span', { class: 'chip', text: 'Current' }) : null),
+                h('p', { class: 'rev-what', text: r.source === 'restore' && r.note ? r.note : `${SOURCE_LABEL[r.source] || r.source} by ${r.model || actorName(r.actor)}${r.note ? `: ${r.note}` : ''}` }),
+                h('p', { class: 'rev-when' }, h('time', { datetime: r.at, text: when(r.at) }), ` (${ago(r.at)})`)),
+            r.current ? null : h('div', { class: 'rev-actions' },
+                button({ text: 'View', variant: 'quiet', size: 'small', label: `View revision ${r.rev}`, onClick: () => { st.viewRev = r.rev; st.editing = false; historyDrawer.close(true); reload(); } }),
+                button({ text: 'Compare', variant: 'quiet', size: 'small', label: `Compare revision ${r.rev} with the current text`, onClick: () => compare(r.rev) }),
+                button({ text: 'Restore', variant: 'quiet', size: 'small', label: `Restore revision ${r.rev}`, onClick: () => restore(r.rev) })))))];
+
+    async function restore(rev) {
+        const ok = await confirmDialog({
+            title: `Restore revision ${rev}?`,
+            body: `The text of revision ${rev} becomes the current text, as a new revision. The text you see now stays in the history.`,
+            confirm: 'Restore',
+        });
+        if (!ok) return;
+        try {
+            await ctx.api(`${base}/restore`, { method: 'POST', body: { rev } });
+            toast(`Revision ${rev} restored`);
+            st.viewRev = null;
+            historyDrawer.close(true);
+            reload();
+        } catch (err) {
+            toast(`Could not restore. ${err.message}`, { kind: 'bad' });
+        }
     }
 
-    return h('div', { class: 'legacy' },
-        h('p', { class: 'lede', text: 'Written each night from your day, and each week from the days. You can read, correct and search them here.' }),
-        h('section', {}, h('div', { class: 'toolbar' }, kindSwitch, search)),
-        h('section', {}, body));
+    async function compare(rev) {
+        historyDrawer.setTitle('Compare', `Revision ${rev} and the current text`);
+        historyDrawer.setContent(h('p', { class: 'muted', text: 'Loading…' }));
+        try {
+            const [older, current] = await Promise.all([ctx.api(`${base}?rev=${rev}`), ctx.api(base)]);
+            const parts = diffParagraphs(older.body, current.body);
+            const changed = parts.filter(([k]) => k !== 'same').length;
+            const back = button({ text: 'All revisions', variant: 'ghost', size: 'small', iconName: 'prev', onClick: () => { historyDrawer.setTitle('History', plural(d.history.length, 'revision')); historyDrawer.setContent(listView()); } });
+            historyDrawer.setContent(
+                h('div', { class: 'compare-top' }, back,
+                    button({ text: `Restore revision ${rev}`, variant: 'quiet', size: 'small', onClick: () => restore(rev) })),
+                h('p', { class: 'note', text: changed ? `${plural(changed, 'paragraph')} differ. Removed text is struck through, added text is marked with a plus.` : 'The two texts are the same.' }),
+                h('div', { class: 'diff' }, parts.map(([k, text]) => h('p', { class: k },
+                    k === 'add' ? hidden('Added: ') : k === 'del' ? hidden('Removed: ') : null, text))));
+            back.focus();
+        } catch (err) {
+            historyDrawer.setContent(emptyState({ title: 'That did not load.', text: err.message, iconName: 'bad' }));
+        }
+    }
+
+    historyDrawer = openDrawer({
+        title: 'History',
+        subtitle: plural(d.history.length, 'revision'),
+        content: listView(),
+        wide: true,
+        onClose: () => { historyDrawer = null; },
+        returnFocus: () => document.querySelector('[data-key="history"]'),
+    });
 }
 
 async function reader(ctx, kind, period) {
+    const valid = (kind === 'daily' && DAY_RE.test(period)) || (kind === 'weekly' && WEEK_RE.test(period));
+    if (!valid) {
+        return emptyState({ title: 'That is not a digest address.', text: 'Daily digests look like #/digests/daily/2026-11-08, weekly ones like #/digests/weekly/2026-W45.', iconName: 'warn', action: h('a', { class: 'btn', href: href('digests'), text: 'Open digests' }) });
+    }
     const id = `${kind}/${period}`;
-    if (detail.id !== id) detail = { id, viewRev: null, editing: false, showHistory: false, compare: null, confirmRestore: null };
-    const st = detail;
-    const render = () => ctx.rerender();
-    const base = `/digests/${encodeURIComponent(kind)}/${encodeURIComponent(period)}`;
-    const d = await ctx.api(`${base}${st.viewRev ? `?rev=${st.viewRev}` : ''}`);
-    const viewingOld = st.viewRev && d.rev !== d.revisions;
+    if (st.id !== id) st = { id, viewRev: null, editing: false };
+    ctx.onCleanup(() => { if (historyDrawer && !location.hash.startsWith(`#/digests/${kind}/${period}`)) historyDrawer.close(true); });
 
-    const back = h('a', { class: 'link', href: href('digests', [], { kind: kind === 'daily' ? null : kind }), text: 'All digests' });
-    const byline = `${SOURCE_LABEL[d.source] || d.source}${d.model ? ` by ${d.model}` : d.actor ? ` by ${d.actor}` : ''} on ${when(d.revisedAt)}${d.note && d.source !== 'restore' ? `. Note: ${d.note}` : d.note ? `. ${d.note}` : ''}`;
+    const base = `/digests/${kind}/${encodeURIComponent(period)}`;
+    let d;
+    try {
+        d = await ctx.api(`${base}${st.viewRev ? `?rev=${st.viewRev}` : ''}`);
+    } catch (err) {
+        if (err.status !== 404) throw err;
+        const future = kind === 'daily' ? period >= today() : weekStart(period) > today();
+        return h('div', { class: 'view reader' },
+            readerHead(kind, period),
+            emptyState({
+                title: future ? 'Not written yet.' : `No ${kind} digest for this ${kind === 'daily' ? 'day' : 'week'}.`,
+                text: future ? 'The nightly job writes the daily digest at 11 PM.' : 'The job did not deliver one. It shows as missing on the calendar.',
+                iconName: future ? 'calendar' : 'warn',
+            }),
+            pager(kind, period));
+    }
+    const viewingOld = Boolean(st.viewRev && d.rev !== d.revisions);
+    const who = d.model || actorName(d.actor);
+    const byline = `${SOURCE_LABEL[d.source] || d.source}${who ? ` by ${who}` : ''}, ${when(d.revisedAt)}${d.revisions > 1 ? `. Revision ${d.rev} of ${d.revisions}` : ''}${d.note && d.source !== 'restore' ? `. Note: ${d.note}` : ''}.`;
 
-    let content;
+    let main;
     if (st.editing) {
-        const area = h('textarea', { id: 'd-body', rows: '14', 'aria-label': 'Digest text' });
+        const area = h('textarea', { id: 'd-body', rows: '18', 'aria-label': 'Digest text', class: 'reader-edit', spellcheck: 'true' });
         area.value = d.body;
-        const note = h('input', { type: 'text', id: 'd-note', placeholder: 'What did you change? (optional)', maxlength: '200', 'aria-label': 'Note about this change' });
+        const note = h('input', { type: 'text', id: 'd-note', placeholder: 'What did you change? (optional)', maxlength: '200' });
         const error = h('p', { class: 'error', role: 'alert' });
-        const save = h('button', { class: 'btn', type: 'submit', text: 'Save changes' });
-        content = h('form', {
+        const save = button({ text: 'Save changes', type: 'submit' });
+        const dirty = () => area.value !== d.body || note.value.trim() !== '';
+        const cancel = async () => {
+            if (dirty() && !(await confirmDialog({ title: 'Discard your changes?', body: 'The digest keeps its current text.', confirm: 'Discard', danger: true }))) return;
+            st.editing = false;
+            ctx.rerender();
+        };
+        main = h('form', {
             class: 'edit',
             onsubmit: async (event) => {
                 event.preventDefault();
                 error.textContent = '';
+                if (area.value === d.body) { error.textContent = 'Nothing changed yet.'; return; }
                 save.disabled = true;
                 try {
                     await ctx.api(base, { method: 'PATCH', body: { body: area.value, note: note.value } });
                     st.editing = false;
                     toast('Digest saved');
-                    render();
+                    ctx.rerender();
                 } catch (err) {
                     error.textContent = err.message;
                     save.disabled = false;
                 }
             },
-        }, area, note, error, h('div', { class: 'row' }, save,
-            h('button', { class: 'btn quiet', type: 'button', text: 'Cancel', onclick: () => { st.editing = false; render(); } })));
+            onkeydown: (event) => {
+                if (event.key === 'Escape') { event.preventDefault(); cancel(); }
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); save.click(); }
+            },
+        },
+        h('p', { class: 'note', text: 'Saving adds a new revision; the current text stays in the history. Ctrl Enter saves, Esc cancels.' }),
+        h('label', { for: 'd-body', class: 'visually-hidden', text: 'Digest text' }), area,
+        h('label', { for: 'd-note' }, 'Note', note),
+        error,
+        h('div', { class: 'row' }, save, button({ text: 'Cancel', variant: 'quiet', onClick: cancel })));
         setTimeout(() => area.focus(), 0);
-    } else if (st.compare) {
-        const older = await ctx.api(`${base}?rev=${st.compare}`);
-        const parts = diffParagraphs(older.body, d.body);
-        content = h('div', {},
-            h('p', { class: 'banner' }, `Comparing revision ${older.rev} with the current text (revision ${d.rev}). `,
-                h('button', { class: 'link', type: 'button', text: 'Close comparison', onclick: () => { st.compare = null; render(); } })),
-            h('div', { class: 'diff' }, parts.map(([kindOf, text]) => h('p', { class: kindOf, text }))));
     } else {
-        content = h('div', { class: 'digest-body reading' }, d.body.split(/\n{2,}/).map((para) => h('p', { text: para.trim() })));
+        main = h('article', { class: 'reading', 'aria-label': periodTitle(kind, period) },
+            d.body.split(/\n{2,}/).map((para) => para.trim()).filter(Boolean).map((para) => h('p', { text: para })));
     }
 
-    const history = st.showHistory && h('section', {},
-        h('h3', { text: 'History' }),
-        h('p', { class: 'note', text: 'Revision 1 is what first arrived and is never changed. Restoring adds a new revision with the old text.' }),
-        h('div', { class: 'table-wrap' }, h('table', {},
-            h('thead', {}, h('tr', {}, ['Revision', 'What', 'Who', 'When', ''].map((t) => h('th', { text: t })))),
-            h('tbody', {}, d.history.map((r) => {
-                const actions = [];
-                if (!r.current) {
-                    actions.push(h('button', { class: 'btn quiet small', type: 'button', text: 'View', onclick: () => { st.viewRev = r.rev; st.compare = null; st.editing = false; render(); } }));
-                    actions.push(h('button', { class: 'btn quiet small', type: 'button', text: 'Compare', onclick: () => { st.viewRev = null; st.compare = r.rev; st.editing = false; render(); } }));
-                    actions.push(st.confirmRestore === r.rev
-                        ? h('button', {
-                            class: 'btn danger small',
-                            type: 'button',
-                            text: 'Yes, restore',
-                            onclick: async () => {
-                                try {
-                                    await ctx.api(`${base}/restore`, { method: 'POST', body: { rev: r.rev } });
-                                    toast(`Revision ${r.rev} restored`);
-                                } catch (err) {
-                                    toast(`Could not restore. ${err.message}`, { kind: 'bad' });
-                                }
-                                st.confirmRestore = null; st.viewRev = null; st.compare = null; render();
-                            },
-                        })
-                        : h('button', { class: 'btn quiet small', type: 'button', text: 'Restore', onclick: () => { st.confirmRestore = r.rev; render(); } }));
-                }
-                return h('tr', {},
-                    h('td', { text: `${r.rev}${r.current ? ' (current)' : ''}` }),
-                    h('td', { text: r.source === 'restore' && r.note ? r.note : `${SOURCE_LABEL[r.source] || r.source}${r.note ? `: ${r.note}` : ''}` }),
-                    h('td', { text: r.model || r.actor }),
-                    h('td', { text: when(r.at) }),
-                    h('td', { class: 'num' }, h('span', { class: 'row end' }, actions)));
-            })))));
+    const tools = !st.editing && h('div', { class: 'reader-tools' },
+        viewingOld ? null : button({ text: 'Edit', variant: 'quiet', size: 'small', iconName: 'edit', 'data-key': 'edit', onClick: () => { st.editing = true; ctx.rerender(); } }),
+        button({ text: d.revisions > 1 ? `History, ${plural(d.revisions, 'revision')}` : 'History', variant: 'quiet', size: 'small', iconName: 'history', 'data-key': 'history', 'aria-haspopup': 'dialog', onClick: async () => {
+            const full = viewingOld ? await ctx.api(base) : d;
+            openHistory(ctx, kind, period, full, base);
+        } }));
 
-    return h('div', { class: 'legacy' },
-        h('header', { class: 'view-head' },
-            h('p', { class: 'crumb' }, back),
-            h('h2', { class: 'view-title', text: periodTitle(kind, period) }),
-            h('p', { class: 'muted', text: byline })),
-        viewingOld && h('p', { class: 'banner' }, `You are looking at revision ${d.rev}, not the current text. `,
-            h('button', { class: 'link', type: 'button', text: 'Back to the current text', onclick: () => { st.viewRev = null; render(); } })),
-        h('section', {},
-            content,
-            !st.editing && !viewingOld && !st.compare && h('div', { class: 'row actions' },
-                h('button', { class: 'btn', type: 'button', text: 'Edit', onclick: () => { st.editing = true; render(); } }),
-                h('button', { class: 'btn quiet', type: 'button', 'aria-expanded': String(st.showHistory), text: st.showHistory ? 'Hide history' : `History (${d.revisions} ${d.revisions === 1 ? 'revision' : 'revisions'})`, onclick: () => { st.showHistory = !st.showHistory; render(); } }))),
-        !st.editing && d.meta && d.meta.sources && h('section', {},
-            h('h3', { text: 'Sources used' }),
-            h('dl', { class: 'facts' }, Object.entries(d.meta.sources).map(([name, status]) => fact(name, dot(status === 'ok' ? 'good' : 'warn'), status)))),
-        history);
+    const src = d.meta && d.meta.sources && typeof d.meta.sources === 'object' ? Object.entries(d.meta.sources) : [];
+    const sources = !st.editing && src.length ? h('section', { class: 'reader-sources', 'aria-labelledby': 'src-title' },
+        h('h3', { id: 'src-title', text: 'Sources used' }),
+        h('ul', {}, src.map(([name, status]) => h('li', {}, dot(status === 'ok' ? 'good' : 'warn'), h('span', { text: `${name}: ${status === 'ok' ? 'read' : status}` }))))) : null;
+
+    return h('div', { class: 'view reader' },
+        readerHead(kind, period, byline),
+        tools,
+        viewingOld ? h('div', { class: 'banner', role: 'status' },
+            h('span', { text: `You are reading revision ${d.rev}, not the current text.` }),
+            button({ text: 'Back to the current text', variant: 'quiet', size: 'small', onClick: () => { st.viewRev = null; ctx.rerender(); } })) : null,
+        main,
+        sources,
+        st.editing ? null : pager(kind, period));
 }
 
 export function render(ctx) {
     const [kind, period] = ctx.route.parts;
     if (kind && period) return reader(ctx, kind, period);
-    detail.id = null;
-    return list(ctx);
+    if (kind) return reader(ctx, kind, '');
+    st.id = null;
+    return browse(ctx);
 }
+
+// Exported for the palette and tests of week maths in the browser.
+export { periodTitle, listHref, addWeeks };

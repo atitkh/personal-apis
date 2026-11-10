@@ -106,6 +106,15 @@ const ICONS = {
     plus: ['M12 5v14', 'M5 12h14'],
     signout: ['M14 4h5v16h-5', 'M10 8l-4 4 4 4', 'M6 12h10'],
     menu: ['M4 7h16', 'M4 12h16', 'M4 17h16'],
+    settings: ['c12 12 6', 'c12 12 2.5', 'M12 3v3', 'M12 18v3', 'M3 12h3', 'M18 12h3', 'M5.6 5.6l2.2 2.2', 'M16.2 16.2l2.2 2.2', 'M5.6 18.4l2.2-2.2', 'M16.2 7.8l2.2-2.2'],
+    copy: ['M9 9h11v11H9z', 'M5 15H4V4h11v1'],
+    edit: ['M4 20h4L19 9l-4-4L4 16z', 'M13.5 6.5l4 4'],
+    history: ['M3.5 12a8.5 8.5 0 1 0 2.5-6', 'M3 4v4h4', 'M12 8v4l3 2'],
+    calendar: ['M4 6h16v14H4z', 'M4 10h16', 'M8 3v4', 'M16 3v4'],
+    check: ['M5 12.5l4.5 4.5L19 7.5'],
+    keyboard: ['M3 7h18v10H3z', 'M7 11h.01', 'M11 11h.01', 'M15 11h.01', 'M8 14h8'],
+    prev: ['M15 6l-6 6 6 6'],
+    next: ['M9 6l6 6-6 6'],
 };
 
 export function icon(name, cls = '') {
@@ -187,15 +196,31 @@ export function segmented({ options, value, label, onChange, iconOnly = false, k
 
 /* ---------- dialogs, drawer ---------- */
 
-function modal(cls, labelId, children) {
+// A modal <dialog>: focus stays inside (showModal makes the page inert), Esc and a backdrop click close it,
+// and focus goes back to the opener afterwards. `returnFocus()` picks the target when the opener may have been
+// re-rendered away; `beforeClose()` may return false (or a promise of false) to keep it open.
+function modal(cls, labelId, children, { returnFocus, beforeClose } = {}) {
     const dlg = h('dialog', { class: cls, 'aria-labelledby': labelId }, children);
     const opener = document.activeElement;
+    let asking = false;
+    dlg.tryClose = async (value) => {
+        if (asking || !dlg.open) return;
+        if (beforeClose) {
+            asking = true;
+            const ok = await beforeClose();
+            asking = false;
+            if (ok === false) return;
+        }
+        dlg.close(value);
+    };
+    dlg.addEventListener('cancel', (event) => { event.preventDefault(); dlg.tryClose('cancel'); });
     dlg.addEventListener('close', () => {
         dlg.remove();
-        if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+        const target = (returnFocus && returnFocus()) || opener;
+        if (target && target.isConnected && typeof target.focus === 'function') target.focus();
     });
     // A click on the backdrop (outside the box) closes it.
-    dlg.addEventListener('mousedown', (event) => { if (event.target === dlg) dlg.close('cancel'); });
+    dlg.addEventListener('mousedown', (event) => { if (event.target === dlg) dlg.tryClose('cancel'); });
     document.body.append(dlg);
     dlg.showModal();
     return dlg;
@@ -220,18 +245,27 @@ export function confirmDialog({ title, body, confirm = 'Confirm', cancel = 'Canc
     });
 }
 
-// Right-hand drawer (a full sheet on small screens). Returns { close, body }.
-export function openDrawer({ title, content, onClose }) {
+// Right-hand drawer (a full sheet on small screens). `close()` asks beforeClose first; `close(true)` does not.
+export function openDrawer({ title, subtitle, content, onClose, returnFocus, beforeClose, wide = false }) {
     const id = nextId('drawer');
+    const heading = h('h2', { id, text: title });
+    const sub = h('p', { class: 'drawer-sub', text: subtitle || '' });
     const body = h('div', { class: 'drawer-body' }, content);
-    const dlg = modal('drawer', id, [
+    const dlg = modal(`drawer${wide ? ' wide' : ''}`, id, [
         h('header', { class: 'drawer-head' },
-            h('h2', { id, text: title }),
-            button({ variant: 'ghost', iconName: 'close', label: 'Close', onClick: () => dlg.close() })),
+            h('div', { class: 'drawer-titles' }, heading, sub),
+            button({ variant: 'ghost', iconName: 'close', label: 'Close', onClick: () => dlg.tryClose() })),
         body,
-    ]);
+    ], { returnFocus, beforeClose });
     dlg.addEventListener('close', () => { if (onClose) onClose(); });
-    return { close: () => dlg.close(), body };
+    return {
+        el: dlg,
+        body,
+        close: (force) => (force ? dlg.open && dlg.close() : dlg.tryClose()),
+        isOpen: () => dlg.open,
+        setTitle(text, subText) { heading.textContent = text; sub.textContent = subText || ''; },
+        setContent(...kids) { body.replaceChildren(...kids.flat().filter(Boolean)); body.scrollTop = 0; },
+    };
 }
 
 /* ---------- toasts ---------- */
@@ -291,7 +325,97 @@ export function keepFocus(container, fn) {
     }
 }
 
+/* ---------- chips, copy, roving focus ---------- */
+
+// A small pill. `hue` colours its swatch (domain identity); the text always says what it is.
+export function chip(text, { hue, cls = '', title } = {}) {
+    return h('span', { class: `chip ${cls}`.trim(), title },
+        hue ? h('span', { class: `swatch hue-${hue}`, 'aria-hidden': 'true' }) : null,
+        h('span', { text }));
+}
+
+// Filter chips as links (the filter lives in the URL). items: [{ id, label, href }].
+export function chipNav({ label, items, current }) {
+    return h('nav', { class: 'chip-nav', 'aria-label': label },
+        h('ul', {}, items.map((i) => h('li', {}, h('a', {
+            class: 'chip-link',
+            href: i.href,
+            'data-key': `chip:${i.id}`,
+            'aria-current': i.id === current ? 'true' : null,
+        }, i.id === current ? icon('check') : null, h('span', { text: i.label }))))));
+}
+
+// Copies `value` with the clipboard API. Where that is not available (plain http, older browsers) it selects
+// the text in `field` and tries the old copy command; failing that it asks for Ctrl C. Says what happened.
+export function copyButton({ value, field, text = 'Copy', done = 'Copied', variant = 'quiet', size = '', label, onCopied }) {
+    const btn = button({
+        text, variant, size, iconName: 'copy', label,
+        onClick: async () => {
+            const v = typeof value === 'function' ? value() : value;
+            let ok = false;
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(v);
+                    ok = true;
+                }
+            } catch (e) { ok = false; }
+            if (!ok && field) {
+                field.focus();
+                field.select();
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            }
+            const span = btn.querySelector('span');
+            if (ok) {
+                if (span) span.textContent = done;
+                btn.replaceChildren(icon('check'), span);
+                setTimeout(() => { if (span) span.textContent = text; btn.replaceChildren(icon('copy'), span); }, 2400);
+                toast(done);
+                if (onCopied) onCopied();
+            } else {
+                toast(field ? `Selected. Press ${isMac ? 'Cmd' : 'Ctrl'} C to copy.` : 'This browser blocked copying. Select the text and copy it by hand.', { kind: 'info' });
+            }
+        },
+    });
+    return btn;
+}
+
+// One tab stop for a group of cells: arrow keys move focus within it (roving tabindex).
+// next(i, key) returns the new index, false for a key it handled without moving, or undefined to ignore the key.
+// The default walks a flat list: Left/Up back, Right/Down forward, Home/End to the ends.
+export function roving(container, cells, { start = 0, next } = {}) {
+    if (!cells.length) return;
+    const linear = (i, key) => ({
+        ArrowRight: Math.min(i + 1, cells.length - 1),
+        ArrowDown: Math.min(i + 1, cells.length - 1),
+        ArrowLeft: Math.max(i - 1, 0),
+        ArrowUp: Math.max(i - 1, 0),
+        Home: 0,
+        End: cells.length - 1,
+    }[key]);
+    const set = (i) => cells.forEach((c, j) => { c.tabIndex = j === i ? 0 : -1; });
+    set(Math.min(Math.max(start, 0), cells.length - 1));
+    container.addEventListener('keydown', (event) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        const i = cells.indexOf(event.target);
+        if (i < 0) return;
+        const j = (next || linear)(i, event.key);
+        if (j === undefined) return;
+        event.preventDefault();
+        if (j === false || j === i) return;
+        set(j);
+        cells[j].focus();
+    });
+    container.addEventListener('focusin', (event) => {
+        const i = cells.indexOf(event.target);
+        if (i >= 0) set(i);
+    });
+}
+
 export const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+// The one person who signs in here; the audit log and revisions record them as "admin".
+export const ADMIN_NAME = 'Atit';
+export const actorName = (actor) => (actor === 'admin' ? ADMIN_NAME : actor);
 
 // Domain colour slots. Known domains have fixed colours; new ones take the spare slots in order.
 const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal' };

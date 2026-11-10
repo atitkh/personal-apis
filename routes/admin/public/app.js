@@ -1,7 +1,7 @@
 // Personal hub admin. Plain ES modules, no build step, no framework.
 // app.js wires things together: session, shell, routes, command palette. Views live in views/*.js
 // and export render(ctx); a new view is one file plus one register() line below.
-import { h, toast, skeleton, emptyState, button } from './ui.js';
+import { h, toast, skeleton, emptyState, button, keepFocus } from './ui.js';
 import { api, setUnauthorizedHandler } from './api.js';
 import * as router from './router.js';
 import { createShell } from './shell.js';
@@ -16,6 +16,7 @@ router.register('agents', { title: 'Agent access', short: 'Agents', icon: 'agent
 router.register('backups', { title: 'Backups', icon: 'backups', nav: true, load: () => import('./views/backups.js') });
 router.register('portfolio', { title: 'Portfolio', icon: 'portfolio', nav: true, load: () => import('./views/portfolio.js') });
 router.register('activity', { title: 'Activity', icon: 'activity', nav: true, load: () => import('./views/activity.js') });
+router.register('settings', { title: 'Settings', icon: 'settings', nav: true, load: () => import('./views/settings.js') });
 
 const root = document.getElementById('app');
 let session = null;
@@ -83,6 +84,7 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
                 rerender: () => renderRoute(router.parse(), { soft: true }),
                 onCleanup: (fn) => mine.push(fn),
                 isCurrent: () => token === renderToken,
+                signOut,
             });
         }
     } catch (err) {
@@ -100,7 +102,9 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
     }
     runCleanups();
     cleanups = mine;
-    shell.content.replaceChildren(node);
+    // A soft render (same section) keeps keyboard focus on the element with the same data-key.
+    if (soft) keepFocus(shell.content, () => shell.content.replaceChildren(node));
+    else shell.content.replaceChildren(node);
     if (focus) shell.title.focus({ preventScroll: true });
     if (!soft) window.scrollTo(0, 0);
 }

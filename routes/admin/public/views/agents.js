@@ -1,66 +1,121 @@
-// Agent access: the MCP endpoint, its tools, what each key sees now and recent calls.
-// Ported from the old app; stage 2 redoes it.
-import { h, plural, when, ago, dot, emptyState } from '../ui.js';
+// Agent access: per key and per domain what an agent can do right now (read, edit, publish) and why not,
+// the latest MCP calls (tool.action, key, time, outcome; never content), and the endpoint itself.
+// Every key name links to its drawer on the Keys page.
+import { h, icon, plural, when, ago, emptyState, copyButton, hidden, domainHue } from '../ui.js';
 import { href } from '../router.js';
+import { MCP_LABEL } from './overview.js';
 
-const callName = (tool, action) => `${tool || 'unknown tool'}${action ? `.${action}` : ''}`;
+const VERB = { read: 'Read', edit: 'Edit', publish: 'Publish', write: 'Write' };
+const verbOf = (scope) => scope.split(':')[1];
+const hasScope = (granted, required) => {
+    const domain = required.split(':')[0];
+    return granted.some((g) => g === '*' || g === required || g === `${domain}:*`);
+};
+const callName = (c) => `${c.tool || 'unknown'}${c.action ? `.${c.action}` : ''}`;
+
+// For one key and one domain tool: each verb the tool offers, whether the key has it now, and if not, why.
+function access(key, tool, domain) {
+    const seen = (key.visibleTools.find((v) => v.tool === tool.tool) || { actions: [] }).actions;
+    const verbs = [];
+    for (const a of tool.actions) {
+        const verb = verbOf(a.scope);
+        let entry = verbs.find((v) => v.verb === verb);
+        if (!entry) { entry = { verb, scope: a.scope, write: a.write, yes: false }; verbs.push(entry); }
+        if (seen.includes(a.name)) entry.yes = true;
+    }
+    for (const v of verbs) {
+        if (v.yes) continue;
+        if (!domain || !domain.enabled) v.why = 'the domain is off';
+        else if (domain.mcpMode === 'off') v.why = 'agent access is off';
+        else if (!hasScope(key.scopes, tool.readScope)) v.why = `the key has no ${tool.readScope}`;
+        else if (!hasScope(key.scopes, v.scope)) v.why = `the key has no ${v.scope}`;
+        else if (v.write && domain.mcpMode !== 'write') v.why = 'the domain allows reading only';
+        else v.why = 'not offered';
+    }
+    return verbs;
+}
+
+function accessCell(verbs) {
+    const yes = verbs.filter((v) => v.yes);
+    const no = verbs.filter((v) => !v.yes);
+    const reasons = [...new Set(no.map((v) => v.why))];
+    return h('div', { class: 'access' },
+        h('ul', { class: 'caps' }, verbs.map((v) => h('li', { class: `cap ${v.yes ? 'yes' : 'no'}${v.yes && v.write ? ' write' : ''}`, title: v.yes ? `Can ${v.verb}` : `Cannot ${v.verb}: ${v.why}` },
+            icon(v.yes ? 'check' : 'close'), h('span', { text: VERB[v.verb] || v.verb }), hidden(v.yes ? ': yes' : `: no, ${v.why}`)))),
+        !yes.length && reasons.length ? h('p', { class: 'access-why', 'aria-hidden': 'true', text: `No access: ${reasons[0]}.` }) : null);
+}
 
 export async function render(ctx) {
-    const a = await ctx.api('/agents');
+    const [a, { domains }] = await Promise.all([ctx.api('/agents'), ctx.api('/domains')]);
     const active = a.keys.filter((k) => !k.revoked);
-    const revoked = a.keys.length - active.length;
-    const domainTools = a.tools.filter((t) => !t.alwaysOn);
+    const revokedCount = a.keys.length - active.length;
+    const tools = a.tools.filter((t) => !t.alwaysOn);
+    const domainOf = (name) => domains.find((d) => d.name === name);
+    const idByName = new Map(active.map((k) => [k.name, k.id]));
+    const keyLink = (name) => (idByName.has(name)
+        ? h('a', { class: 'link', href: href('keys', [String(idByName.get(name))]), text: name })
+        : h('span', { text: name }));
 
-    const toolRows = a.tools.map((t) => h('tr', {},
-        h('td', {}, h('code', { text: t.tool })),
-        h('td', { text: t.alwaysOn ? 'Every key' : (t.title || t.domain) }),
-        h('td', {}, t.alwaysOn
-            ? h('span', { class: 'muted', text: 'Lists what the key can reach and a short brief.' })
-            : t.actions.map((x, i) => [i ? ', ' : '', x.name, x.write ? h('span', { class: 'muted', text: ` (changes data, needs ${x.scope})` }) : null]))));
+    const matrix = active.length && tools.length
+        ? h('div', { class: 'table-wrap' }, h('table', { class: 'stack access-table' },
+            h('thead', {}, h('tr', {},
+                h('th', { scope: 'col', text: 'Key' }),
+                tools.map((t, i) => {
+                    const d = domainOf(t.domain);
+                    const state = !d || !d.enabled ? 'Off' : MCP_LABEL[d.mcpMode] || d.mcpMode;
+                    return h('th', { scope: 'col' },
+                        h('span', { class: `th-domain hue-${domainHue(t.domain, i)}` }, h('span', { class: 'swatch', 'aria-hidden': 'true' }), t.title || t.domain),
+                        h('span', { class: 'th-sub', text: `Domain: ${state.toLowerCase()}` }));
+                }),
+                h('th', { scope: 'col', class: 'num', text: 'Calls, 30 days' }),
+                h('th', { scope: 'col', text: 'Last call' }))),
+            h('tbody', {}, active.map((k) => h('tr', {},
+                h('th', { scope: 'row', 'data-label': 'Key' }, h('a', { class: 'row-link', href: href('keys', [String(k.id)]), 'data-key': `ak:${k.id}` }, k.name)),
+                tools.map((t) => h('td', { 'data-label': t.title || t.domain }, accessCell(access(k, t, domainOf(t.domain))))),
+                h('td', { class: 'num', 'data-label': 'Calls, 30 days', text: k.calls30d.toLocaleString() }),
+                h('td', { 'data-label': 'Last call', text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }))))))
+        : emptyState({
+            title: active.length ? 'No domain has an agent tool yet.' : 'No active keys.',
+            text: active.length ? 'Agents only get the hub overview.' : 'Create a key for the agent first.',
+            iconName: 'agents',
+            action: active.length ? null : h('a', { class: 'btn quiet small', href: href('keys', [], { new: '1' }), text: 'Create key' }),
+        });
 
-    const keyRows = active.map((k) => {
-        const sees = k.visibleTools.length
-            ? k.visibleTools.map((t) => h('div', { text: `${t.tool}: ${t.actions.join(', ')}` }))
-            : h('span', { class: 'muted', text: 'Nothing: its scopes or the domain settings hide every tool' });
-        return h('tr', {},
-            h('td', {}, h('a', { class: 'link', href: href('keys', [String(k.id)]), text: k.name })),
-            h('td', {}, h('span', { class: 'scopes', text: k.scopes.join(', ') })),
-            h('td', {}, k.canWrite ? h('div', { class: 'warn-text' }, dot('warn'), 'Can change data') : null, sees),
-            h('td', { class: 'num', text: String(k.calls30d) }),
-            h('td', { text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }));
-    });
+    const recent = a.recent.slice(0, 25);
+    const calls = recent.length
+        ? h('div', { class: 'table-wrap' }, h('table', { class: 'stack calls-table' },
+            h('thead', {}, h('tr', {}, ['When', 'Key', 'Call', 'Result'].map((t) => h('th', { scope: 'col', text: t })))),
+            h('tbody', {}, recent.map((c) => h('tr', {},
+                h('td', { 'data-label': 'When' }, h('time', { datetime: c.at, title: when(c.at), text: ago(c.at) })),
+                h('td', { 'data-label': 'Key' }, keyLink(c.key)),
+                h('td', { 'data-label': 'Call' }, h('code', { text: callName(c) })),
+                h('td', { 'data-label': 'Result' }, h('span', { class: `call-result ${c.ok ? 'ok' : 'failed'}` }, icon(c.ok ? 'good' : 'bad'), c.ok ? 'OK' : 'Failed')))))))
+        : emptyState({ title: 'No agent has called the hub yet.', text: 'Calls show up here as soon as a key uses the endpoint.' });
 
-    const callRows = a.recent.map((c) => h('tr', {},
-        h('td', { text: when(c.at) }),
-        h('td', { text: c.key }),
-        h('td', {}, h('code', { text: callName(c.tool, c.action) })),
-        h('td', {}, dot(c.ok ? 'good' : 'bad'), c.ok ? 'OK' : 'Failed')));
+    const url = `${location.origin}${a.endpoint}`;
+    const endpointField = h('input', { type: 'text', class: 'secret', readonly: true, value: url, 'aria-label': 'Agent endpoint URL', onfocus: (e) => e.target.select() });
 
-    return h('div', { class: 'legacy' },
-        h('p', { class: 'lede', text: "Agents reach the hub through one MCP endpoint. What a key sees depends on its scopes, whether the domain is on, and the domain's agent access on the Overview." }),
-        h('section', {},
-            h('h2', { text: 'Endpoint' }),
-            h('p', {}, h('code', { class: 'endpoint', text: `${location.origin}${a.endpoint}` })),
-            h('p', { class: 'note', text: 'Send a hub API key as Authorization: Bearer <key>. Create keys on the API keys page.' })),
-        h('section', {},
-            h('h2', { text: 'Tools' }),
-            domainTools.length ? null : h('p', { class: 'muted', text: 'No domain has an agent tool yet, so agents only get the overview.' }),
-            h('div', { class: 'table-wrap' }, h('table', {},
-                h('thead', {}, h('tr', {}, ['Tool', 'Domain', 'Actions'].map((t) => h('th', { text: t })))),
-                h('tbody', {}, toolRows)))),
-        h('section', {},
-            h('h2', { text: 'Keys' }),
-            h('p', { class: 'note', text: `Worked out now from each key's scopes and the domain settings.${revoked ? ` ${plural(revoked, 'revoked key')} not shown.` : ''}` }),
-            active.length
-                ? h('div', { class: 'table-wrap' }, h('table', {},
-                    h('thead', {}, h('tr', {}, [['Name'], ['Scopes'], ['Sees now'], ['Calls, 30 days', 'num'], ['Last call']].map(([t, c]) => h('th', { class: c || null, text: t })))),
-                    h('tbody', {}, keyRows)))
-                : emptyState({ title: 'No active keys.', text: 'Create one on the API keys page.', action: h('a', { class: 'btn quiet small', href: href('keys', [], { new: '1' }), text: 'Create key' }) })),
-        h('section', {},
-            h('h2', { text: 'Recent calls' }),
-            a.recent.length
-                ? h('div', { class: 'table-wrap' }, h('table', {},
-                    h('thead', {}, h('tr', {}, ['When', 'Key', 'Call', 'Result'].map((t) => h('th', { text: t })))),
-                    h('tbody', {}, callRows)))
-                : emptyState({ title: 'No agent has called the hub yet.', text: 'Calls show up here as soon as a key uses the endpoint.' })));
+    return h('div', { class: 'view agents' },
+        h('p', { class: 'lede', text: "Agents reach the hub through one MCP endpoint. What a key can do depends on its scopes, whether the domain is on, and the domain's agent access on the overview." }),
+        h('section', { 'aria-labelledby': 'ag-matrix' },
+            h('div', { class: 'section-head' },
+                h('h2', { id: 'ag-matrix', class: 'section-title', text: 'What each key can do now' }),
+                h('a', { class: 'link', href: href('overview'), text: 'Change domain access' })),
+            matrix,
+            revokedCount ? h('p', { class: 'note', text: `${plural(revokedCount, 'revoked key')} not shown.` }) : null),
+        h('section', { 'aria-labelledby': 'ag-calls' },
+            h('div', { class: 'section-head' },
+                h('h2', { id: 'ag-calls', class: 'section-title', text: 'Recent calls' }),
+                h('a', { class: 'link', href: href('activity', [], { type: 'agents' }), text: 'All agent activity' })),
+            h('p', { class: 'note', text: 'Which tool and action, by which key, and whether it worked. What was read or written is never logged.' }),
+            calls),
+        h('section', { class: 'panel endpoint-panel', 'aria-labelledby': 'ag-endpoint' },
+            h('h2', { id: 'ag-endpoint', text: 'Endpoint' }),
+            h('div', { class: 'copy-row' }, endpointField, copyButton({ value: url, field: endpointField, text: 'Copy', done: 'Copied', size: 'small', label: 'Copy the endpoint URL' })),
+            h('p', { class: 'note' }, 'Send a hub API key as ', h('code', { text: 'Authorization: Bearer <key>' }), '. Every key also gets ', h('code', { text: 'hub_overview' }), ', which lists what it can reach.'),
+            h('details', { class: 'tools-ref' },
+                h('summary', {}, 'Tools and actions'),
+                h('ul', {}, tools.map((t) => h('li', {},
+                    h('code', { text: t.tool }), ` (${t.title}): `,
+                    t.actions.map((x, i) => [i ? ', ' : '', h('code', { text: x.name }), x.write ? ` (changes data, needs ${x.scope})` : ''])))))));
 }

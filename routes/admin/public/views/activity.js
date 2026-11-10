@@ -1,56 +1,144 @@
-// Activity: the audit log, newest first, with a filter that lives in the URL (#/activity?type=agents).
-// Ported from the old app; stage 2 adds day grouping and chips.
-import { h, when, emptyState } from '../ui.js';
+// Activity: the audit log as sentences, grouped by day, newest first. The filter lives in the URL
+// (#/activity?type=keys); older events load on demand. Agent calls show tool and action, never content.
+import { h, icon, button, emptyState, chipNav, dayLabel, keepFocus, toast, hidden, actorName } from '../ui.js';
+import { isoDay } from '../charts.js';
 import { href } from '../router.js';
 import { MCP_LABEL } from './overview.js';
+import { explain } from '../scopes.js';
 
-const callName = (tool, action) => `${tool || 'unknown tool'}${action ? `.${action}` : ''}`;
-
-const WHAT = {
-    domain_enabled: (d) => `Turned on ${d && d.name ? d.name : 'a domain'}`,
-    domain_disabled: (d) => `Turned off ${d && d.name ? d.name : 'a domain'}`,
-    digest_edited: (d) => `Edited the ${d ? `${d.kind} digest for ${d.period}` : 'digest'}`,
-    digest_restored: (d) => `Restored an older version of the ${d ? `${d.kind} digest for ${d.period}` : 'digest'}`,
-    login: () => 'Signed in',
-    logout: () => 'Signed out',
-    login_failed: () => 'Tried a wrong key',
-    key_created: (d) => `Created key ${d && d.name ? d.name : ''}${d && d.scopes ? ` (${d.scopes.join(', ')})` : ''}`,
-    key_revoked: (d) => `Revoked key ${d && d.name ? d.name : ''}`,
-    backup_run: () => 'Made a backup by hand',
-    mcp_call: (d) => (d ? `Agent ${d.key} called ${callName(d.tool, d.action)}${d.ok ? '' : ' (failed)'}` : 'Agent call'),
-    domain_mcp_changed: (d) => `Set agent access for ${d && d.name ? d.name : 'a domain'} to ${d && MCP_LABEL[d.to] ? MCP_LABEL[d.to] : 'an unknown mode'}`,
+const PAGE = 50;
+const TYPES = [
+    ['all', 'All'],
+    ['keys', 'Keys'],
+    ['agents', 'Agents'],
+    ['backups', 'Backups'],
+    ['domains', 'Domains'],
+    ['digests', 'Digests'],
+    ['signins', 'Sign-ins'],
+];
+const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', flights: 'Flights' };
+const ICON = {
+    login: 'user', logout: 'user', login_failed: 'warn',
+    key_created: 'keys', key_revoked: 'keys',
+    domain_enabled: 'overview', domain_disabled: 'overview', domain_mcp_changed: 'agents',
+    digest_edited: 'digests', digest_restored: 'digests',
+    backup_run: 'backup', mcp_call: 'agents',
 };
 
-const GROUPS = [
-    ['all', 'Everything', null],
-    ['signins', 'Sign-ins', ['login', 'logout', 'login_failed']],
-    ['keys', 'Keys', ['key_created', 'key_revoked']],
-    ['domains', 'Domains', ['domain_enabled', 'domain_disabled']],
-    ['digests', 'Digests', ['digest_edited', 'digest_restored']],
-    ['backups', 'Backups', ['backup_run']],
-    ['agents', 'Agents', ['mcp_call', 'domain_mcp_changed']],
-];
+const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
+const strong = (text) => h('strong', { text });
+const domainName = (n) => DOMAIN_TITLE[n] || n || 'a domain';
+const readableScope = (s) => { const e = explain(s); return e.domain === '*' ? 'everything' : `${e.title} ${e.label.toLowerCase()}`; };
+
+function keyRef(d) {
+    const name = d && d.name ? d.name : 'a key';
+    return d && d.id ? h('a', { class: 'link', href: href('keys', [String(d.id)]), text: name }) : strong(name);
+}
+
+function digestRef(d) {
+    if (!d || !d.kind || !d.period) return 'a digest';
+    const label = d.kind === 'daily' ? `the daily digest for ${dayLabel(d.period, { month: 'short', day: 'numeric' })}` : `the weekly review for ${d.period}`;
+    return h('a', { class: 'link', href: href('digests', [d.kind, d.period]), text: label });
+}
+
+// "Atit created key openclaw (Digests read)"
+function sentence(e) {
+    const d = e.detail || {};
+    const who = strong(actorName(e.actor));
+    switch (e.action) {
+    case 'login': return [who, ' signed in'];
+    case 'logout': return [who, ' signed out'];
+    case 'login_failed': return ['Someone tried a wrong admin key'];
+    case 'key_created': return [who, ' created key ', keyRef(d), d.scopes ? ` (${d.scopes.map(readableScope).join(', ')})` : ''];
+    case 'key_revoked': return [who, ' revoked key ', keyRef(d)];
+    case 'domain_enabled': return [who, ' turned on ', domainName(d.name)];
+    case 'domain_disabled': return [who, ' turned off ', domainName(d.name)];
+    case 'domain_mcp_changed': return [who, ` set agent access for ${domainName(d.name)} to ${(MCP_LABEL[d.to] || d.to || 'an unknown mode').toLowerCase()}`];
+    case 'digest_edited': return [who, ' edited ', digestRef(d)];
+    case 'digest_restored': return [who, ' restored an older version of ', digestRef(d)];
+    case 'backup_run': return [who, ' made a backup'];
+    case 'mcp_call': return [strong(d.key || e.actor), ' called ', h('code', { text: `${d.tool || 'unknown'}${d.action ? `.${d.action}` : ''}` }), d.ok ? '' : ', which failed'];
+    default: return [who, ` ${e.action.replace(/_/g, ' ')}`];
+    }
+}
+
+const failed = (e) => e.action === 'login_failed' || (e.action === 'mcp_call' && e.detail && e.detail.ok === false);
+
+function dayHeading(day) {
+    const today = isoDay(new Date());
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    if (day === today) return 'Today';
+    if (day === isoDay(y)) return 'Yesterday';
+    const opts = { weekday: 'long', month: 'long', day: 'numeric' };
+    if (day.slice(0, 4) !== today.slice(0, 4)) opts.year = 'numeric';
+    return dayLabel(day, opts);
+}
+
+function groups(events) {
+    const out = [];
+    for (const e of events) {
+        const day = isoDay(new Date(e.at));
+        let g = out[out.length - 1];
+        if (!g || g.day !== day) { g = { day, events: [] }; out.push(g); }
+        g.events.push(e);
+    }
+    return out;
+}
+
+function eventItem(e) {
+    const bad = failed(e);
+    return h('li', { class: `event${bad ? ' bad' : ''}` },
+        h('time', { class: 'event-time', datetime: e.at, text: timeFmt.format(new Date(e.at)) }),
+        h('span', { class: 'event-icon', 'aria-hidden': 'true' }, icon(bad ? 'warn' : ICON[e.action] || 'activity')),
+        h('p', { class: 'event-text' }, bad ? hidden('Failed: ') : null, sentence(e),
+            ['login', 'login_failed'].includes(e.action) && e.ip ? h('span', { class: 'event-ip', text: ` from ${e.ip}` }) : null));
+}
 
 export async function render(ctx) {
-    const { events: all } = await ctx.api('/activity?limit=200');
-    const type = ctx.route.query.get('type') || 'all';
-    const group = GROUPS.find((g) => g[0] === type) || GROUPS[0];
-    const events = group[2] ? all.filter((e) => group[2].includes(e.action)) : all;
-    return h('div', { class: 'legacy' },
-        h('p', { class: 'lede', text: 'Sign-ins, key and domain changes, digest edits, backups and agent calls, newest first.' }),
-        h('section', {},
-            h('nav', { class: 'row', 'aria-label': 'Filter activity' }, GROUPS.map(([id, label]) => h('a', {
-                class: `btn small ${group[0] === id ? '' : 'quiet'}`,
-                href: href('activity', [], { type: id === 'all' ? null : id }),
-                'aria-current': group[0] === id ? 'true' : null,
-                text: label,
-            }))),
-            events.length
-                ? h('div', { class: 'table-wrap' }, h('table', {},
-                    h('thead', {}, h('tr', {}, ['When', 'What', 'From'].map((t) => h('th', { text: t })))),
-                    h('tbody', {}, events.map((e) => h('tr', {},
-                        h('td', { text: when(e.at) }),
-                        h('td', { text: (WHAT[e.action] || (() => e.action))(e.detail).trim() }),
-                        h('td', { class: 'muted', text: e.ip || '' }))))))
-                : emptyState({ title: all.length ? 'Nothing of that kind in the recent events.' : 'Nothing has happened yet.', text: all.length ? 'Pick Everything to see all recent events.' : null })));
+    const asked = ctx.route.query.get('type') || 'all';
+    const type = TYPES.some(([id]) => id === asked) ? asked : 'all';
+    const first = await ctx.api(`/activity?type=${type}&limit=${PAGE}`);
+    const events = first.events.slice();
+    let more = first.more;
+
+    const list = h('div', { class: 'days' });
+    const foot = h('div', { class: 'load-more' });
+    const loadMore = button({
+        text: 'Show older events',
+        variant: 'quiet',
+        'data-key': 'load-more',
+        onClick: async () => {
+            loadMore.disabled = true;
+            try {
+                const next = await ctx.api(`/activity?type=${type}&limit=${PAGE}&before=${events[events.length - 1].id}`);
+                events.push(...next.events);
+                more = next.more;
+                keepFocus(list.parentNode, paint);
+            } catch (err) {
+                toast(`Could not load older events. ${err.message}`, { kind: 'bad' });
+            }
+            loadMore.disabled = false;
+        },
+    });
+
+    function paint() {
+        list.replaceChildren(...groups(events).map((g) => h('section', { class: 'day', 'aria-labelledby': `day-${g.day}` },
+            h('h2', { class: 'day-title', id: `day-${g.day}` }, h('span', { text: dayHeading(g.day) }), h('span', { class: 'day-count', text: String(g.events.length) }), hidden(g.events.length === 1 ? ' event' : ' events')),
+            h('ol', { class: 'events' }, g.events.map(eventItem)))));
+        foot.replaceChildren(more ? loadMore : events.length > 8 ? h('p', { class: 'note', text: 'That is everything in the log.' }) : '');
+    }
+    paint();
+
+    const label = (TYPES.find(([id]) => id === type) || TYPES[0])[1].toLowerCase();
+    return h('div', { class: 'view activity' },
+        h('p', { class: 'lede', text: 'What happened on the hub, newest first: sign-ins, keys, domain switches, digest edits, backups and agent calls.' }),
+        chipNav({ label: 'Show', current: type, items: TYPES.map(([id, text]) => ({ id, label: text, href: href('activity', [], { type: id === 'all' ? null : id }) })) }),
+        events.length
+            ? h('div', {}, list, foot)
+            : emptyState({
+                title: type === 'all' ? 'Nothing has happened yet.' : `No ${label} events yet.`,
+                text: type === 'all' ? 'Sign-ins, key changes and agent calls show up here.' : 'Pick All to see everything else.',
+                iconName: 'activity',
+            }));
 }
