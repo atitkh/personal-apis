@@ -164,3 +164,135 @@ describe('domain switch', () => {
         expect((await as(reader).get('/hub/flights').expect(200)).body.total).toBe(before);
     });
 });
+
+describe('found flights (candidates) over REST', () => {
+    const flightsSvc = require('../services/flights');
+    const found = (extra = {}) => ({
+        airline_iata: 'DL', flight_number: '7101', origin_iata: 'MEM', dest_iata: 'ATL',
+        sched_dep: '2026-06-01T09:00', sched_arr: '2026-06-01T11:40', source: 'gmail', source_key: 'h:7101', confidence: 0.9, booking_ref: BOOKING, ...extra,
+    });
+
+    test('flights:suggest files a candidate (201) and its answer has no booking reference', async () => {
+        const r = (await as(suggester).post('/hub/flights/candidates', found()).expect(201)).body;
+        expect(r.status).toBe('filed');
+        expect(r.candidate).toMatchObject({ airline_iata: 'DL', flight_number: '7101', status: 'pending', source: 'gmail', confidence: 0.9, dep_local: '2026-06-01T09:00' });
+        expect(r.candidate.sched_dep).toBe('2026-06-01T14:00:00.000Z'); // MEM is UTC-5 in June
+        expect(JSON.stringify(r)).not.toContain(BOOKING);
+    });
+
+    test('filing the same flight again is 200 with the existing candidate, by source key or by flight key', async () => {
+        const again = (await as(suggester).post('/hub/flights/candidates', found()).expect(200)).body;
+        expect(again.status).toBe('already_suggested');
+        const byKey = (await as(suggester).post('/hub/flights/candidates', found({ flight_number: '7999', source_key: 'h:7101' })).expect(200)).body;
+        expect(byKey.candidate.id).toBe(again.candidate.id);
+        const byFlight = (await as(suggester).post('/hub/flights/candidates', found({ source_key: 'h:other', source: 'calendar' })).expect(200)).body;
+        expect(byFlight.candidate.id).toBe(again.candidate.id);
+        expect(JSON.stringify([again, byKey, byFlight])).not.toContain(BOOKING);
+    });
+
+    test('a flight that is already filed answers 200 exists with its id and files nothing', async () => {
+        const id = (await as(writer).post('/hub/flights', flight({ flight_number: '7102', sched_dep: '2026-06-03T12:00:00Z', sched_arr: '2026-06-03T13:00:00Z' })).expect(201)).body.id;
+        const r = (await as(suggester).post('/hub/flights/candidates', flight({ flight_number: '7102', sched_dep: '2026-06-03T12:00:00Z', sched_arr: null })).expect(200)).body;
+        expect(r).toEqual({ status: 'exists', flight: { id, label: 'AA 7102 LIT-DFW 2026-06-03' } });
+        expect(flightsSvc.listCandidates(db.get(), { status: 'all' }).some((c) => c.flight_number === '7102')).toBe(false);
+    });
+
+    test('bad input is 400 and echoes no value', async () => {
+        const r = (await as(suggester).post('/hub/flights/candidates', found({ flight_number: '7103', source_key: 'h:7103', confidence: 3 })).expect(400)).body;
+        expect(r.code || r.error).toMatch(/confidence/);
+        await as(suggester).post('/hub/flights/candidates', found({ flight_number: '7103', source: 'feed' })).expect(400);
+        await as(suggester).post('/hub/flights/candidates', found({ flight_number: '7103', trip_id: 1 })).expect(400);
+    });
+
+    test('scope split: suggest only files; reading the queue needs flights:read; read alone cannot file', async () => {
+        await as(suggester).get('/hub/flights/candidates').expect(403);
+        await as(reader).post('/hub/flights/candidates', found({ flight_number: '7104', source_key: 'h:7104' })).expect(403);
+        await as(other).post('/hub/flights/candidates', found({ flight_number: '7104', source_key: 'h:7104' })).expect(403);
+        const list = (await as(reader).get('/hub/flights/candidates').expect(200)).body;
+        expect(list.status).toBe('pending');
+        expect(list.counts.pending).toBeGreaterThanOrEqual(1);
+        expect(list.candidates.find((c) => c.flight_number === '7101').booking_ref).toBe(BOOKING); // REST read answers carry it
+        await as(reader).get('/hub/flights/candidates?status=nope').expect(400);
+    });
+
+    test('accept and dismiss are not on /hub', async () => {
+        const id = flightsSvc.listCandidates(db.get())[0].id;
+        for (const key of [writer, suggester, reader]) {
+            await as(key).post(`/hub/flights/candidates/${id}/accept`, {}).expect(404);
+            await as(key).post(`/hub/flights/candidates/${id}/dismiss`, {}).expect(404);
+        }
+    });
+
+    test('filing is audited with the flight label only', async () => {
+        const rows = audit.recent(db.get(), 300).filter((e) => e.action === 'flight_candidate_filed');
+        expect(rows.length).toBe(1);
+        expect(rows[0].detail).toEqual({ id: expect.any(Number), flight: 'DL 7101 MEM-ATL 2026-06-01' });
+        expect(JSON.stringify(audit.recent(db.get(), 500))).not.toContain(BOOKING);
+    });
+
+    test('a switched-off domain answers 503 to suggest', async () => {
+        domains.setEnabled(db.get(), 'flights', false, 'test');
+        try {
+            await as(suggester).post('/hub/flights/candidates', found({ flight_number: '7105', source_key: 'h:7105' })).expect(503);
+        } finally {
+            domains.setEnabled(db.get(), 'flights', true, 'test');
+        }
+    });
+});
+
+describe('found flights (candidates): service', () => {
+    const f = require('../services/flights');
+    const c = (n, extra = {}) => ({ airline_iata: 'UA', flight_number: String(n), origin_iata: 'ORD', dest_iata: 'SFO', sched_dep: '2026-08-0' + (n % 9 + 1) + 'T08:00Z', source: 'calendar', source_key: `cal:${n}`, ...extra });
+
+    test('accept creates the flight through create (with overrides) and links it', () => {
+        const conn = db.get();
+        const cand = f.suggest(conn, c(7201, { booking_ref: 'ZZ11AA', seat: '3a' }), 'job').candidate;
+        const r = f.acceptCandidate(conn, cand.id, { seat: '4B', notes: 'window' }, 'admin');
+        expect(r.status).toBe('accepted');
+        expect(r.candidate).toMatchObject({ status: 'accepted', accepted_flight_id: r.flight.id, decided_by: 'admin' });
+        const fl = f.get(conn, r.flight.id);
+        expect(fl).toMatchObject({ seat: '4B', notes: 'window', booking_ref: 'ZZ11AA', source: 'calendar', source_key: 'cal:7201', rev: 1 });
+        expect(() => f.acceptCandidate(conn, cand.id, null, 'admin')).toThrow(expect.objectContaining({ code: 'already_accepted', status: 409 }));
+        expect(() => f.dismissCandidate(conn, cand.id, 'admin')).toThrow(expect.objectContaining({ code: 'already_accepted' }));
+        expect(() => f.acceptCandidate(conn, cand.id, { source: 'gmail' }, 'admin')).toThrow(expect.objectContaining({ code: 'bad_field' }));
+        // Found again after accepting: it is a flight now.
+        expect(f.suggest(conn, c(7201), 'job').status).toBe('exists');
+    });
+
+    test('accept of a flight filed meanwhile is 409 duplicate and leaves the candidate pending', () => {
+        const conn = db.get();
+        const cand = f.suggest(conn, c(7202), 'job').candidate;
+        const made = f.create(conn, { ...c(7202), source: 'manual', source_key: null }, 'person');
+        expect(() => f.acceptCandidate(conn, cand.id, null, 'admin')).toThrow(expect.objectContaining({ code: 'duplicate', status: 409, extra: { id: made.id } }));
+        expect(f.listCandidates(conn, { status: 'all' }).find((x) => x.id === cand.id).status).toBe('pending');
+    });
+
+    test('accept-all handles each id on its own', () => {
+        const conn = db.get();
+        const a = f.suggest(conn, c(7203), 'job').candidate.id;
+        const b = f.suggest(conn, c(7204), 'job').candidate.id;
+        const dup = f.listCandidates(conn).find((x) => x.flight_number === '7202').id;
+        const r = f.acceptAll(conn, [a, 999999, dup, b, 'x'], 'admin');
+        expect(r.accepted).toBe(2);
+        expect(r.failed).toBe(3);
+        expect(r.results.map((x) => [x.status, x.error || null])).toEqual([
+            ['accepted', null], ['error', 'not_found'], ['error', 'duplicate'], ['accepted', null], ['error', 'not_found'],
+        ]);
+        expect(r.results[2].flight_id).toEqual(expect.any(Number));
+        expect(() => f.acceptAll(conn, [], 'admin')).toThrow(expect.objectContaining({ code: 'bad_request' }));
+        expect(() => f.acceptAll(conn, new Array(101).fill(a), 'admin')).toThrow(expect.objectContaining({ code: 'bad_request' }));
+    });
+
+    test('dismiss: stays dismissed when found again; counts', () => {
+        const conn = db.get();
+        const cand = f.suggest(conn, c(7205), 'job').candidate;
+        expect(f.dismissCandidate(conn, cand.id, 'admin').status).toBe('dismissed');
+        expect(f.dismissCandidate(conn, cand.id, 'admin').status).toBe('unchanged');
+        const again = f.suggest(conn, c(7205), 'job');
+        expect(again).toMatchObject({ status: 'already_suggested', candidate: { id: cand.id, status: 'dismissed' } });
+        const counts = f.candidateCounts(conn);
+        expect(counts.dismissed).toBeGreaterThanOrEqual(1);
+        expect(counts.accepted).toBeGreaterThanOrEqual(3);
+        expect(f.listCandidates(conn, { status: 'dismissed' }).map((x) => x.id)).toContain(cand.id);
+    });
+});
