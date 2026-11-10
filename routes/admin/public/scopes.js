@@ -25,9 +25,10 @@ export const CATALOGUE = [
         domain: 'places',
         title: 'Places',
         scopes: [
-            { scope: 'places:read', label: 'Read', text: 'Read your places and their rules (these include your home address) and ask which place a location is, through /hub.' },
-            { scope: 'places:suggest', label: 'Suggest', text: 'File a street that no place claims yet into the "needs a name" queue. It cannot change any place.', write: true },
-            { scope: 'places:write', label: 'Write', text: 'Create, edit, restore and delete places and their rules through the /hub REST API.', write: true },
+            { scope: 'places:read', label: 'Read', text: 'Read your places and their rules (these include your home address) and ask which place a location is, through the agent endpoint and /hub.' },
+            { scope: 'places:suggest', label: 'Suggest', text: 'File a street that no place claims yet into the "needs a name" queue, through the agent endpoint (write mode) and /hub. It cannot change any place.', write: true },
+            { scope: 'places:edit', label: 'Edit', text: 'Lets an agent add new places and change existing ones (name, kind, notes and rules) through the agent endpoint, when Places is in write mode. Every earlier version is kept; deleting, restoring and naming the queue stay with you.', write: true },
+            { scope: 'places:write', label: 'Write', text: 'Create, edit, restore and delete places, and accept or dismiss suggestions, through the /hub REST API. It does not let an agent edit through the agent endpoint.', write: true },
         ],
     },
     {
