@@ -398,7 +398,7 @@ function closeDrawerTo(fromList) {
     else navigate(href('flights', [], { tab: 'flights' }), { replace: true });
 }
 
-function flightDrawer(ctx, id, fromList) {
+function flightDrawer(ctx, id, fromList, mark) {
     let flight = null;
     let trips = [];
     let form = null;
@@ -549,7 +549,7 @@ function flightDrawer(ctx, id, fromList) {
         ];
     }
 
-    drawer = { id, handle, fromList };
+    mark.handle = handle;
     load();
 }
 
@@ -559,10 +559,12 @@ function syncDrawer(ctx) {
     const id = raw && /^\d+$/.test(raw) ? Number(raw) : null;
     if (raw && !id) { navigate(href('flights'), { replace: true }); return; }
     if ((drawer ? drawer.id : null) === id) return;
-    if (drawer) { const d = drawer; drawer = null; d.handle.close(true); }
+    if (drawer) { const d = drawer; drawer = null; if (d.handle) d.handle.close(true); }
     if (!id) return;
-    const fromList = lastWasList;
-    setTimeout(() => flightDrawer(ctx, id, fromList), 0);
+    // Claim the id at once: a second render before the timer fires must not open a second drawer.
+    const mark = { id, handle: null, fromList: lastWasList };
+    drawer = mark;
+    setTimeout(() => { if (drawer === mark) flightDrawer(ctx, id, mark.fromList, mark); }, 0);
 }
 
 /* ---------- Add flight, and Check before adding (a found flight) ---------- */
@@ -946,7 +948,7 @@ export async function render(ctx) {
     syncDrawer(ctx);
     lastWasList = !idRaw;
     ctx.onCleanup(() => {
-        if (drawer && parse().name !== 'flights') { const d = drawer; drawer = null; d.handle.close(true); }
+        if (drawer && parse().name !== 'flights') { const d = drawer; drawer = null; if (d.handle) d.handle.close(true); }
         if (side && parse().name !== 'flights') closeSide();
     });
     if (q.get('new') === '1' && !idRaw) {
