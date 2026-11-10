@@ -2,6 +2,12 @@
 //   router.get('/get', requireScope('attendance:read'), handler)
 const db = require('../db');
 const apiKeys = require('../services/apiKeys');
+const keyLimits = require('./keyLimits');
+
+const tooMany = (res, seconds, message) => {
+    res.set('Retry-After', String(seconds));
+    return res.status(429).json({ error: 'Too many requests', message });
+};
 
 function extractKey(req) {
     const m = /^Bearer\s+(.+)$/i.exec(req.get('authorization') || '');
@@ -14,6 +20,8 @@ function requireScope(scope) {
         if (!token) {
             return res.status(401).json({ error: 'Unauthorized', message: 'An API key is required' });
         }
+        const waitIp = keyLimits.blockedFor(req.ip);
+        if (waitIp) return tooMany(res, waitIp, 'Too many invalid API keys from this address. Try again later.');
         let key;
         try {
             key = apiKeys.verify(db.get(), token);
@@ -21,11 +29,14 @@ function requireScope(scope) {
             return res.status(503).json({ error: 'Unavailable', message: 'Key store unavailable' });
         }
         if (!key) {
+            keyLimits.recordFailure(req.ip);
             return res.status(401).json({ error: 'Unauthorized', message: 'Invalid or revoked API key' });
         }
         if (scope && !apiKeys.hasScope(key.scopes, scope)) {
             return res.status(403).json({ error: 'Forbidden', message: `This key lacks the "${scope}" scope` });
         }
+        const waitKey = keyLimits.takeKeyCall(key.id);
+        if (waitKey) return tooMany(res, waitKey, 'This API key has made too many calls. Try again later.');
         req.apiKey = key;
         next();
     };
