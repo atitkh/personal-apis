@@ -621,6 +621,9 @@ function needCandidate(db, id) {
     return row;
 }
 
+// A suggest answer goes to keys that may lack flights:read, so it never carries a booking reference.
+const withoutRef = ({ booking_ref: _ref, ...rest }) => rest;
+
 // File a found flight. Answers { status, candidate } where status is filed (new, 201 over REST), exists (it
 // is already flight `flight.id`; nothing filed) or already_suggested (the candidate that has it, any status).
 function suggest(db, input, actor) {
@@ -641,12 +644,12 @@ function suggest(db, input, actor) {
         const existing = db.prepare('SELECT * FROM flight_candidates WHERE airline_iata = ? AND flight_number = ? AND dep_local_date = ? AND origin_iata = ?')
             .get(f.airline_iata, f.flight_number, d.dep_local_date, f.origin_iata)
             || (f.source_key ? db.prepare('SELECT * FROM flight_candidates WHERE source = ? AND source_key = ?').get(source, f.source_key) : null);
-        if (existing) return { status: 'already_suggested', candidate: shapeCandidate(existing) };
+        if (existing) return { status: 'already_suggested', candidate: withoutRef(shapeCandidate(existing)) };
         const id = Number(db.prepare(`INSERT INTO flight_candidates (${CANDIDATE_FIELDS.join(', ')}, dep_tz, arr_tz, dep_local_date, source, source_key,
             confidence, status, created_at, created_by) VALUES (${CANDIDATE_FIELDS.map((k) => `@${k}`).join(', ')}, @dep_tz, @arr_tz, @dep_local_date,
             @source, @source_key, @confidence, 'pending', @at, @actor)`)
             .run({ ...f, ...d, source, confidence, at: now(), actor: who(actor) }).lastInsertRowid);
-        return { status: 'filed', candidate: shapeCandidate(db.prepare('SELECT * FROM flight_candidates WHERE id = ?').get(id)) };
+        return { status: 'filed', candidate: withoutRef(shapeCandidate(db.prepare('SELECT * FROM flight_candidates WHERE id = ?').get(id))) };
     })();
 }
 
@@ -727,7 +730,7 @@ const candidateAuditDetail = (c, flight) => {
 module.exports = {
     STATUSES, SOURCES, FIELDS, SETTINGS, FlightError,
     CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, ACCEPT_ALL_MAX,
-    suggest, listCandidates, candidateCounts, acceptCandidate, acceptAll, dismissCandidate, candidateAuditDetail,
+    suggest, listCandidates, candidateCounts, withoutRef, acceptCandidate, acceptAll, dismissCandidate, candidateAuditDetail,
     haversineKm, localToUtc, localIso,
     list, get, history, upcoming, overview, stats,
     create, update, restore, auditDetail,

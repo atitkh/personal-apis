@@ -2,7 +2,9 @@
 // body parser, no-store and `handle` (turns a FlightError into a JSON error).
 //   flights:read   list, get, history, upcoming, stats, trips, settings
 //   flights:write  create, update, restore, trips and settings changes
-//   flights:suggest is reserved for the candidates queue (stage 2) and grants nothing here yet.
+//   flights:suggest  POST /candidates only: file a found flight for a person to accept or dismiss (the answer
+//                    never carries a booking reference). Accepting and dismissing are admin-only
+//                    (/admin/api/flights/candidates), never over /hub.
 // There is no delete: a flight that did not happen gets status cancelled.
 // booking_ref is in flight answers (every route needs flights:read), never in audit rows: changes are
 // audited with flights.auditDetail (id, flight number, route, date).
@@ -68,6 +70,22 @@ module.exports = (handle) => {
     router.patch('/trips/:id', write, handle((req, res, conn) => {
         const result = flights.updateTrip(conn, req.params.id, req.body, req.apiKey.name);
         if (result.status !== 'unchanged') audit.record(conn, req.apiKey.name, 'trip_updated', { id: result.id, title: result.title }, req.ip);
+        res.json(result);
+    }));
+
+    // ?status=pending (default) | accepted | dismissed | all. `counts` has every status, whatever the filter.
+    router.get('/candidates', read, handle((req, res, conn) => {
+        const status = req.query.status || 'pending';
+        res.json({ status, candidates: flights.listCandidates(conn, { status, limit: req.query.limit }), counts: flights.candidateCounts(conn) });
+    }));
+
+    // 201 when filed; 200 with what exists when it is already a flight or a candidate.
+    router.post('/candidates', [requireScope('flights:suggest'), requireDomain('flights')], handle((req, res, conn) => {
+        const result = flights.suggest(conn, req.body, req.apiKey.name);
+        if (result.status === 'filed') {
+            audit.record(conn, req.apiKey.name, 'flight_candidate_filed', flights.candidateAuditDetail(result.candidate), req.ip);
+            return res.status(201).json(result);
+        }
         res.json(result);
     }));
 

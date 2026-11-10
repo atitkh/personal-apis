@@ -32,6 +32,7 @@ const ICON = {
     place_suggestion_accepted: 'places', place_suggestion_dismissed: 'places',
     flight_created: 'calendar', flight_updated: 'calendar', flight_restored: 'calendar',
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
+    flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
 };
 const RULE_NAME = { street: 'street', zone: 'zone', radius: 'circle' };
 
@@ -80,6 +81,9 @@ function sentence(e) {
     case 'trip_created': return [who, ' added the trip ', strong(d.title || 'a trip')];
     case 'trip_updated': return [who, ' changed the trip ', strong(d.title || 'a trip')];
     case 'flight_settings_changed': return [who, ' changed the flights settings'];
+    case 'flight_candidate_filed': return [who, ' found the flight ', strong(d.flight || 'a flight'), ' for review'];
+    case 'flight_candidate_accepted': return [who, ' accepted the found flight ', strong(d.flight || 'a flight')];
+    case 'flight_candidate_dismissed': return [who, ' dismissed the found flight ', strong(d.flight || 'a flight')];
     case 'place_created': return [who, ' added the place ', placeRef(d)];
     case 'place_updated': return [who, ' changed ', placeRef(d)];
     case 'place_restored': return [who, ' restored an older version of ', placeRef(d)];

@@ -12,6 +12,7 @@ const stats = require('../../services/adminStats');
 const domains = require('../../services/domains');
 const digests = require('../../services/digests');
 const places = require('../../services/places');
+const flights = require('../../services/flights');
 const backup = require('../../services/backup');
 const agents = require('../../services/mcp/agents');
 
@@ -40,7 +41,8 @@ const ACTIVITY_TYPES = {
     digests: ['digest_edited', 'digest_restored'],
     places: ['place_created', 'place_updated', 'place_restored', 'place_deleted', 'place_rule_added', 'place_rule_updated', 'place_rule_removed',
         'place_suggestion_accepted', 'place_suggestion_dismissed'],
-    flights: ['flight_created', 'flight_updated', 'flight_restored', 'trip_created', 'trip_updated', 'flight_settings_changed'],
+    flights: ['flight_created', 'flight_updated', 'flight_restored', 'trip_created', 'trip_updated', 'flight_settings_changed',
+        'flight_candidate_filed', 'flight_candidate_accepted', 'flight_candidate_dismissed'],
     signins: ['login', 'logout', 'login_failed'],
 };
 
@@ -355,6 +357,48 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
 
     api.delete('/places/:id/rules/:ruleId', placeHandler((req, res, conn) => {
         placeChanged(req, res, conn, 'place_rule_removed', places.removeRule(conn, req.params.id, req.params.ruleId, 'admin'));
+    }));
+
+    // ---- flights: the found-flights queue (works while the domain is switched off). Accepting and dismissing
+    // are for a person only, so they live here and not on /hub. Audited as `admin` with the candidate id, the
+    // flight label and the flight it became; never the booking reference. ----
+    const flightHandler = (fn) => (req, res) => {
+        try {
+            fn(req, res, db.get());
+        } catch (err) {
+            if (err instanceof flights.FlightError) {
+                return res.status(err.status).json({ error: err.message, code: err.code, ...(err.extra || {}) });
+            }
+            console.error('admin flights error:', err);
+            res.status(500).json({ error: 'Something went wrong.' });
+        }
+    };
+
+    api.get('/flights/candidates', flightHandler((req, res, conn) => {
+        const status = req.query.status || 'pending';
+        res.json({ status, candidates: flights.listCandidates(conn, { status, limit: req.query.limit }), counts: flights.candidateCounts(conn) });
+    }));
+
+    // Body: { ids: [..] }. Each id is accepted on its own; the answer lists what happened to each.
+    api.post('/flights/candidates/accept-all', flightHandler((req, res, conn) => {
+        const result = flights.acceptAll(conn, (req.body || {}).ids, 'admin');
+        for (const r of result.results.filter((x) => x.status === 'accepted')) {
+            audit.record(conn, 'admin', 'flight_candidate_accepted', { id: r.id, flight: r.label, flight_id: r.flight_id, rev: r.rev }, req.ip);
+        }
+        res.json(result);
+    }));
+
+    // Body: optional flight fields that replace the found ones before the flight is created.
+    api.post('/flights/candidates/:id/accept', flightHandler((req, res, conn) => {
+        const result = flights.acceptCandidate(conn, req.params.id, req.body, 'admin');
+        audit.record(conn, 'admin', 'flight_candidate_accepted', flights.candidateAuditDetail(result.candidate, result.flight), req.ip);
+        res.json(result);
+    }));
+
+    api.post('/flights/candidates/:id/dismiss', flightHandler((req, res, conn) => {
+        const result = flights.dismissCandidate(conn, req.params.id, 'admin');
+        if (result.status !== 'unchanged') audit.record(conn, 'admin', 'flight_candidate_dismissed', flights.candidateAuditDetail(result.candidate), req.ip);
+        res.json(result);
     }));
 
     api.use((req, res) => res.status(404).json({ error: 'Not found' }));

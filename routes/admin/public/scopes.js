@@ -36,7 +36,8 @@ export const CATALOGUE = [
         title: 'Flights',
         scopes: [
             { scope: 'flights:read', label: 'Read', text: 'Read your flights (booking references included), trips, upcoming flights and the Passport stats through /hub.' },
-            { scope: 'flights:suggest', label: 'Suggest', text: 'Reserved for filing found flights into a review queue. It grants nothing yet.', write: true },
+            { scope: 'flights:suggest', label: 'Suggest', text: 'File a found flight (from email, the calendar or an agent) into the review queue, through the agent endpoint (write mode) and /hub. It cannot change any flight; accepting and dismissing stay with you.', write: true },
+            { scope: 'flights:edit', label: 'Edit', text: 'Lets an agent add flights and change existing ones through the agent endpoint, when Flights is in write mode. Every earlier version is kept; restoring and the review queue stay with you.', write: true },
             { scope: 'flights:write', label: 'Write', text: 'Add and change flights and trips, restore older versions and change the flights settings through the /hub REST API. Needs Read as well.', write: true },
         ],
     },

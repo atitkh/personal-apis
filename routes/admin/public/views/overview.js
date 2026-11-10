@@ -179,6 +179,8 @@ function issues(o) {
     if (o.digests && o.digests.missing) out.push({ kind: 'warn', text: `The daily digest for ${o.digests.expectedDaily} has not arrived.`, hint: 'The nightly job runs at 11 PM.', link: ['digests', 'Open digests'] });
     const waiting = o.places && o.places.suggestions ? o.places.suggestions.pending : 0;
     if (waiting) out.push({ kind: 'warn', text: `${plural(waiting, 'spot')} ${waiting === 1 ? 'needs' : 'need'} a name.`, hint: 'Streets the nightly digest saw that no place claims yet.', link: ['places', waiting === 1 ? 'Name it' : 'Name them', { tab: 'queue' }] });
+    const found = o.flights && o.flights.candidates ? o.flights.candidates.pending : 0;
+    if (found) out.push({ kind: 'warn', text: `${plural(found, 'found flight')} ${found === 1 ? 'waits' : 'wait'} for review.`, hint: 'Flights a job or an agent found; accept or dismiss them.', link: ['activity', 'See activity', { type: 'flights' }] });
     if (o.portfolio.problems) out.push({ kind: 'warn', text: `${plural(o.portfolio.problems, 'portfolio file')} ${o.portfolio.problems === 1 ? 'needs' : 'need'} a look.`, link: ['portfolio', 'Open portfolio'] });
     return out;
 }
@@ -195,7 +197,7 @@ function attention(list) {
                 i.link ? h('a', { class: 'btn quiet small', href: href(i.link[0], [], i.link[2] || null), text: i.link[1] }) : null)))
             : emptyState({
                 title: 'Nothing needs you right now.',
-                text: 'Checked: the database, backups, the daily digest, the portfolio files and the places queue.',
+                text: 'Checked: the database, backups, the daily digest, the portfolio files, the places queue and the found flights.',
                 iconName: 'good',
                 action: h('a', { class: 'btn quiet small', href: href('activity'), text: 'See recent activity' }),
             }));

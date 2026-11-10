@@ -6,6 +6,7 @@ const apiKeys = require('./apiKeys');
 const domains = require('./domains');
 const agents = require('./mcp/agents');
 const places = require('./places');
+const flights = require('./flights');
 const { readJson } = require('../routes/portfolio/freshJson');
 
 const ATIT_DIR = path.join(__dirname, '..', 'routes', 'portfolio', 'atit');
@@ -139,6 +140,8 @@ function overview() {
         domains: agents.domainsWithTools(conn),
         // Counts only (no streets): the overview's attention list links to the "needs a name" queue.
         places: { suggestions: places.suggestionCounts(conn) },
+        // Counts only (no flight details), for the attention list's found-flights line.
+        flights: { candidates: flights.candidateCounts(conn) },
     };
 }
 
