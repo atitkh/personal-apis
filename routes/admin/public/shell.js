@@ -1,6 +1,6 @@
 // The app frame: left rail (bottom tab bar on phones), top bar with the page title, command palette
 // button, theme toggle and the account menu. Built once after sign-in; views render into `content`.
-import { h, icon, button, segmented, when, isMac } from './ui.js';
+import { h, icon, button, segmented, when, span, isMac } from './ui.js';
 import * as router from './router.js';
 import { THEMES, preference, setPreference, onThemeChange } from './theme.js';
 
@@ -13,7 +13,7 @@ function brandMark() {
         h('span', { class: 'bm a' }), h('span', { class: 'bm b' }), h('span', { class: 'bm c' }));
 }
 
-export function createShell({ session, onSignOut, openPalette }) {
+export function createShell({ session, onSignOut, openPalette, api }) {
     const navLinks = new Map();
     const routes = router.all().filter((r) => r.nav);
 
@@ -37,7 +37,20 @@ export function createShell({ session, onSignOut, openPalette }) {
         class: 'btn ghost small icon-only rail-toggle',
         onClick: () => setCollapsed(!collapsed),
     });
-    rail.append(h('div', { class: 'rail-foot' }, collapseBtn));
+    // Version and uptime live quietly at the foot of the rail (and in Settings).
+    const about = h('p', { class: 'rail-about rail-label' });
+    let appInfo = null;
+    let infoAt = 0;
+    const paintAbout = () => {
+        if (!appInfo) return;
+        const up = appInfo.uptimeSeconds + Math.round((Date.now() - infoAt) / 1000);
+        about.replaceChildren(h('span', { text: `${appInfo.name} ${appInfo.version}` }), h('span', { text: `Up ${span(up)}` }));
+    };
+    if (api) {
+        api('/overview').then((o) => { appInfo = o.app; infoAt = Date.now(); paintAbout(); }).catch(() => {});
+        const tick = setInterval(() => (about.isConnected ? paintAbout() : clearInterval(tick)), 60000);
+    }
+    rail.append(h('div', { class: 'rail-foot' }, about, collapseBtn));
 
     const frame = h('div', { class: `app${collapsed ? ' rail-collapsed' : ''}` });
     function setCollapsed(v) {

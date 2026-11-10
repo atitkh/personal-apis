@@ -118,7 +118,7 @@ function onRoute(route, { initial }) {
 
 let routerStarted = false;
 function startApp() {
-    shell = createShell({ session, onSignOut: signOut, openPalette });
+    shell = createShell({ session, onSignOut: signOut, openPalette, api });
     root.replaceChildren(shell.el);
     if (!routerStarted) {
         routerStarted = true;
