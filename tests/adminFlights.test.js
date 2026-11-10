@@ -109,3 +109,17 @@ describe('admin flights: the queue', () => {
         expect(t).toContain('"flights"');
     });
 });
+
+describe('admin flights: a candidate with flight_status', () => {
+    test('shows in the queue and accepting makes the flight cancelled; an override can change it', async () => {
+        const c = file(901, { flight_status: 'cancelled' });
+        expect(c.flight_status).toBe('cancelled');
+        const queue = (await agent.get('/admin/api/flights/candidates').expect(200)).body.candidates;
+        expect(queue.find((x) => x.id === c.id)).toMatchObject({ flight_status: 'cancelled' });
+        const r = (await agent.post(`/admin/api/flights/candidates/${c.id}/accept`).set(H).send({}).expect(200)).body;
+        expect(flights.get(db.get(), r.flight.id)).toMatchObject({ status: 'cancelled', status_override: 'cancelled' });
+        const d = file(902, { flight_status: 'cancelled' });
+        const r2 = (await agent.post(`/admin/api/flights/candidates/${d.id}/accept`).set(H).send({ status: 'auto' }).expect(200)).body;
+        expect(flights.get(db.get(), r2.flight.id)).toMatchObject({ status: 'scheduled', status_override: null });
+    });
+});

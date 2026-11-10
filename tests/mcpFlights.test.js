@@ -194,3 +194,16 @@ describe('mcp flights: audit', () => {
         expect(d.records).toBeGreaterThanOrEqual(2);
     });
 });
+
+describe('mcp flights: flight_status on suggest and the effective status', () => {
+    test('suggest takes flight_status and the candidate carries it; flights show status and status_override', async () => {
+        writeMode();
+        const args = { action: 'suggest', airline_iata: 'NK', flight_number: '910', origin_iata: 'DFW', dest_iata: 'LAS', sched_dep: '2030-05-09T08:00', source: 'gmail', source_key: 'g:910', flight_status: 'cancelled' };
+        expect(jsonOf(await call('job', args))).toMatchObject({ status: 'filed', candidate: { flight_status: 'cancelled' } });
+        expect(errorOf(await call('job', { ...args, flight_number: '911', source_key: 'g:911', flight_status: 'landed' }))).toBeTruthy();
+        const got = jsonOf(await call('reader', { action: 'get', id: past }));
+        expect(got).toMatchObject({ status: 'completed', status_override: null });
+        expect(jsonOf(await call('reader', { action: 'get', id: soon }))).toMatchObject({ status: 'scheduled', status_override: null });
+        expect(jsonOf(await call('reader', { action: 'list', status: 'completed' })).flights.map((x) => x.id)).toContain(past);
+    });
+});

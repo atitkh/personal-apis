@@ -296,3 +296,37 @@ describe('found flights (candidates): service', () => {
         expect(f.listCandidates(conn, { status: 'dismissed' }).map((x) => x.id)).toContain(cand.id);
     });
 });
+
+describe('found flights: flight_status end to end', () => {
+    const f = require('../services/flights');
+    const found = (n, extra = {}) => ({
+        airline_iata: 'NK', flight_number: String(n), origin_iata: 'DFW', dest_iata: 'LAS', sched_dep: '2026-05-09T08:00',
+        source: 'gmail', source_key: `h:${n}`, confidence: 0.5, ...extra,
+    });
+
+    test('REST: flight_status is filed, shown on the candidate, and accepting makes a cancelled flight', async () => {
+        const r = (await as(suggester).post('/hub/flights/candidates', found(910, { flight_status: 'cancelled' })).expect(201)).body;
+        expect(r.candidate).toMatchObject({ flight_status: 'cancelled', status: 'pending' });
+        const plain = (await as(suggester).post('/hub/flights/candidates', found(911)).expect(201)).body;
+        expect(plain.candidate.flight_status).toBeNull();
+        await as(suggester).post('/hub/flights/candidates', found(912, { flight_status: 'landed' })).expect(400);
+        const list = (await as(reader).get('/hub/flights/candidates').expect(200)).body.candidates;
+        expect(list.find((c) => c.flight_number === '910').flight_status).toBe('cancelled');
+        const accepted = f.acceptCandidate(db.get(), r.candidate.id, null, 'admin');
+        expect(accepted.flight).toMatchObject({ status: 'created' });
+        expect((await as(reader).get(`/hub/flights/${accepted.flight.id}`).expect(200)).body).toMatchObject({ status: 'cancelled', status_override: 'cancelled' });
+        const p = f.acceptCandidate(db.get(), plain.candidate.id, null, 'admin');
+        expect((await as(reader).get(`/hub/flights/${p.flight.id}`).expect(200)).body).toMatchObject({ status: 'completed', status_override: null });
+    });
+
+    test('service: auto and scheduled mean no status, completed is kept, an override can clear it', () => {
+        const conn = db.get();
+        expect(f.suggest(conn, found(913, { flight_status: 'auto' }), 'job').candidate.flight_status).toBeNull();
+        expect(f.suggest(conn, found(914, { flight_status: 'scheduled' }), 'job').candidate.flight_status).toBeNull();
+        const c = f.suggest(conn, found(915, { flight_status: 'completed' }), 'job').candidate;
+        expect(c.flight_status).toBe('completed');
+        const fl = f.acceptCandidate(conn, c.id, { status: 'auto' }, 'admin').flight;
+        expect(f.get(conn, fl.id)).toMatchObject({ status_override: null });
+        expect(f.CANDIDATE_FLIGHT_STATUSES).toEqual(['cancelled', 'completed']);
+    });
+});

@@ -57,7 +57,7 @@ module.exports = {
         stats: { scope: 'flights:read', describe: 'stats: the Passport for flights flown so far (optional year): distance, hours, airports, countries, airlines, routes, per year' },
         trips: { scope: 'flights:read', describe: 'trips: the trips with how many flights each has' },
         candidates: { scope: 'flights:read', describe: `candidates: found flights in the review queue (status pending (default), accepted, dismissed or all; limit 1-${LIST_MAX})` },
-        suggest: { scope: 'flights:suggest', write: true, describe: 'suggest: file a found flight for Atit to review (airline_iata, flight_number, origin_iata, dest_iata, sched_dep; optional sched_arr, airline_name, cabin, seat, aircraft_type, booking_ref, notes, source gmail/calendar/manual, source_key, confidence 0-1). Already a flight or already filed: says so and files nothing' },
+        suggest: { scope: 'flights:suggest', write: true, describe: 'suggest: file a found flight for Atit to review (airline_iata, flight_number, origin_iata, dest_iata, sched_dep; optional sched_arr, airline_name, cabin, seat, aircraft_type, booking_ref, notes, source gmail/calendar/manual, source_key, confidence 0-1, flight_status cancelled or completed if the source says so). Already a flight or already filed: says so and files nothing' },
         add: { scope: 'flights:edit', write: true, describe: 'add: file a flight directly (same fields as suggest, plus trip_id, status). Prefer suggest for flights you found yourself' },
         edit: { scope: 'flights:edit', write: true, describe: 'edit: change one flight (id; only the fields sent change, null clears; status cancelled for a flight that did not happen; optional note = why). Every change is kept as a revision' },
     },
@@ -93,6 +93,7 @@ module.exports = {
         if (has('suggest')) {
             shape.source = z.enum(flights.CANDIDATE_SOURCES).optional().describe('suggest: where it was found (default manual)');
             shape.source_key = code(128).optional().describe('suggest: a stable id from the source (hashed), so a re-scan files nothing twice');
+            shape.flight_status = z.enum(flights.CANDIDATE_FLIGHT_STATUSES).optional().describe('suggest: cancelled or completed when the source says so (a cancellation mail); leave out for automatic');
             shape.confidence = z.number().min(0).max(1).optional().describe('suggest: how sure the reading is, 0-1');
         }
         if (has('edit')) {
@@ -129,7 +130,7 @@ module.exports = {
             return { status, counts: flights.candidateCounts(db), candidates: flights.listCandidates(db, { status, limit: args.limit || LIST_MAX }).map(candidate) };
         }
         case 'suggest': {
-            const r = flights.suggest(db, pick(args, [...flights.CANDIDATE_FIELDS, 'source', 'source_key', 'confidence']), key.name);
+            const r = flights.suggest(db, pick(args, [...flights.CANDIDATE_FIELDS, 'source', 'source_key', 'confidence', 'flight_status']), key.name);
             return r.candidate ? { status: r.status, candidate: candidate(r.candidate) } : r;
         }
         case 'add':

@@ -655,6 +655,14 @@ const CANDIDATE_SOURCES = ['gmail', 'calendar', 'manual'];
 const CANDIDATE_FIELDS = ['airline_iata', 'airline_name', 'flight_number', 'origin_iata', 'dest_iata', 'sched_dep', 'sched_arr',
     'booking_ref', 'cabin', 'seat', 'aircraft_type', 'notes'];
 const ACCEPT_ALL_MAX = 100;
+const CANDIDATE_FLIGHT_STATUSES = ['cancelled', 'completed'];
+
+// flight_status on a candidate: null (automatic) or cancelled/completed; 'auto' and 'scheduled' mean null.
+function cleanFlightStatus(v) {
+    if (v == null || v === '' || v === 'auto' || v === 'scheduled') return null;
+    if (!CANDIDATE_FLIGHT_STATUSES.includes(v)) throw bad('bad_flight_status', `flight_status must be one of: ${CANDIDATE_FLIGHT_STATUSES.join(', ')} (or leave it out).`);
+    return v;
+}
 
 function cleanConfidence(v) {
     if (v == null || v === '') return null;
@@ -672,6 +680,7 @@ function shapeCandidate(row) {
         dep_local: localIso(row.sched_dep, row.dep_tz),
         arr_local: localIso(row.sched_arr, row.arr_tz),
         dep_local_date: row.dep_local_date,
+        flight_status: row.flight_status || null,
         label: label(row),
         source: row.source,
         source_key: row.source_key,
@@ -699,10 +708,11 @@ const withoutRef = ({ booking_ref: _ref, ...rest }) => rest;
 function suggest(db, input, actor) {
     const given = input || {};
     for (const k of Object.keys(given)) {
-        if (!CANDIDATE_FIELDS.includes(k) && !['source', 'source_key', 'confidence'].includes(k)) throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
+        if (!CANDIDATE_FIELDS.includes(k) && !['source', 'source_key', 'confidence', 'flight_status'].includes(k)) throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
     }
     const source = oneOf(given.source == null ? 'manual' : given.source, 'source', CANDIDATE_SOURCES);
     const confidence = cleanConfidence(given.confidence);
+    const flightStatus = cleanFlightStatus(given.flight_status);
     const fields = Object.fromEntries(CANDIDATE_FIELDS.filter((k) => given[k] !== undefined).map((k) => [k, given[k]]));
     const { fields: f, derived: d } = build(db, { ...fields, source, source_key: given.source_key });
     return db.transaction(() => {
@@ -716,9 +726,9 @@ function suggest(db, input, actor) {
             || (f.source_key ? db.prepare('SELECT * FROM flight_candidates WHERE source = ? AND source_key = ?').get(source, f.source_key) : null);
         if (existing) return { status: 'already_suggested', candidate: withoutRef(shapeCandidate(existing)) };
         const id = Number(db.prepare(`INSERT INTO flight_candidates (${CANDIDATE_FIELDS.join(', ')}, dep_tz, arr_tz, dep_local_date, source, source_key,
-            confidence, status, created_at, created_by) VALUES (${CANDIDATE_FIELDS.map((k) => `@${k}`).join(', ')}, @dep_tz, @arr_tz, @dep_local_date,
-            @source, @source_key, @confidence, 'pending', @at, @actor)`)
-            .run({ ...f, ...d, source, confidence, at: now(), actor: who(actor) }).lastInsertRowid);
+            confidence, flight_status, status, created_at, created_by) VALUES (${CANDIDATE_FIELDS.map((k) => `@${k}`).join(', ')}, @dep_tz, @arr_tz, @dep_local_date,
+            @source, @source_key, @confidence, @flightStatus, 'pending', @at, @actor)`)
+            .run({ ...f, ...d, source, confidence, flightStatus, at: now(), actor: who(actor) }).lastInsertRowid);
         return { status: 'filed', candidate: withoutRef(shapeCandidate(db.prepare('SELECT * FROM flight_candidates WHERE id = ?').get(id))) };
     })();
 }
@@ -757,6 +767,7 @@ function acceptCandidate(db, id, overrides, actor) {
         const c = needCandidate(db, id);
         if (c.status === 'accepted') throw bad('already_accepted', `Candidate ${c.id} is already accepted as flight ${c.accepted_flight_id}.`, 409, { id: c.accepted_flight_id });
         const found = Object.fromEntries(CANDIDATE_FIELDS.map((k) => [k, c[k]]));
+        if (c.flight_status) found.status = c.flight_status;
         const flight = create(db, { ...found, ...over, source: c.source, source_key: c.source_key }, actor);
         return { status: 'accepted', candidate: decide(db, c, 'accepted', flight.id, actor), flight };
     })();
@@ -799,7 +810,7 @@ const candidateAuditDetail = (c, flight) => {
 
 module.exports = {
     STATUSES, STATUS_INPUTS, SOURCES, FIELDS, SETTINGS, FlightError, effectiveStatus,
-    CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, ACCEPT_ALL_MAX,
+    CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, CANDIDATE_FLIGHT_STATUSES, ACCEPT_ALL_MAX,
     suggest, listCandidates, candidateCounts, withoutRef, acceptCandidate, acceptAll, dismissCandidate, candidateAuditDetail,
     haversineKm, localToUtc, localIso,
     list, get, history, upcoming, overview, stats, searchAirports, mapData,
