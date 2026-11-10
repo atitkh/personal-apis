@@ -153,10 +153,11 @@ async function results(ctx, kind, q) {
             : emptyState({ title: 'No digest has those words.', text: `Try fewer or different words, or search the ${kind === 'daily' ? 'weekly' : 'daily'} digests. Search looks at every revision.` }));
 }
 
-async function daily(ctx) {
+// The month calendar (one tab stop, arrows move by day, Page Up/Down by month). Used beside the list on
+// #/digests and beside the reader on a digest's page. `go(month)` shows another month; `home` is the month
+// the "back" link returns to.
+async function calendarPanel(ctx, { month, selected = [], go, home, homeHref, homeText }) {
     const now = today();
-    const asked = ctx.route.query.get('month');
-    const month = asked && MONTH_RE.test(asked) && asked <= now.slice(0, 7) ? asked : now.slice(0, 7);
     const data = await ctx.api(`/digests?kind=daily&from=${month}-01&to=${month}-31&limit=62`);
     const have = new Map(data.digests.map((d) => [d.period, d]));
     const first = data.bounds.first;
@@ -169,11 +170,11 @@ async function daily(ctx) {
         return 'gap';
     };
     const minMonth = first ? first.slice(0, 7) : now.slice(0, 7);
-    const go = (m) => navigate(href('digests', [], { month: m === now.slice(0, 7) ? null : m }));
 
     const cal = monthCalendar({
         month,
         status,
+        selected,
         href: (day) => href('digests', ['daily', day]),
         focusDay: pendingFocus,
         onLeave: (day) => {
@@ -199,11 +200,11 @@ async function daily(ctx) {
     const prev = button({ variant: 'ghost', size: 'small', iconName: 'prev', label: `Previous month, ${monthLabel(addMonths(month, -1))}`, onClick: () => go(addMonths(month, -1)), disabled: month <= minMonth, 'data-key': 'cal-prev' });
     const next = button({ variant: 'ghost', size: 'small', iconName: 'next', label: `Next month, ${monthLabel(addMonths(month, 1))}`, onClick: () => go(addMonths(month, 1)), disabled: month >= now.slice(0, 7), 'data-key': 'cal-next' });
 
-    const calendarPanel = h('section', { class: 'panel cal-panel', 'aria-labelledby': 'cal-title' },
+    const panel = h('section', { class: 'panel cal-panel', 'aria-labelledby': 'cal-title' },
         h('div', { class: 'cal-top' },
             h('h2', { id: 'cal-title', text: monthLabel(month) }),
             h('div', { class: 'cal-nav' }, prev,
-                month !== now.slice(0, 7) ? h('a', { class: 'btn ghost small', href: href('digests'), text: 'This month' }) : null,
+                month !== home ? h('a', { class: 'btn ghost small', href: homeHref, text: homeText }) : null,
                 next)),
         cal.el,
         h('ul', { class: 'cal-legend', 'aria-label': 'Key' },
@@ -212,13 +213,32 @@ async function daily(ctx) {
             h('li', {}, h('span', { class: 'cal-key none', 'aria-hidden': 'true' }), 'Nothing expected')),
         h('p', { class: 'cal-summary' }, summary,
             gaps.length ? h('span', { class: 'cal-gaps' }, ` Missing: ${gaps.map((d) => dayLabel(d, { month: 'short', day: 'numeric' })).join(', ')}.`) : null));
+    return { panel, data, first };
+}
+
+async function daily(ctx) {
+    const now = today();
+    const asked = ctx.route.query.get('month');
+    const month = asked && MONTH_RE.test(asked) && asked <= now.slice(0, 7) ? asked : now.slice(0, 7);
+    const { panel, data, first } = await calendarPanel(ctx, {
+        month,
+        go: (m) => navigate(href('digests', [], { month: m === now.slice(0, 7) ? null : m })),
+        home: now.slice(0, 7),
+        homeHref: href('digests'),
+        homeText: 'This month',
+    });
 
     const list = data.digests.length
         ? h('ul', { class: 'digest-list' }, data.digests.map(digestItem))
-        : emptyState({ title: `No daily digests in ${monthLabel(month)}.`, text: first ? 'Pick another month, or search all of them.' : 'The nightly job publishes one each day at 11 PM.', iconName: 'calendar' });
+        : emptyState({
+            title: `No daily digests in ${monthLabel(month)}.`,
+            text: first ? 'Pick another month, or search all of them.' : 'The nightly job publishes one each day at 11 PM. Until then, the weekly reviews may have something.',
+            iconName: 'calendar',
+            action: first ? null : h('a', { class: 'btn quiet small', href: href('digests', [], { kind: 'weekly' }), text: 'Open weekly reviews' }),
+        });
 
     return h('div', { class: 'digests-browse' },
-        calendarPanel,
+        panel,
         h('section', { class: 'panel dl-panel', 'aria-labelledby': 'dl-title' },
             h('div', { class: 'panel-head' },
                 h('h2', { id: 'dl-title', text: `${monthLabel(month)}` }),
@@ -349,6 +369,26 @@ async function reader(ctx, kind, period) {
     if (st.id !== id) st = { id, viewRev: null, editing: false };
     ctx.onCleanup(() => { if (historyDrawer && !location.hash.startsWith(`#/digests/${kind}/${period}`)) historyDrawer.close(true); });
 
+    // The month calendar sits beside the text on wide screens (below it on narrow ones). It is extra:
+    // if it fails to load, the reader still shows.
+    const firstDay = kind === 'daily' ? period : weekStart(period);
+    const home = firstDay.slice(0, 7);
+    const asked = ctx.route.query.get('month');
+    const month = asked && MONTH_RE.test(asked) && asked <= today().slice(0, 7) ? asked : home;
+    const sideP = calendarPanel(ctx, {
+        month,
+        selected: kind === 'daily' ? [period] : Array.from({ length: 7 }, (_, i) => addDays(firstDay, i)),
+        go: (m) => navigate(href('digests', [kind, period], { month: m === home ? null : m })),
+        home,
+        homeHref: href('digests', [kind, period]),
+        homeText: kind === 'daily' ? 'Back to this day' : 'Back to this week',
+    }).catch(() => null);
+    const layout = async (main) => {
+        const side = await sideP;
+        return h('div', { class: 'reader-layout' }, main,
+            side ? h('aside', { class: 'reader-side', 'aria-label': 'Calendar' }, side.panel) : null);
+    };
+
     const base = `/digests/${kind}/${encodeURIComponent(period)}`;
     let d;
     try {
@@ -356,14 +396,15 @@ async function reader(ctx, kind, period) {
     } catch (err) {
         if (err.status !== 404) throw err;
         const future = kind === 'daily' ? period >= today() : weekStart(period) > today();
-        return h('div', { class: 'view reader' },
+        return layout(h('div', { class: 'view reader' },
             readerHead(kind, period),
             emptyState({
                 title: future ? 'Not written yet.' : `No ${kind} digest for this ${kind === 'daily' ? 'day' : 'week'}.`,
                 text: future ? 'The nightly job writes the daily digest at 11 PM.' : 'The job did not deliver one. It shows as missing on the calendar.',
                 iconName: future ? 'calendar' : 'warn',
+                action: h('a', { class: 'btn quiet small', href: listHref(kind, period), text: kind === 'daily' ? 'Open the month' : 'Open weekly reviews' }),
             }),
-            pager(kind, period));
+            pager(kind, period)));
     }
     const viewingOld = Boolean(st.viewRev && d.rev !== d.revisions);
     const who = d.model || actorName(d.actor);
@@ -427,7 +468,7 @@ async function reader(ctx, kind, period) {
         h('h3', { id: 'src-title', text: 'Sources used' }),
         h('ul', {}, src.map(([name, status]) => h('li', {}, dot(status === 'ok' ? 'good' : 'warn'), h('span', { text: `${name}: ${status === 'ok' ? 'read' : status}` }))))) : null;
 
-    return h('div', { class: 'view reader' },
+    return layout(h('div', { class: 'view reader' },
         readerHead(kind, period, byline),
         tools,
         viewingOld ? h('div', { class: 'banner', role: 'status' },
@@ -435,7 +476,7 @@ async function reader(ctx, kind, period) {
             button({ text: 'Back to the current text', variant: 'quiet', size: 'small', onClick: () => { st.viewRev = null; ctx.rerender(); } })) : null,
         main,
         sources,
-        st.editing ? null : pager(kind, period));
+        st.editing ? null : pager(kind, period)));
 }
 
 export function render(ctx) {

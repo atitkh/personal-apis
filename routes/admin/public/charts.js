@@ -65,7 +65,8 @@ export const monthLabel = (month) => parseDay(`${month}-01`).toLocaleDateString(
 // Home/End go to the start/end of the week, PageUp/PageDown change month. Moving past the month calls
 // onLeave(day) so the owner can show that month and focus the day.
 // status(day) -> 'have' | 'gap' (missing) | 'before' (before digests began) | 'future' | 'today'
-export function monthCalendar({ month, status, href, focusDay, onLeave, label }) {
+// `selected`: days to mark as the one being read (the reader's day, or the days of its week).
+export function monthCalendar({ month, status, href, focusDay, onLeave, label, selected = [] }) {
     const [y, m] = month.split('-').map(Number);
     const daysIn = new Date(y, m, 0).getDate();
     const lead = (new Date(y, m - 1, 1).getDay() + 6) % 7; // Monday = 0
@@ -76,7 +77,9 @@ export function monthCalendar({ month, status, href, focusDay, onLeave, label })
     const cells = days.map((day) => {
         const st = status(day);
         const text = `${dayLabel(day, { weekday: 'long', month: 'long', day: 'numeric' })}: ${WORDS[st] || st}`;
-        const props = { class: `cal-day ${st}${day === today ? ' is-today' : ''}`, 'aria-label': text, title: text, 'data-day': day };
+        const sel = selected.includes(day);
+        const props = { class: `cal-day ${st}${day === today ? ' is-today' : ''}${sel ? ' is-selected' : ''}`, 'aria-label': sel ? `${text}, open now` : text, title: text, 'data-day': day };
+        if (sel) props['aria-current'] = 'date';
         const kids = [h('span', { class: 'cal-num', text: String(Number(day.slice(8))), 'aria-hidden': 'true' }),
             st === 'gap' ? h('span', { class: 'cal-mark', 'aria-hidden': 'true', text: 'missing' }) : null];
         return st === 'have' && href ? h('a', { ...props, href: href(day) }, kids) : h('span', { ...props, role: 'img' }, kids);
@@ -96,7 +99,9 @@ export function monthCalendar({ month, status, href, focusDay, onLeave, label })
         h('div', { class: 'cal-row cal-head', role: 'row' }, weekdays.map((w) => h('div', { class: 'cal-wd', role: 'columnheader', text: w }))),
         rows);
 
+    const pick = selected.find((d) => d.startsWith(month));
     const startIndex = focusDay && focusDay.startsWith(month) ? Number(focusDay.slice(8)) - 1
+        : pick ? Number(pick.slice(8)) - 1
         : today.startsWith(month) ? Number(today.slice(8)) - 1 : daysIn - 1;
     roving(grid, cells, {
         start: startIndex,
