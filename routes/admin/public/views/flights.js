@@ -688,9 +688,9 @@ function flightRow(f, unit) {
         h('td', { class: 'cell-main' }, link, f.dep_local ? h('span', { class: 'muted', text: ` ${clock(f.dep_local)}` }) : null),
         h('td', { 'data-label': 'Route' }, h('span', { class: 'route' }, f.origin_iata, h('span', { class: 'route-arrow', 'aria-hidden': 'true', text: '→' }), hidden(' to '), f.dest_iata)),
         h('td', { 'data-label': 'Flight' }, flightName(f), f.airline_name ? h('span', { class: 'muted', text: ` ${f.airline_name}` }) : null),
-        h('td', { 'data-label': 'Aircraft', text: f.aircraft_type || '' }),
+        h('td', { 'data-label': 'Aircraft', class: f.aircraft_type ? '' : 'is-empty', text: f.aircraft_type || '' }),
         h('td', { 'data-label': 'Status' }, statusChip(f.status)),
-        h('td', { 'data-label': 'Distance', class: 'num', text: f.distance_km != null ? distanceText(f.distance_km, unit) : '' }),
+        h('td', { 'data-label': 'Distance', class: f.distance_km != null ? 'num' : 'num is-empty', text: f.distance_km != null ? distanceText(f.distance_km, unit) : '' }),
         h('td', { class: 'cell-side only-narrow' }, h('a', { class: 'btn ghost icon-only', href: flightHref(f.id), tabindex: '-1', 'aria-hidden': 'true' }, icon('next'))));
 }
 

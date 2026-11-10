@@ -1001,6 +1001,7 @@ input.iata::placeholder { text-transform: none; }
     .stat-tile:nth-child(2n + 1) { border-left: 0; }
     .stat-tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
     .records, .top-lists, .up-list, .group-grid { grid-template-columns: minmax(0, 1fr); }
+    table.stack td.is-empty { display: none; }
     .skel .count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .skel .sk-map { height: 160px; }
     .filters select { flex: 1 1 140px; }
