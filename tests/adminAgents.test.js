@@ -154,3 +154,41 @@ describe('GET /admin/api/agents', () => {
         expect(text).not.toMatch(/hash/i);
     });
 });
+
+describe('GET /admin/api/series', () => {
+    const stats = require('../services/adminStats');
+    const row = (at, detail) => db.get().prepare('INSERT INTO audit_log (at, actor, action, detail) VALUES (?, ?, ?, ?)')
+        .run(at, 'ag-series', 'mcp_call', JSON.stringify(detail));
+
+    test('needs a session', async () => {
+        await request(app).get('/admin/api/series').expect(401);
+    });
+
+    test('returns 14 local days ending today, oldest first', async () => {
+        const body = (await agent.get('/admin/api/series').expect(200)).body;
+        expect(body.days).toHaveLength(14);
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: body.tz }).format(new Date());
+        expect(body.days[13].day).toBe(today);
+        expect(body.days[0].day < body.days[13].day).toBe(true);
+        for (const d of body.days) expect(d).toEqual(expect.objectContaining({ calls: expect.any(Number), failed: expect.any(Number), byTool: expect.any(Object) }));
+        expect((await agent.get('/admin/api/series?days=500').expect(200)).body.days).toHaveLength(90);
+        expect((await agent.get('/admin/api/series?days=nope').expect(200)).body.days).toHaveLength(14);
+    });
+
+    test('buckets mcp_call rows by local day and tool, counts failures, ignores old rows', () => {
+        const conn = db.get();
+        const now = new Date('2030-03-10T18:00:00Z'); // noon in Chicago
+        row('2030-03-10T15:00:00Z', { tool: 'digests', action: 'get', ok: true });
+        row('2030-03-10T16:00:00Z', { tool: 'digests', action: 'edit', ok: false });
+        row('2030-03-10T17:00:00Z', { tool: 'hub_overview', ok: true });
+        row('2030-03-10T03:00:00Z', { tool: 'portfolio', ok: true }); // 10 PM on the 9th in Chicago
+        row('2030-02-01T12:00:00Z', { tool: 'digests', ok: true }); // outside the window
+        const s = stats.series(conn, { days: 3, now, tz: 'America/Chicago' });
+        expect(s.days.map((d) => d.day)).toEqual(['2030-03-08', '2030-03-09', '2030-03-10']);
+        expect(s.days[2]).toEqual({ day: '2030-03-10', calls: 3, failed: 1, byTool: { digests: 2, hub_overview: 1 } });
+        expect(s.days[1]).toEqual({ day: '2030-03-09', calls: 1, failed: 0, byTool: { portfolio: 1 } });
+        expect(s.days[0].calls).toBe(0);
+        expect(s.lastCallAt).toBe('2030-03-10T17:00:00Z');
+        conn.prepare("DELETE FROM audit_log WHERE actor = 'ag-series'").run();
+    });
+});

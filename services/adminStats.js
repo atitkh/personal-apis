@@ -139,4 +139,28 @@ function overview() {
     };
 }
 
-module.exports = { overview, backups, portfolio, digestWatch };
+// Agent calls per local day for the last `days` days, today included, split by tool, for the activity strip.
+function series(conn, { days = 14, now = new Date(), tz = process.env.DIGEST_TZ || 'America/Chicago' } = {}) {
+    const n = Math.min(Math.max(Math.trunc(Number(days)) || 14, 1), 90);
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz });
+    const list = [];
+    for (let i = n - 1; i >= 0; i--) list.push(fmt.format(new Date(now.getTime() - i * 24 * 3600 * 1000)));
+    const out = new Map(list.map((day) => [day, { day, calls: 0, failed: 0, byTool: {} }]));
+    // One extra day of rows covers the time zone offset; rows outside the window are dropped below.
+    const since = new Date(now.getTime() - (n + 1) * 24 * 3600 * 1000).toISOString();
+    const rows = conn.prepare("SELECT at, detail FROM audit_log WHERE action = 'mcp_call' AND at >= ?").all(since);
+    for (const row of rows) {
+        const bucket = out.get(fmt.format(new Date(row.at)));
+        if (!bucket) continue;
+        let detail = {};
+        try { detail = JSON.parse(row.detail || '{}') || {}; } catch (e) { /* keep the count */ }
+        const tool = typeof detail.tool === 'string' ? detail.tool : 'unknown';
+        bucket.calls += 1;
+        if (detail.ok === false) bucket.failed += 1;
+        bucket.byTool[tool] = (bucket.byTool[tool] || 0) + 1;
+    }
+    const last = conn.prepare("SELECT MAX(at) AS at FROM audit_log WHERE action = 'mcp_call'").get();
+    return { tz, days: [...out.values()], lastCallAt: last.at || null };
+}
+
+module.exports = { overview, backups, portfolio, digestWatch, series };

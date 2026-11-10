@@ -125,6 +125,7 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
     });
 
     api.get('/overview', (req, res) => res.json(stats.overview()));
+    api.get('/series', (req, res) => res.json(stats.series(db.get(), { days: req.query.days })));
     api.get('/backups', (req, res) => res.json({ backups: stats.backups() }));
     api.post('/backups', async (req, res) => {
         const conn = db.get();
