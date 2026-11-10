@@ -1,19 +1,8 @@
 // Settings: theme, the session (expiry, sign out), facts about this hub (from /overview) and the keyboard
-// shortcuts that work today.
-import { h, button, segmented, when, bytes, span, plural, fact, dot, isMac } from '../ui.js';
+// shortcuts (from shortcuts.js).
+import { h, button, segmented, when, bytes, span, plural, fact, dot } from '../ui.js';
+import { shortcutList } from '../shortcuts.js';
 import { THEMES, preference, setPreference, onThemeChange } from '../theme.js';
-
-const MOD = isMac ? '⌘' : 'Ctrl';
-
-// [keys, '+' (pressed together) or '/' (any of them), what it does]
-export const SHORTCUTS = [
-    [[MOD, 'K'], '+', 'Search, jump to any page, digest or key, and run actions'],
-    [['Esc'], '+', 'Close a drawer, dialog or the palette; cancel editing a digest'],
-    [['←', '→', '↑', '↓'], '/', 'Move between days in the digest calendar and the 30-day strip, and between options in a selector'],
-    [['Page Up', 'Page Down'], '/', 'Previous or next month in the digest calendar'],
-    [['Home', 'End'], '/', 'Start or end of the week in the calendar'],
-    [[MOD, 'Enter'], '+', 'Save a digest while editing'],
-];
 
 function timeLeft(iso) {
     const ms = Date.parse(iso) - Date.now();
@@ -57,8 +46,6 @@ export async function render(ctx) {
                 fact('Backups', o.backups.newest ? `${plural(o.backups.count, 'copy', 'copies')}, newest ${when(o.backups.newest.modifiedAt)}` : 'None yet'))),
         h('section', { class: 'panel', 'aria-labelledby': 's-keys' },
             h('h2', { id: 's-keys', text: 'Keyboard shortcuts' }),
-            h('dl', { class: 'shortcuts' }, SHORTCUTS.map(([keys, join, text]) => [
-                h('dt', {}, keys.map((k, i) => [i ? h('span', { class: 'kbd-join', text: join === '+' ? ' + ' : ' ' }) : null, h('kbd', { text: k })])),
-                h('dd', { text }),
-            ]))));
+            h('p', { class: 'note', text: 'Letter keys work anywhere except while you type in a field. Press ? to see this list from any page.' }),
+            shortcutList())));
 }

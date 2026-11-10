@@ -6,7 +6,7 @@ import * as router from './router.js';
 let open = null;          // the dialog while it is open
 let sources = [];         // functions returning commands (static) or promises of commands (loaded on open)
 
-// A command: { id, label, hint, icon, group, keywords, run() }
+// A command: { id, label, hint, icon, group, keywords, keys (shortcut shown on the right), run() }
 export function addSource(fn) {
     sources.push(fn);
 }
@@ -69,7 +69,8 @@ export async function openPalette() {
                 onmousedown: (e) => e.preventDefault(),
                 onclick: () => run(c),
                 onmousemove: () => { if (active !== i) { active = i; mark(); } },
-            }, icon(c.icon || 'expand'), h('span', { class: 'palette-label', text: c.label }), c.hint ? h('span', { class: 'palette-hint', text: c.hint }) : null));
+            }, icon(c.icon || 'expand'), h('span', { class: 'palette-label', text: c.label }), c.hint ? h('span', { class: 'palette-hint', text: c.hint }) : null,
+            c.keys ? h('span', { class: 'palette-keys', 'aria-label': `Shortcut: ${c.keys.join(' then ')}` }, c.keys.map((k) => h('kbd', { text: k }))) : null));
         });
         list.replaceChildren(...items);
         status.textContent = shown.length ? '' : q ? `Nothing matches "${q}".` : '';

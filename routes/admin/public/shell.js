@@ -139,6 +139,11 @@ export function createShell({ session, onSignOut, openPalette, api }) {
         el: frame,
         content,
         title,
+        // `[` shows or hides the rail; phones have no rail.
+        toggleRail() {
+            if (matchMedia('(max-width: 760px)').matches) return;
+            setCollapsed(!collapsed);
+        },
         setRoute(name, text) {
             title.textContent = text;
             document.title = `${text} - Personal hub`;

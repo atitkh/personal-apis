@@ -7,6 +7,7 @@ import * as router from './router.js';
 import { createShell } from './shell.js';
 import { openPalette, installShortcut, addSource, digestCommand } from './palette.js';
 import { THEMES, setPreference } from './theme.js';
+import { installShortcuts, showShortcuts, GO } from './shortcuts.js';
 import { renderSignIn } from './views/signin.js';
 
 router.register('overview', { title: 'Overview', icon: 'overview', nav: true, mobile: true, load: () => import('./views/overview.js') });
@@ -130,10 +131,14 @@ function startApp() {
 
 /* ---------- palette commands ---------- */
 
-addSource(() => router.all().map((r, i) => ({
-    id: `view:${r.name}`, group: 'Go to', icon: r.icon, label: r.title, keywords: `${r.short || ''} page view`, order: i,
-    run: () => router.navigate(router.href(r.name)),
-})));
+addSource(() => router.all().map((r, i) => {
+    const go = GO.find(([, name]) => name === r.name);
+    return {
+        id: `view:${r.name}`, group: 'Go to', icon: r.icon, label: r.title, keywords: `${r.short || ''} page view`, order: i,
+        keys: go ? ['G', go[0].toUpperCase()] : null,
+        run: () => router.navigate(router.href(r.name)),
+    };
+}));
 
 addSource(() => [
     {
@@ -161,6 +166,8 @@ addSource(() => [
         run: () => { setPreference(value); toast(`Theme set to ${label.toLowerCase()}`, { kind: 'info' }); },
     })),
     { id: 'act:signout', group: 'Actions', icon: 'signout', label: 'Sign out', keywords: 'log out logout', order: 20, run: signOut },
+    { id: 'act:shortcuts', group: 'Actions', icon: 'info', label: 'Keyboard shortcuts', keywords: 'keys keyboard help hotkeys', keys: ['?'], order: 21, run: () => showShortcuts() },
+    { id: 'act:rail', group: 'Actions', icon: 'collapse', label: 'Show or hide the side menu', keywords: 'rail sidebar menu collapse expand', keys: ['['], order: 22, run: () => shell && shell.toggleRail() },
 ]);
 
 addSource(async () => {
@@ -187,6 +194,13 @@ setUnauthorizedHandler(() => {
     toast('Your session ended. Sign in again.', { kind: 'info' });
 });
 installShortcut(() => Boolean(session && shell));
+installShortcuts({
+    enabled: () => Boolean(session && shell),
+    go: (name) => router.navigate(router.href(name)),
+    toggleRail: () => shell && shell.toggleRail(),
+    openPalette,
+    content: () => shell && shell.content,
+});
 
 (async () => {
     try {

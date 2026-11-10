@@ -245,6 +245,18 @@ export function confirmDialog({ title, body, confirm = 'Confirm', cancel = 'Canc
     });
 }
 
+// A dialog that only shows something (the shortcut list); a Close button, Esc and the backdrop close it.
+export function infoDialog({ title, content, cls = '' }) {
+    const id = nextId('dlg');
+    const dlg = modal(`dialog ${cls}`.trim(), id, [
+        h('div', { class: 'dialog-top' },
+            h('h2', { id, text: title }),
+            button({ variant: 'ghost', iconName: 'close', label: 'Close', onClick: () => dlg.tryClose() })),
+        content,
+    ]);
+    return dlg;
+}
+
 // Right-hand drawer (a full sheet on small screens). `close()` asks beforeClose first; `close(true)` does not.
 export function openDrawer({ title, subtitle, content, onClose, returnFocus, beforeClose, wide = false }) {
     const id = nextId('drawer');
