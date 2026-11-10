@@ -29,10 +29,29 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
 - Tests: 137 pass in node:20 (CSP font-src, module/font MIME types, series endpoint).
 - Checked in headless Chrome on a scratch hub: light, dark, 390 px; Ctrl+K, Tab order, focus rings, board dialogs, rollback.
 
+## Done (stage 2)
+
+- API: `/activity?type=&before=` (chips, paging, `more`), `/digests?from=&to=` with `bounds`, `/keys/:id/calls`
+  (tool, action, outcome, time; never content). Tested (140 pass in node:20).
+- `scopes.js` explains scopes in plain words and groups them by domain for chips and the create picker.
+- Digests: month calendar (missing days marked, one tab stop, arrows/Home/End/Page Up/Down, crosses months), list,
+  search with highlighted matches, serif reader (under 70ch), edit (Ctrl Enter, Esc), history/compare/restore in a
+  right drawer, deep links `#/digests/daily/2026-11-08` and `#/digests/weekly/2026-W45`, previous/next day or week.
+  The Overview 30-day strip is also one tab stop with arrows.
+- Keys: table (name, scope chips, last used, calls), row opens `#/keys/:id` drawer (plain scopes, reach through the
+  agent endpoint, recent calls, revoke via confirm dialog), create drawer with grouped scope picker, secret shown
+  once with Copy key and "You won't see it again".
+- Agent access per key and domain (read/edit/publish with the reason when not), recent calls, links to key drawers.
+- Activity grouped by day, chips in the URL, event sentences, Show older events (keeps focus).
+- Backups (list, Back up now + toast, restore steps as text), Portfolio (counts, missing/orphan to-do list),
+  Settings (`#/settings`: theme, session expiry and sign out, version/uptime/db size, shortcut list).
+- Theme toggle visible on phones; drawers are full sheets under 760 px.
+- Checked in headless Chrome on a seeded scratch hub: every view light/dark at 1280 and 390 (no overflow, no
+  console errors, text contrast 4.5:1), calendar and strip arrows, drawer focus trap/Esc/focus return, revoke
+  dialog focus return, copy button.
+
 ## Next
 
-- Stage 2: Digests (coverage calendar, reader, history/compare/restore in a drawer), Keys (table + detail drawer,
-  create flow with copy), Agent access, Activity (day groups, chips), Backups, Portfolio, Settings.
 - Stage 3: shortcuts (`g o`, `g d`, `g k`, `/`, `?`), mobile tables as stacked rows, contrast pass, error states.
-- Small open points: the 30-day strip is 30 tab stops (make it one stop with arrow keys); the theme toggle is hidden
-  under 760 px (reachable through the palette); the rail is not collapsible by keyboard shortcut yet.
+- Small open points: the rail is not collapsible by keyboard shortcut yet; at 390 px activity times sit under the
+  sentence (fine, could be tighter).
