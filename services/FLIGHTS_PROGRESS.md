@@ -327,3 +327,48 @@ RapidAPI provider, key in the hub .env (container recreated). Two forced refresh
 - F9 3294 DEN-ATL 2026-08-14 (past): actual_dep/actual_arr, est times, delay 44 min, arrival terminal, aircraft type (A320 NEO) and registration. Times convert correctly (UTC from the provider's local times; the flight ran 2 h 37 min, as expected).
 - CX 891 DFW-HKG 2026-12-17 (future, 36 days out): est_arr (+117 min), departure and arrival terminals, aircraft type (A350-1000). No est_dep, no gate yet.
 Not seen live yet: gates, baggage belt, multi-leg answers, a cancelled flight, dateLocalRole=Departure vs Both. Watch: for a flight weeks away the provider's revised arrival can show a large 'delay' that is really a schedule revision; consider ignoring est_*/delay_min until about 72 h before departure.
+
+## Passport stage 1: Punctuality, map view switcher, Heat (2026-11-11)
+
+Done (local commits, not pushed or deployed): delay statistics, the Punctuality section, `mapviews.js` with Flat, a Globe
+placeholder and Heat, and label collision avoidance on the Flat map.
+
+- **`stats().delays`** (REST, admin API, MCP `stats` carry it; existing keys unchanged). Over flown, non-cancelled flights
+  (year filter applies): `measured` (flights with a computable arrival delay), `of` (flown count), `on_time_rate` (share
+  within 15 min of schedule, 0..1, 3 decimals, null when nothing measured), `avg_delay_min` (early counts negative),
+  `total_delay_min` (positive delays only), `early_count`, `late_count` (> 15 min), `worst` ({id, route, airline_iata,
+  flight_number, date, delay_min}, null when nothing late), `by_airline` (top 5 by measured, ties by code; airline, name,
+  measured, on_time_rate, avg_delay_min), `by_year`, `cancelled` and `cancelled_rate` (over flown + cancelled, the year filter
+  applies). Arrival delay = actual_arr - sched_arr, else the `delay_min` column, else actual_dep - sched_dep (minutes).
+  Tests: 9 in `tests/flights.test.js` (describe "stats: delays"), 1 in `tests/adminFlightsView.test.js`.
+- **Passport tab**: "Punctuality" panel under the tiles: four tiles (On-time rate with "n of m flights measured", Average
+  delay, Total time lost, Worst delay linking to the flight), "By airline" bars, notes ("Actual times known for 6 of 7
+  flights; older flights have none.", cancelled share, early count). Empty state when measured = 0. Two columns at <= 1100 px.
+- **`ui.js` `segmented({ pressed: true })`** renders plain buttons with `aria-pressed` in a `role="group"` (the km/miles toggle
+  keeps radios). The admin CSP forbids `style=` attributes: styling goes through classes, SVG presentation attributes or `el.style`.
+- **`routes/admin/public/mapviews.js`** (contract for the globe run):
+  - A view is `(container, mapData, ctx) => { destroy() }`. It appends into `container` (already emptied) and must put its own
+    help line there. `destroy()` removes observers, listeners and timers; the Passport calls it before mounting another view and
+    through `ctx.onCleanup` when the page is left. A view that throws is replaced by a short message.
+  - `mapData` is `stats.map`: `{ airports: [{ iata, city, lat, lon, visits }], routes: [{ a, b, flights }] }`, only airports the
+    hub knows, airports sorted by IATA, routes by flights desc. No flight numbers, dates or booking refs. `ctx` = `{ home, unit,
+    year, isDark() }` (`isDark` reads `data-theme` on `<html>`; colours come from CSS variables, `--teal` is the accent).
+  - Registry: `MAP_VIEWS = { flat, globe, heat }` (id -> `{ label, render, soon }`). The globe run replaces the placeholder with
+    `registerMapView('globe', 'Globe', globeView)` (or edits the table) and drops `soon`, which only dims the segmented button.
+    Choice is remembered in localStorage `hub-flights-mapview` (`getMapView` / `setMapView`; unknown ids fall back to flat).
+    `mountMapView(host, id, map, ctx)` is what the Passport calls. Exported helpers: `arcPaths`, `VIEW` (viewBox 0 6 360 142),
+    `placeLabels`.
+  - Flat = the old route map, unchanged, plus greedy labels: busiest first (home first), each tries above, below, right, left of
+    its dot and is hidden (`.is-hidden`) when all four overlap; re-laid out by a ResizeObserver.
+  - Heat: every airport is a radial-gradient glow (`#heat-glow`, teal), level = min(1, sqrt(visits / max(maxVisits, 4))), radius =
+    3 + 10 * level map units (cap 13), glow opacity .35 + .55 * level; every route a wide (3.5 px) stroke at opacity
+    min(.4, .14 + .05 * (flights - 1)) with `mix-blend-mode` multiply (light) / screen (dark) on routes and glows so overlaps
+    accumulate. Hover or keyboard focus on an invisible hit circle (`.heat-hit`, tabindex 0) shows the `.map-tip` tooltip
+    "DFW · Dallas · 3 visits". Legend "Brighter = visited more". Respects the year switcher (the map data is already filtered);
+    the unit toggle does not affect it.
+- Browser checks on the scratch hub (scripts in the OpenClaw workspace `tmp/hub-flights-e2e/`: `passport-seed.js` seeds invented
+  flights with actual times and writes the independently computed expected numbers, `run-passport.mjs [main|plain]`; `reset.sh`
+  takes `SEED=passport-seed.js`): 17 checks on the seeded hub (tiles, worst-delay link, 2025 filter, API shape, switcher, label
+  overlap at 1280 and 390 px, Heat persistence across reload, glows per airport, tooltip hover and focus, blend modes in light and
+  dark, Globe placeholder, km/miles still works, dark mode, 390 px layout, no console errors), 3 on a hub without actual times
+  (empty state). The older flows still pass (36 and 18). Screenshots (3, JPEG 900 px): `workspace/tmp/hub-flights-shots/passport-*.jpg`.
