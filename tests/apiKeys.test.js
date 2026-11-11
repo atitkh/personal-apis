@@ -106,3 +106,92 @@ describe('requireScope middleware', () => {
         await request(app).get('/read').set('x-api-key', keys.reader).expect(200, { who: 'reader' });
     });
 });
+
+describe('editing a key in place', () => {
+    let conn;
+    beforeEach(() => { conn = db.open(':memory:'); });
+    afterEach(() => conn.close());
+    const status = (fn) => { try { fn(); } catch (err) { return err.status; } return null; };
+
+    test('changes scopes and name, keeps the secret, reports added and removed names', () => {
+        const k = apiKeys.create(conn, { name: 'agent', scopes: 'places:read, places:edit' });
+        const out = apiKeys.update(conn, k.id, { name: 'agent-2', scopes: ['places:read', 'flights:observe'] });
+        expect(out.key).toMatchObject({ id: k.id, name: 'agent-2', scopes: ['places:read', 'flights:observe'] });
+        expect(out.added).toEqual(['flights:observe']);
+        expect(out.removed).toEqual(['places:edit']);
+        expect(out.renamedFrom).toBe('agent');
+        expect(JSON.stringify(out)).not.toContain(k.key);
+        expect(apiKeys.verify(conn, k.key)).toMatchObject({ id: k.id, name: 'agent-2', scopes: ['places:read', 'flights:observe'] });
+    });
+
+    test('name alone or scopes alone leaves the other as it was', () => {
+        const k = apiKeys.create(conn, { name: 'a', scopes: 'places:read' });
+        expect(apiKeys.update(conn, k.id, { name: 'b' }).key).toMatchObject({ name: 'b', scopes: ['places:read'] });
+        const out = apiKeys.update(conn, k.id, { scopes: 'digests:read' });
+        expect(out.key).toMatchObject({ name: 'b', scopes: ['digests:read'] });
+        expect(out.renamedFrom).toBeNull();
+    });
+
+    test('rejects empty or malformed scopes, bad names, nothing to change (400)', () => {
+        const k = apiKeys.create(conn, { name: 'a', scopes: 'places:read' });
+        expect(status(() => apiKeys.update(conn, k.id, { scopes: [] }))).toBe(400);
+        expect(status(() => apiKeys.update(conn, k.id, { scopes: '' }))).toBe(400);
+        expect(status(() => apiKeys.update(conn, k.id, { scopes: ['nope'] }))).toBe(400);
+        expect(status(() => apiKeys.update(conn, k.id, { name: '   ' }))).toBe(400);
+        expect(status(() => apiKeys.update(conn, k.id, { name: 'x'.repeat(61) }))).toBe(400);
+        expect(status(() => apiKeys.update(conn, k.id, {}))).toBe(400);
+        expect(apiKeys.get(conn, k.id).scopes).toEqual(['places:read']);
+    });
+
+    test('a revoked key cannot be edited (409), an unknown id is 404', () => {
+        const k = apiKeys.create(conn, { name: 'gone', scopes: 'places:read' });
+        apiKeys.revoke(conn, k.id);
+        expect(status(() => apiKeys.update(conn, k.id, { scopes: 'digests:read' }))).toBe(409);
+        expect(status(() => apiKeys.update(conn, 9999, { name: 'x' }))).toBe(404);
+        expect(status(() => apiKeys.update(conn, NaN, { name: 'x' }))).toBe(404);
+    });
+
+    test('the name stays unique among live keys (409) but may reuse a revoked one', () => {
+        const a = apiKeys.create(conn, { name: 'a', scopes: 'places:read' });
+        const b = apiKeys.create(conn, { name: 'b', scopes: 'places:read' });
+        expect(status(() => apiKeys.update(conn, b.id, { name: 'a' }))).toBe(409);
+        apiKeys.revoke(conn, a.id);
+        expect(apiKeys.update(conn, b.id, { name: 'a' }).key.name).toBe('a');
+        expect(apiKeys.update(conn, b.id, { name: 'a', scopes: 'places:read' }).key.name).toBe('a'); // its own name is fine
+    });
+
+    test('granting "*" needs confirmAll; a key that already has it can be renamed without', () => {
+        const k = apiKeys.create(conn, { name: 'a', scopes: 'places:read' });
+        expect(status(() => apiKeys.update(conn, k.id, { scopes: ['*'] }))).toBe(400);
+        expect(status(() => apiKeys.update(conn, k.id, { scopes: ['*'], confirmAll: 'yes' }))).toBe(400);
+        expect(apiKeys.update(conn, k.id, { scopes: ['*'], confirmAll: true }).key.scopes).toEqual(['*']);
+        expect(apiKeys.update(conn, k.id, { name: 'renamed', scopes: ['*'] }).key.name).toBe('renamed');
+        expect(apiKeys.update(conn, k.id, { scopes: ['places:read'] }).removed).toEqual(['*']); // narrowing never needs it
+    });
+
+    test('keeps scopes that are not in the catalogue as they are', () => {
+        const k = apiKeys.create(conn, { name: 'old', scopes: 'attendance:read, notes:*' });
+        const out = apiKeys.update(conn, k.id, { scopes: ['attendance:read', 'notes:*', 'places:read'] });
+        expect(out.added).toEqual(['places:read']);
+        expect(out.removed).toEqual([]);
+    });
+});
+
+describe('a scope change applies to the key\'s very next request', () => {
+    const app = require('../app');
+    test('same secret: 200 before, 403 after, 200 again', async () => {
+        const conn = db.get();
+        const k = apiKeys.create(conn, { name: 'live-edit', scopes: 'places:read' });
+        const get = (path) => request(app).get(path).set('Authorization', `Bearer ${k.key}`);
+        await get('/hub/places').expect(200);
+        await get('/hub/digests/recent').expect(403);
+        apiKeys.update(conn, k.id, { scopes: 'digests:read' });
+        await get('/hub/places').expect(403);
+        await get('/hub/digests/recent').expect(200);
+        apiKeys.update(conn, k.id, { scopes: ['places:read', 'digests:read'] });
+        await get('/hub/places').expect(200);
+        apiKeys.revoke(conn, k.id);
+        await get('/hub/places').expect(401);
+        db.close();
+    });
+});

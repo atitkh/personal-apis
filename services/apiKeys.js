@@ -60,4 +60,49 @@ function revoke(db, idOrName) {
     return res.changes > 0;
 }
 
-module.exports = { create, verify, list, revoke, hasScope, parseScopes };
+const fail = (status, message) => Object.assign(new Error(message), { status });
+
+function get(db, id) {
+    const r = db.prepare('SELECT id, name, key_prefix, scopes, created_at, last_used_at, revoked_at FROM api_keys WHERE id = ?').get(id);
+    return r ? { ...r, scopes: JSON.parse(r.scopes) } : null;
+}
+
+// What changed between two scope lists, as names only.
+function diffScopes(before, after) {
+    return { added: after.filter((s) => !before.includes(s)), removed: before.filter((s) => !after.includes(s)) };
+}
+
+// Changes a live key's name and/or scopes in place: the secret and its hash stay as they are, and verify() reads the row on
+// every call, so a change applies to the key's next request. Granting "*" needs confirmAll. Errors carry .status (400/404/409).
+// Returns { key, added, removed, renamedFrom } (key is the list() shape, never the secret).
+function update(db, id, { name, scopes, confirmAll } = {}) {
+    const before = Number.isInteger(id) ? get(db, id) : null;
+    if (!before) throw fail(404, 'No key with that id.');
+    if (before.revoked_at) throw fail(409, 'A revoked key cannot be edited. Create a new key instead.');
+    if (name === undefined && scopes === undefined) throw fail(400, 'Nothing to change: send a name or scopes.');
+
+    let nextName = before.name;
+    if (name !== undefined) {
+        nextName = String(name).trim();
+        if (nextName.length < 1 || nextName.length > 60) throw fail(400, 'The name must be 1 to 60 characters.');
+    }
+    let nextScopes = before.scopes;
+    if (scopes !== undefined) {
+        try { nextScopes = parseScopes(scopes); } catch (err) { throw fail(400, err.message); }
+    }
+    const { added, removed } = diffScopes(before.scopes, nextScopes);
+    if (added.includes('*') && confirmAll !== true) {
+        throw fail(400, 'Giving a key every scope ("*") needs confirm_all: true.');
+    }
+    try {
+        const res = db.prepare('UPDATE api_keys SET name = ?, scopes = ? WHERE id = ? AND revoked_at IS NULL')
+            .run(nextName, JSON.stringify(nextScopes), id);
+        if (res.changes === 0) throw fail(409, 'A revoked key cannot be edited. Create a new key instead.');
+    } catch (err) {
+        if (/UNIQUE/i.test(err.message)) throw fail(409, `A key named "${nextName}" is already active.`);
+        throw err;
+    }
+    return { key: get(db, id), added, removed, renamedFrom: nextName !== before.name ? before.name : null };
+}
+
+module.exports = { create, verify, list, get, update, diffScopes, revoke, hasScope, parseScopes };
