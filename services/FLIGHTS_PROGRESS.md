@@ -200,10 +200,7 @@ throwaway node:20 container; it is not a hub dependency. Rebuild: see the header
 Plan: workspace memory/projects/personal-hub-flights-sources-plan.md. Local commits only (not pushed, not
 deployed); migration 010 runs on the next container start.
 
-**UNVERIFIED: the AeroDataBox field mapping (services/adapters/aerodatabox.js) is built from the official
-OpenAPI spec (FlightContract schema; the spec has no example payloads) and hand-made fixtures. It has never
-seen a live answer. Stage D checks it against a real key: time format, runwayTime vs revisedTime as "actual",
-multi-leg answers, gates/belts. Sources list shows `verified: false` for it until then.**
+AeroDataBox mapping: checked against live answers on 2026-11-11 (see Stage D below); the adapter reports `verified: true`.
 
 Done:
 - Migration 010: flights.dep_terminal, dep_gate, arr_terminal, arr_gate, baggage_belt, aircraft_reg, est_dep,
@@ -324,3 +321,9 @@ date helpers). Gmail READ-ONLY through gog exactly like flights_scan.py. No hub 
   only writes values it has); a mail processed while its flight was not in the hub is not re-read without --rescan;
   five Frontier July mails for a friend's flights (not in the hub) stay unmatched; check-in mails give no gates for any
   airline seen; no baggage belt in any mail seen.
+
+## Stage D: live check of AeroDataBox (2026-11-11)
+RapidAPI provider, key in the hub .env (container recreated). Two forced refreshes through the admin API, 2 calls of the 80 monthly cap:
+- F9 3294 DEN-ATL 2026-08-14 (past): actual_dep/actual_arr, est times, delay 44 min, arrival terminal, aircraft type (A320 NEO) and registration. Times convert correctly (UTC from the provider's local times; the flight ran 2 h 37 min, as expected).
+- CX 891 DFW-HKG 2026-12-17 (future, 36 days out): est_arr (+117 min), departure and arrival terminals, aircraft type (A350-1000). No est_dep, no gate yet.
+Not seen live yet: gates, baggage belt, multi-leg answers, a cancelled flight, dateLocalRole=Departure vs Both. Watch: for a flight weeks away the provider's revised arrival can show a large 'delay' that is really a schedule revision; consider ignoring est_*/delay_min until about 72 h before departure.

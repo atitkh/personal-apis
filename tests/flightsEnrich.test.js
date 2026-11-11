@@ -337,7 +337,7 @@ describe('REST /hub/flights', () => {
         process.env.AERODATABOX_API_KEY = 'secret-value-canary';
         const res = await request(app).get('/hub/flights/sources').set(auth('reader')).expect(200);
         const a = res.body.sources.find((s) => s.name === 'aerodatabox');
-        expect(a).toMatchObject({ kind: 'pull', configured: true, enabled: true, priority: 10, verified: false });
+        expect(a).toMatchObject({ kind: 'pull', configured: true, enabled: true, priority: 10, verified: true });
         expect(JSON.stringify(res.body)).not.toMatch(/secret-value-canary/);
         await request(app).put('/hub/flights/sources').set(auth('reader')).send({ name: 'gmail', priority: 30 }).expect(403);
         const put = await request(app).put('/hub/flights/sources').set(auth('writer')).send({ name: 'gmail', priority: 30 }).expect(200);

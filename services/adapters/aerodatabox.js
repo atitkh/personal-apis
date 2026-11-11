@@ -2,10 +2,9 @@
 // GET /flights/number/{AA1234}/{YYYY-MM-DD}?dateLocalRole=Departure). Read from the official OpenAPI specs
 // (doc.aerodatabox.com/docs/openapi-apimarket-v1.json and openapi-rapidapi-v1.json, 2026-11-10).
 //
-// UNVERIFIED: the mapping below is built from the spec's schema (FlightContract) and hand-made fixtures; the spec
-// has no example payloads. It has not been checked against a live key yet (stage D). Things to check then: the
-// time format ("2026-03-01 10:05Z" vs ISO), whether runwayTime or revisedTime is the better "actual" time,
-// and how multi-leg flights come back.
+// Checked against live answers on 2026-11-11 (RapidAPI, two flights: a past F9 and a future CX): times, terminals,
+// aircraft type and registration, actual times and delay came back sane (see FLIGHTS_PROGRESS.md, Stage D).
+// Not yet seen live: gates, baggage belt, multi-leg answers, a cancelled flight.
 //
 // Env: AERODATABOX_API_KEY (the key), AERODATABOX_PROVIDER = apimarket (default) | rapidapi.
 const PROVIDERS = {
@@ -101,7 +100,7 @@ module.exports = {
     fields: ['actual_dep', 'actual_arr', 'est_dep', 'est_arr', 'delay_min', 'dep_terminal', 'dep_gate', 'arr_terminal', 'arr_gate',
         'baggage_belt', 'aircraft_type', 'aircraft_reg'],
     keyEnv: 'AERODATABOX_API_KEY',
-    verified: false,
+    verified: true,
     lookup,
     // For tests.
     mapFlight, pickLeg, PROVIDERS,
