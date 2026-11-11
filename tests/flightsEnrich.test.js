@@ -397,3 +397,36 @@ describe('admin API', () => {
         await request(app).get('/admin/api/flights/sources').expect(401);
     });
 });
+
+describe('estimates are trusted only close to departure (72 h)', () => {
+    const HOUR = 3600 * 1000;
+    const fields = { est_dep: null, est_arr: '2030-01-05T16:28:00.000Z', delay_min: 117, dep_terminal: 'D' };
+
+    test('weeks before departure terminals are taken but estimated times and delay are not', () => {
+        const conn = db.get();
+        const id = mk(30);
+        enrich.observe(conn, id, 'aerodatabox', fields, {});
+        const r = enrich.applyObservations(conn, id, 't');
+        expect(r.fields).toEqual(['dep_terminal']);
+        expect(row(id)).toMatchObject({ dep_terminal: 'D', est_arr: null, delay_min: null });
+    });
+
+    test('inside 72 h they are applied; back outside, what was stored is cleared (unless locked)', () => {
+        const conn = db.get();
+        const id = mk(30);
+        const dep = Date.parse(row(id).sched_dep);
+        enrich.observe(conn, id, 'aerodatabox', fields, {});
+        const near = enrich.applyObservations(conn, id, 't', { now: dep - 24 * HOUR });
+        expect(near.fields).toEqual(expect.arrayContaining(['est_arr', 'delay_min', 'dep_terminal']));
+        expect(row(id)).toMatchObject({ delay_min: 117 });
+        const far = enrich.applyObservations(conn, id, 't', { now: dep - 5 * 24 * HOUR });
+        expect(far.status).toBe('updated');
+        expect(far.fields).toEqual(expect.arrayContaining(['est_arr', 'delay_min']));
+        expect(row(id)).toMatchObject({ est_arr: null, delay_min: null, dep_terminal: 'D' });
+        // a hand-set estimate stays, however far out
+        flights.update(conn, id, { est_arr: '2030-01-05T17:00:00.000Z' }, 'person');
+        const again = enrich.applyObservations(conn, id, 't', { now: dep - 5 * 24 * HOUR });
+        expect(again.status).toBe('unchanged');
+        expect(row(id).est_arr).toBe('2030-01-05T17:00:00.000Z');
+    });
+});

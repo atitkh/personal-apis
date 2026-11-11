@@ -3,7 +3,7 @@
 //   observe(db, flightId, source, fields, meta)  stores what one source said (flight_observations). Fields are
 //        limited to flights.ENRICHABLE and cleaned like a hand edit; strict (pushed over /hub) refuses a bad
 //        field, otherwise (adapters) a bad field is dropped.
-//   applyObservations(db, flightId, actor)  per field, the value from the best source (flight_sources.priority,
+//   applyObservations(db, flightId, actor, {now})  per field, the value from the best source (flight_sources.priority,
 //        lower wins, sources without a row last, then by name) whose LATEST ok observation has it. Locked fields
 //        (flights.locked_fields, set by hand edits) are skipped; a field no source has is left as it is. One
 //        revision (source 'enrich', note naming the sources) when something changed, nothing otherwise.
@@ -85,7 +85,12 @@ function priorities(db) {
     return new Map(db.prepare('SELECT name, priority FROM flight_sources').all().map((r) => [r.name, r.priority]));
 }
 
-function applyObservations(db, flightId, actor) {
+// Estimated times and delay for a flight more than this far from departure are not trusted: a provider's
+// revised time weeks ahead is usually a schedule revision, not a real delay (seen live 2026-11-11).
+const FAR_OUT_MS = 72 * 3600 * 1000;
+const FAR_OUT_FIELDS = ['est_dep', 'est_arr', 'delay_min'];
+
+function applyObservations(db, flightId, actor, { now } = {}) {
     return db.transaction(() => {
         const row = flights.need(db, flightId);
         const prio = priorities(db);
@@ -95,8 +100,14 @@ function applyObservations(db, flightId, actor) {
         const locked = new Set(flights.lockedOf(row));
         const changes = {};
         const from = {};
+        const farOut = Date.parse(row.sched_dep) - Date.parse(iso(now)) > FAR_OUT_MS;
         for (const k of flights.ENRICHABLE) {
             if (locked.has(k)) continue;
+            if (farOut && FAR_OUT_FIELDS.includes(k)) {
+                // Too early to trust: show nothing, and clear what an earlier refresh stored.
+                if (row[k] != null) { changes[k] = null; from[k] = 'far_out'; }
+                continue;
+            }
             const best = obs.find((o) => o.fields[k] != null);
             if (best && best.fields[k] !== row[k]) {
                 changes[k] = best.fields[k];
@@ -113,8 +124,10 @@ function applyObservations(db, flightId, actor) {
             return { status: 'error', ...base, fields: [], sources: [], from: {}, error: err.code };
         }
         flights.write(db, row.id, built.fields, built.derived);
-        const sources = [...new Set(Object.values(from))].sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1));
-        const rev = flights.commit(db, row.id, { source: 'enrich', actor, note: `From ${sources.join(', ')}` });
+        const sources = [...new Set(Object.values(from))].filter((n) => n !== 'far_out').sort((a, b) => rank(a) - rank(b) || (a < b ? -1 : 1));
+        const cleared = Object.values(from).includes('far_out');
+        const note = [sources.length ? `From ${sources.join(', ')}` : null, cleared ? 'Estimates cleared (more than 72 h before departure)' : null].filter(Boolean).join('. ');
+        const rev = flights.commit(db, row.id, { source: 'enrich', actor, note });
         return { status: 'updated', ...base, rev, fields: Object.keys(changes), sources, from };
     })();
 }
@@ -231,7 +244,7 @@ async function refresh(db, flightId, { force = false, now: at, fetch, env = proc
     }
     const lookedUp = okSources.length + results.filter((x) => x.result === 'error').length;
     let merged = { status: 'unchanged', id: row.id, label: flights.label(row), rev: row.current_rev, fields: [], sources: [], from: {} };
-    if (okSources.length) merged = applyObservations(db, row.id, actor);
+    if (okSources.length) merged = applyObservations(db, row.id, actor, { now: nowMs });
     for (const o of okSources) {
         const mine = Object.keys(merged.from).filter((k) => merged.from[k] === o.source);
         if (mine.length) results.push({ source: o.source, result: 'updated', detail: mine.join(', ') });
