@@ -400,3 +400,101 @@ describe('sign-in rate limit', () => {
         await request(app).post('/admin/api/login').set(H).send({ key: 'wrong' }).expect(429);
     });
 });
+
+describe('dashboard: editing a key', () => {
+    const app = buildApp({ loginMax: 1000 });
+    const mk = (name, scopes) => apiKeys.create(db.get(), { name, scopes });
+
+    test('needs a signed-in session', async () => {
+        const k = mk('patch-auth', 'places:read');
+        await request(app).patch(`/admin/api/keys/${k.id}`).set(H).send({ name: 'x' }).expect(401);
+        expect(apiKeys.get(db.get(), k.id).name).toBe('patch-auth');
+    });
+
+    test('changes scopes in place, returns the key without a secret, and records added and removed names', async () => {
+        const k = mk('patch-scopes', 'places:read, places:edit');
+        const agent = await signedIn(app);
+        const res = await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ scopes: ['places:read', 'flights:observe'] }).expect(200);
+        expect(res.body).toMatchObject({ id: k.id, name: 'patch-scopes', scopes: ['places:read', 'flights:observe'], key_prefix: k.key.slice(0, 8) });
+        expect(JSON.stringify(res.body)).not.toContain(k.key);
+        expect(res.body).not.toHaveProperty('key');
+        expect(res.body).not.toHaveProperty('key_hash');
+        expect(apiKeys.verify(db.get(), k.key).scopes).toEqual(['places:read', 'flights:observe']);
+
+        const row = audit.recent(db.get(), 1, { actions: ['key_updated'] })[0];
+        expect(row).toMatchObject({ actor: 'admin', action: 'key_updated', detail: { id: k.id, name: 'patch-scopes', added: ['flights:observe'], removed: ['places:edit'] } });
+        expect(row.detail).not.toHaveProperty('renamed_from');
+        expect(JSON.stringify(row)).not.toContain(k.key);
+    });
+
+    test('renames, and records the old name', async () => {
+        const k = mk('patch-old', 'places:read');
+        const agent = await signedIn(app);
+        await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ name: '  patch-new ' }).expect(200);
+        const row = audit.recent(db.get(), 1, { actions: ['key_updated'] })[0];
+        expect(row.detail).toMatchObject({ id: k.id, name: 'patch-new', renamed_from: 'patch-old', added: [], removed: [] });
+    });
+
+    test('a request that changes nothing writes no audit row', async () => {
+        const k = mk('patch-same', 'places:read');
+        const agent = await signedIn(app);
+        const before = audit.recent(db.get(), 1)[0].id;
+        await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ name: 'patch-same', scopes: ['places:read'] }).expect(200);
+        expect(audit.recent(db.get(), 1)[0].id).toBe(before);
+    });
+
+    test('validates: empty scopes, bad scope, bad name, nothing to change are 400', async () => {
+        const k = mk('patch-bad', 'places:read');
+        const agent = await signedIn(app);
+        const patch = (body) => agent.patch(`/admin/api/keys/${k.id}`).set(H).send(body);
+        expect((await patch({ scopes: [] }).expect(400)).body.error).toMatch(/At least one scope/);
+        await patch({ scopes: ['Nope'] }).expect(400);
+        await patch({ name: '' }).expect(400);
+        await patch({ name: 'y'.repeat(61) }).expect(400);
+        await patch({}).expect(400);
+        expect(apiKeys.get(db.get(), k.id)).toMatchObject({ name: 'patch-bad', scopes: ['places:read'] });
+    });
+
+    test('404 for an unknown key, 409 for a revoked key or a name in use', async () => {
+        const a = mk('patch-a', 'places:read');
+        const b = mk('patch-b', 'places:read');
+        const agent = await signedIn(app);
+        await agent.patch('/admin/api/keys/99999').set(H).send({ name: 'z' }).expect(404);
+        await agent.patch('/admin/api/keys/abc').set(H).send({ name: 'z' }).expect(404);
+        await agent.patch(`/admin/api/keys/${b.id}`).set(H).send({ name: 'patch-a' }).expect(409);
+        apiKeys.revoke(db.get(), a.id);
+        await agent.patch(`/admin/api/keys/${a.id}`).set(H).send({ scopes: ['digests:read'] }).expect(409);
+    });
+
+    test('granting "*" needs confirm_all: true', async () => {
+        const k = mk('patch-star', 'places:read');
+        const agent = await signedIn(app);
+        const refused = await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ scopes: ['*'] }).expect(400);
+        expect(refused.body.error).toMatch(/confirm_all/);
+        expect(apiKeys.get(db.get(), k.id).scopes).toEqual(['places:read']);
+        await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ scopes: ['*'], confirm_all: true }).expect(200);
+        expect(apiKeys.get(db.get(), k.id).scopes).toEqual(['*']);
+        expect(audit.recent(db.get(), 1, { actions: ['key_updated'] })[0].detail).toMatchObject({ added: ['*'], removed: ['places:read'] });
+    });
+
+    test('the activity "keys" filter includes key_updated', async () => {
+        const k = mk('patch-act', 'places:read');
+        const agent = await signedIn(app);
+        await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ scopes: ['places:read', 'places:suggest'] }).expect(200);
+        const events = (await agent.get('/admin/api/activity?type=keys').expect(200)).body.events;
+        expect(events[0]).toMatchObject({ action: 'key_updated', detail: { name: 'patch-act', added: ['places:suggest'] } });
+        const all = (await agent.get('/admin/api/activity').expect(200)).body.events;
+        expect(all.map((e) => e.action)).toContain('key_updated');
+    });
+
+    test('the agent matrix reflects a scope change at once', async () => {
+        const k = mk('patch-matrix', 'places:read');
+        const agent = await signedIn(app);
+        const seen = async () => (await agent.get('/admin/api/agents').expect(200)).body.keys.find((x) => x.id === k.id);
+        expect((await seen()).visibleTools.map((t) => t.tool)).toContain('places');
+        await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ scopes: ['digests:read'] }).expect(200);
+        const after = await seen();
+        expect(after.scopes).toEqual(['digests:read']);
+        expect(after.visibleTools.map((t) => t.tool)).not.toContain('places');
+    });
+});

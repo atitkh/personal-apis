@@ -250,3 +250,25 @@ describe('mcp places: audit', () => {
         expect(JSON.stringify(audit.recent(db.get(), 500))).not.toMatch(/maple|ridge|springfield|larkspur|canary|flat|11\.25|22\.5|brambleworth|tannery|quillfeather/i);
     });
 });
+
+describe('places: editing a key changes its tools at once', () => {
+    test('tools/list follows a scope change with the same secret', async () => {
+        const k = apiKeys.create(db.get(), { name: 'live-mcp', scopes: 'digests:read' });
+        keys['live-mcp'] = k.key;
+        writeMode();
+        expect(await tool('live-mcp')).toBeUndefined();
+
+        apiKeys.update(db.get(), k.id, { scopes: ['digests:read', 'places:read'] });
+        expect(await actionsOf('live-mcp')).not.toContain('add');
+        expect(await tool('live-mcp')).toBeDefined();
+
+        apiKeys.update(db.get(), k.id, { scopes: ['digests:read', 'places:read', 'places:edit'] });
+        expect(await actionsOf('live-mcp')).toContain('add');
+
+        apiKeys.update(db.get(), k.id, { scopes: ['digests:read', 'places:read'] });
+        expect(await actionsOf('live-mcp')).not.toContain('add');
+
+        apiKeys.update(db.get(), k.id, { scopes: ['digests:read'] });
+        expect(await tool('live-mcp')).toBeUndefined();
+    });
+});
