@@ -105,9 +105,24 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
   `/hub/digests` and MCP `tools/list`).
 - Calls are logged by key name (`mcp_call` actor), so after a rename earlier calls stay under the old name and the drawer's
   recent calls and the 30-day count start again under the new one. The rename help text says so.
-- Done: backend + tests (commits `Keys:`). UI stages (drawer, Agent access cells, browser checks) are listed below as they land.
+- UI: `public/scopeEditor.js` is the shared piece (checkboxes per domain from `scopes.js`, `domain:*` and `*` options, scopes not in the
+  catalogue shown as "Other scopes on this key" so they are never dropped, the diff sentence "Adds x. Removes y.", `saveKey` with the
+  all-access confirm). Keys drawer (`views/keys.js`): Access form with rename, Save and Cancel, discard guard on close; revoked keys
+  show the read-only list and no controls. Agent access (`views/agents.js`): each key x domain cell is a `<button data-cell="id:tool">`
+  that opens a drawer (native modal dialog: page inert, Esc closes, focus returns to the cell) with only that domain's checkboxes and the
+  domain mode as context; the PATCH sends the key's full scope list with only that domain's scopes changed. A key with `*` gets a pointer
+  to the Keys page instead of checkboxes. "New key" shortcut next to the matrix heading.
+- Tests: 365 pass in node:20 (347 before): service (update, name, empty, 409/404, `*` confirm, uniqueness, next-request effect on
+  `/hub/places` and `/hub/digests`), admin PATCH route (auth, validation, audit names, no secret, activity filter, matrix), MCP
+  `tools/list` follows a scope change.
+- Browser checks on a scratch hub: `workspace/tmp/hub-flights-e2e/run-keys.mjs` (25 checks: create, edit with diff, Cancel, discard
+  guard, save + curl 200/403 with the same secret, reload persistence, empty refused, rename and duplicate name, `*` confirm and
+  back-out, legacy scope kept, cell drawer + focus trap + Esc, cell edit touches one domain, `*` key in a cell, New key shortcut,
+  revoked key, Activity sentence, dark, 390 px, no console errors). Run `sh reset.sh empty && node run-keys.mjs`.
 
 ## Open
+
+- Key scope editing: a rename does not move earlier agent calls (logged by key name); the 30-day count and recent calls restart under the new name.
 
 - Segmented options are 42 px tall on phones inside a 46 px control (the switch has a 44 px hit area);
   fine in use, short of a strict 44 px per option.
