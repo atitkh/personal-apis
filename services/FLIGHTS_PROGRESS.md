@@ -372,3 +372,7 @@ placeholder and Heat, and label collision avoidance on the Flat map.
   overlap at 1280 and 390 px, Heat persistence across reload, glows per airport, tooltip hover and focus, blend modes in light and
   dark, Globe placeholder, km/miles still works, dark mode, 390 px layout, no console errors), 3 on a hub without actual times
   (empty state). The older flows still pass (36 and 18). Screenshots (3, JPEG 900 px): `workspace/tmp/hub-flights-shots/passport-*.jpg`.
+- Scratch-hub note: rsync the repo with `--exclude .env`, otherwise the scratch copy carries the real AeroDataBox key and the
+  "not configured" checks of `run-sources.mjs` (5 and 10) fail. With the `.env` out, `run-sources.mjs` gives 14 of 18: checks
+  1, 3, 9 and 15 fail on the commit before this stage as well, because their seeded flights are in December and estimated
+  times are only trusted within 72 h of departure (the stage D rule), so the seed needs flights dated within 72 h of "now".
