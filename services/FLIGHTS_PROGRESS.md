@@ -195,3 +195,54 @@ throwaway node:20 container; it is not a hub dependency. Rebuild: see the header
 - Later: admin-only real delete; trip delete; airlines seed. MCP add/edit are logged only as `mcp_call`.
 - Not deployed: local commits only, not pushed, container not restarted. Migrations 007 and 008 run on the
   next start; Flights MCP mode defaults to read.
+
+## Flight data sources (enrichment), stage A backend (2026-11-10)
+Plan: workspace memory/projects/personal-hub-flights-sources-plan.md. Local commits only (not pushed, not
+deployed); migration 010 runs on the next container start.
+
+**UNVERIFIED: the AeroDataBox field mapping (services/adapters/aerodatabox.js) is built from the official
+OpenAPI spec (FlightContract schema; the spec has no example payloads) and hand-made fixtures. It has never
+seen a live answer. Stage D checks it against a real key: time format, runwayTime vs revisedTime as "actual",
+multi-leg answers, gates/belts. Sources list shows `verified: false` for it until then.**
+
+Done:
+- Migration 010: flights.dep_terminal, dep_gate, arr_terminal, arr_gate, baggage_belt, aircraft_reg, est_dep,
+  est_arr (UTC ISO), delay_min, locked_fields (JSON array); tables flight_observations, flight_sources (seeded:
+  aerodatabox priority 10 cap 80, gmail priority 20 no cap), flight_source_usage (source, 'YYYY-MM', calls).
+- The new fields are in flights.FIELDS: editable over REST/admin/MCP, in revisions and answers. Every flight
+  answer has `locked_fields` and `source_says_cancelled`. MCP answers still leave out booking_ref.
+- Locks: changing an enrichable field by hand (REST/admin PATCH, MCP edit) locks it; `unlock: [fields]` frees
+  it (an unlock alone keeps the revision number). Enrichable: flights.ENRICHABLE.
+- services/enrich.js: observe, applyObservations (priority merge, lower wins, locked skipped, one revision with
+  source 'enrich' and note "From a, b"), refresh (skips: under 6 h since last ok lookup, departed over 30 days,
+  both unless force; cap_reached at the monthly cap, default 80 without a settings row; every lookup counts),
+  listSources/putSources.
+- API: POST /hub/flights/:id/refresh (flights:read + flights:write), POST /hub/flights/:id/observations
+  (flights:observe + flights:read; body {source, fields, source_status}), GET/PUT /hub/flights/sources
+  (read/write; PUT body {name, enabled?, priority?, monthly_cap?} or {sources: [...]}). Admin: POST
+  /admin/api/flights/:id/refresh, GET/PUT /admin/api/flights/sources. MCP: `refresh` (write mode,
+  flights:edit), `sources` (read). Audit: flight_refreshed, flight_observed, flight_sources_changed with field
+  and source names only. Keys are never shown: `configured` true/false.
+- Hub and admin handlers and the MCP registry now accept async handlers/run.
+- Tests: tests/flightsEnrich.test.js (22) + MCP case; suite 329 green.
+
+Env (hub .env, recreate the container after adding): AERODATABOX_API_KEY, AERODATABOX_PROVIDER = apimarket
+(default, header x-api-market-key, base https://prod.api.market/api/v1/aedbx/aerodatabox) or rapidapi
+(X-RapidAPI-Key + X-RapidAPI-Host, base https://aerodatabox.p.rapidapi.com).
+
+Adding an adapter:
+1. Create services/adapters/<id>.js exporting { id, label, fields, keyEnv, verified, lookup }.
+2. lookup(flight, { fetch, now, env }) is async and never throws: wrap in try/catch, 10 s AbortController.
+3. flight has airline_iata, flight_number, dep_local_date, origin_iata, dest_iata, sched_dep, sched_arr.
+4. Return { ok, fields, source_status, error }; fields only from flights.ENRICHABLE, times as UTC ISO.
+5. Unset key env: return { ok: false, error: 'not_configured' } without calling anything.
+6. Short error codes: timeout, rate_limited, unauthorized, not_found, http_<n>, network.
+7. Add it to ADAPTERS in services/adapters/index.js (push-only sources go in PUSH_SOURCES).
+8. Optionally seed a flight_sources row (priority, monthly_cap) in a migration; else priority 100, cap 80.
+9. Fixture tests like tests/flightsEnrich.test.js, injecting fetch.
+10. Mark verified: false until checked against a live answer.
+
+Next: stage B dashboard (drawer fields, lock chips with Unlock, Data sources card, Refresh button);
+stage C `flights_scan.py --status` pushing Gmail observations (needs a key with flights:read +
+flights:observe); stage D live AeroDataBox test. Open: free-tier size and storage terms on API.Market;
+observations are never pruned (small, but grows by one row per lookup).
