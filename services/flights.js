@@ -28,7 +28,13 @@ const STATUSES = ['scheduled', 'completed', 'cancelled'];
 const STATUS_INPUTS = ['auto', ...STATUSES];
 const SOURCES = ['manual', 'gmail', 'calendar', 'feed'];
 const FIELDS = ['trip_id', 'airline_iata', 'airline_name', 'flight_number', 'origin_iata', 'dest_iata', 'sched_dep', 'sched_arr',
-    'actual_dep', 'actual_arr', 'aircraft_type', 'cabin', 'seat', 'booking_ref', 'status', 'source', 'source_key', 'notes'];
+    'actual_dep', 'actual_arr', 'aircraft_type', 'cabin', 'seat', 'booking_ref', 'status', 'source', 'source_key', 'notes',
+    'est_dep', 'est_arr', 'delay_min', 'dep_terminal', 'dep_gate', 'arr_terminal', 'arr_gate', 'baggage_belt', 'aircraft_reg'];
+// Fields a data source may fill (services/enrich.js, migration 010). Changing one by hand locks it (locked_fields)
+// so no source overwrites it; `unlock: [names]` on an edit hands it back to the sources.
+const ENRICHABLE = ['actual_dep', 'actual_arr', 'est_dep', 'est_arr', 'delay_min', 'dep_terminal', 'dep_gate', 'arr_terminal', 'arr_gate',
+    'baggage_belt', 'aircraft_type', 'aircraft_reg'];
+const MAX_DELAY_MIN = 2880;
 const SETTINGS = ['home_airport'];
 const MAX_NOTES = 2000;
 const MAX_FLIGHT_HOURS = 30;
@@ -157,6 +163,13 @@ function oneOf(v, name, list) {
     return v;
 }
 
+function cleanDelay(v) {
+    if (v == null || v === '') return null;
+    const n = typeof v === 'number' ? v : /^-?\d+$/.test(String(v).trim()) ? Number(v) : NaN;
+    if (!Number.isInteger(n) || Math.abs(n) > MAX_DELAY_MIN) throw bad('bad_request', `delay_min must be whole minutes between -${MAX_DELAY_MIN} and ${MAX_DELAY_MIN}.`);
+    return n;
+}
+
 function cleanStatus(v) {
     const s = oneOf(v == null || v === '' ? 'auto' : v, 'status', STATUS_INPUTS);
     return s === 'auto' ? 'scheduled' : s;
@@ -189,7 +202,7 @@ function cleanTrip(db, v) {
 function build(db, input, current = {}) {
     const given = input || {};
     for (const k of Object.keys(given)) {
-        if (!FIELDS.includes(k) && k !== 'note') throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
+        if (!FIELDS.includes(k) && k !== 'note' && k !== 'unlock') throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
     }
     const pick = (k) => (given[k] === undefined ? current[k] : given[k]);
     const f = {};
@@ -214,6 +227,11 @@ function build(db, input, current = {}) {
             if (hours > MAX_FLIGHT_HOURS) throw bad('bad_time', `${arr} is more than ${MAX_FLIGHT_HOURS} hours after ${dep}.`);
         }
     }
+    f.est_dep = cleanTime(pick('est_dep'), 'est_dep', depTz);
+    f.est_arr = cleanTime(pick('est_arr'), 'est_arr', arrTz);
+    f.delay_min = cleanDelay(pick('delay_min'));
+    for (const k of ['dep_terminal', 'dep_gate', 'arr_terminal', 'arr_gate', 'baggage_belt']) f[k] = text(pick(k), k, 10, { upper: true });
+    f.aircraft_reg = text(pick('aircraft_reg'), 'aircraft_reg', 12, { upper: true });
     f.aircraft_type = text(pick('aircraft_type'), 'aircraft_type', 40);
     f.cabin = text(pick('cabin'), 'cabin', 30);
     f.seat = text(pick('seat'), 'seat', 8, { upper: true });
@@ -278,10 +296,30 @@ function commit(db, id, { source, actor, note }) {
     return rev;
 }
 
-function shape(row, airlines, at) {
+const lockedOf = (row) => {
+    try {
+        const list = JSON.parse(row.locked_fields || '[]');
+        return Array.isArray(list) ? list.filter((k) => ENRICHABLE.includes(k)) : [];
+    } catch (err) {
+        return [];
+    }
+};
+
+// Ids of flights where a source's latest ok observation says the flight is cancelled (shown as a chip, it never
+// changes the status). `id` limits it to one flight.
+function sourceCancelled(db, id) {
+    const rows = db.prepare(`SELECT flight_id FROM flight_observations WHERE id IN (SELECT MAX(id) FROM flight_observations
+            WHERE ok = 1 ${id ? 'AND flight_id = @id' : ''} GROUP BY flight_id, source)
+        AND lower(source_status) IN ('cancelled', 'canceled')`).all(id ? { id } : {});
+    return new Set(rows.map((r) => r.flight_id));
+}
+
+function shape(row, airlines, at, cancelled) {
     const out = { id: row.id, ...editable(row) };
     out.status = effectiveStatus(row, at);
     out.status_override = row.status === 'scheduled' ? null : row.status;
+    out.locked_fields = lockedOf(row);
+    out.source_says_cancelled = Boolean(cancelled && cancelled.has(row.id));
     if (!out.airline_name && airlines) out.airline_name = airlines.get(row.airline_iata) || null;
     return {
         ...out,
@@ -329,18 +367,21 @@ function list(db, { year, airport: ap, airline, trip, status, limit, offset, now
     const total = db.prepare(`SELECT COUNT(*) AS n FROM flights ${cond}`).get(...args).n;
     const names = airlineNames(db);
     const rows = db.prepare(`SELECT * FROM flights ${cond} ORDER BY sched_dep DESC, id DESC LIMIT ? OFFSET ?`).all(...args, n, skip);
-    return { flights: rows.map((r) => shape(r, names, nowIso)), total, limit: n, offset: skip };
+    const cancelled = sourceCancelled(db);
+    return { flights: rows.map((r) => shape(r, names, nowIso, cancelled)), total, limit: n, offset: skip };
 }
 
 // One flight. `rev` gives it as it was at that revision.
 function get(db, id, { rev, now: at = new Date() } = {}) {
     const row = need(db, id);
     const names = airlineNames(db);
-    if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, names, at), revisions: row.current_rev };
+    const cancelled = sourceCancelled(db, row.id);
+    if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, names, at, cancelled), revisions: row.current_rev };
     const r = db.prepare('SELECT * FROM flight_revisions WHERE flight_id = ? AND rev = ?').get(row.id, toId(rev));
     if (!r) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
-    const old = JSON.parse(r.snapshot);
-    return { ...shape({ ...row, ...old, current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, names, at), revisions: row.current_rev };
+    // Revisions from before migration 010 have no enrichment fields: they were empty then.
+    const old = { ...Object.fromEntries(FIELDS.map((k) => [k, null])), ...JSON.parse(r.snapshot) };
+    return { ...shape({ ...row, ...old, current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, names, at, cancelled), revisions: row.current_rev };
 }
 
 // Newest first; what changed is read with get(id, { rev }).
@@ -355,9 +396,10 @@ function upcoming(db, { now: at = new Date(), limit } = {}) {
     const iso = new Date(at).toISOString();
     const n = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 50);
     const names = airlineNames(db);
+    const cancelled = sourceCancelled(db);
     return db.prepare(`SELECT * FROM flights WHERE ${effectiveSql('@iso')} = 'scheduled'
             AND (sched_dep >= @iso OR (sched_arr IS NOT NULL AND sched_arr > @iso)) ORDER BY sched_dep, id LIMIT @n`)
-        .all({ iso, n }).map((r) => shape(r, names, iso));
+        .all({ iso, n }).map((r) => shape(r, names, iso, cancelled));
 }
 
 // For the dashboard tile and hub_overview: counts and the last change, nothing about any one flight.
@@ -517,19 +559,47 @@ function create(db, input, actor) {
     })();
 }
 
-// Changes the fields sent; a field sent as null is cleared (required ones refuse that).
+function cleanUnlock(v) {
+    if (v == null) return [];
+    const list = Array.isArray(v) ? v : [v];
+    for (const k of list) {
+        if (!ENRICHABLE.includes(k)) throw bad('bad_field', `unlock takes field names from: ${ENRICHABLE.join(', ')}.`);
+    }
+    return list;
+}
+
+// Changes the fields sent; a field sent as null is cleared (required ones refuse that). An enrichable field whose
+// value changes is locked against data sources; `unlock` (field names) hands fields back to them. The answer
+// carries locked_fields when the locks changed.
 function update(db, id, input, actor) {
     const given = input || {};
-    if (!Object.keys(given).some((k) => FIELDS.includes(k))) throw bad('bad_request', `Send at least one of: ${FIELDS.join(', ')}.`);
+    const unlock = cleanUnlock(given.unlock);
+    if (!unlock.length && !Object.keys(given).some((k) => FIELDS.includes(k))) {
+        throw bad('bad_request', `Send at least one of: ${FIELDS.join(', ')} (or unlock).`);
+    }
     return db.transaction(() => {
         const row = need(db, id);
         const { fields: f, derived: d } = build(db, given, row);
         const was = editable(row);
-        if (FIELDS.every((k) => f[k] === was[k])) return { status: 'unchanged', id: row.id, label: label(row), rev: row.current_rev };
-        noTwin(db, f, d, row.id);
-        write(db, row.id, f, d);
-        const note = given.note ? String(given.note).slice(0, 200) : null;
-        return { status: 'updated', id: row.id, label: label({ ...f, ...d }), rev: commit(db, row.id, { source: 'edit', actor, note }) };
+        const changed = FIELDS.filter((k) => f[k] !== was[k]);
+        const locked = lockedOf(row);
+        const lockSet = new Set([...locked, ...changed.filter((k) => ENRICHABLE.includes(k))]);
+        for (const k of unlock) lockSet.delete(k);
+        const nextLocks = ENRICHABLE.filter((k) => lockSet.has(k));
+        const locksChanged = nextLocks.join() !== locked.join();
+        if (!changed.length && !locksChanged) return { status: 'unchanged', id: row.id, label: label(row), rev: row.current_rev };
+        if (changed.length) {
+            noTwin(db, f, d, row.id);
+            write(db, row.id, f, d);
+        }
+        const result = { status: 'updated', id: row.id, label: label({ ...f, ...d }), rev: row.current_rev };
+        if (locksChanged) {
+            db.prepare('UPDATE flights SET locked_fields = ?, updated_at = ?, updated_by = ? WHERE id = ?').run(JSON.stringify(nextLocks), now(), who(actor), row.id);
+            result.locked_fields = nextLocks;
+        }
+        // Locks are not part of a revision: an unlock alone keeps the revision number.
+        if (changed.length) result.rev = commit(db, row.id, { source: 'edit', actor, note: given.note ? String(given.note).slice(0, 200) : null });
+        return result;
     })();
 }
 
@@ -539,8 +609,8 @@ function restore(db, id, rev, actor) {
         const row = need(db, id);
         const old = toId(rev) && db.prepare('SELECT * FROM flight_revisions WHERE flight_id = ? AND rev = ?').get(row.id, toId(rev));
         if (!old) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
-        const was = JSON.parse(old.snapshot);
-        if (JSON.stringify(was) === JSON.stringify(editable(row))) return { status: 'unchanged', id: row.id, label: label(row), rev: row.current_rev };
+        const was = { ...Object.fromEntries(FIELDS.map((k) => [k, null])), ...JSON.parse(old.snapshot) };
+        if (JSON.stringify(editable(was)) === JSON.stringify(editable(row))) return { status: 'unchanged', id: row.id, label: label(row), rev: row.current_rev };
         // A trip that is gone since then is left out rather than refusing the restore.
         if (was.trip_id && !db.prepare('SELECT 1 FROM trips WHERE id = ?').get(was.trip_id)) was.trip_id = null;
         const { fields: f, derived: d } = build(db, was);
@@ -552,7 +622,14 @@ function restore(db, id, rev, actor) {
 
 // What an audit row may say about a flight change: id, flight number, route and date. Never the booking
 // reference, seat or notes.
-const auditDetail = (result) => ({ id: result.id, flight: result.label, rev: result.rev });
+// Enrichment and lock changes add field NAMES (never values) and source names.
+const auditDetail = (result) => {
+    const out = { id: result.id, flight: result.label, rev: result.rev };
+    if (result.fields) out.fields = result.fields;
+    if (result.sources) out.sources = result.sources;
+    if (result.locked_fields) out.locked_fields = result.locked_fields;
+    return out;
+};
 
 /* ---------- trips ---------- */
 
@@ -809,7 +886,8 @@ const candidateAuditDetail = (c, flight) => {
 };
 
 module.exports = {
-    STATUSES, STATUS_INPUTS, SOURCES, FIELDS, SETTINGS, FlightError, effectiveStatus,
+    STATUSES, STATUS_INPUTS, SOURCES, FIELDS, ENRICHABLE, SETTINGS, FlightError, effectiveStatus,
+    build, need, write, commit, label, editable, lockedOf, now,
     CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, CANDIDATE_FLIGHT_STATUSES, ACCEPT_ALL_MAX,
     suggest, listCandidates, candidateCounts, withoutRef, acceptCandidate, acceptAll, dismissCandidate, candidateAuditDetail,
     haversineKm, localToUtc, localIso,
