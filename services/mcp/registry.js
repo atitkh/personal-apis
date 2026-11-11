@@ -145,7 +145,7 @@ function buildServer(conn, key, report = () => {}) {
                 if (!visibleActions(live, def, key).includes(args.action)) {
                     throw new ToolError('not_allowed', `The ${args.action} action of ${def.domain} is not available to this key.`);
                 }
-                const data = def.run(args.action, args, { db: live, key });
+                const data = await def.run(args.action, args, { db: live, key });
                 report(extra.requestId, { ok: true });
                 return textResult(data, def.untrusted);
             } catch (err) {

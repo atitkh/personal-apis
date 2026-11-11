@@ -1,16 +1,19 @@
 // MCP tool for the flights domain. Reuses services/flights.js, so cleaning, dedupe and revisions behave exactly
 // as through /hub/flights. Agents may read, file found flights (suggest) and, in write mode with flights:edit,
 // add and edit flights; cancelling a flight is an edit (status cancelled). Deleting, restoring and accepting or
-// dismissing found flights stay with a person (admin API).
+// dismissing found flights stay with a person (admin API). refresh (write mode, flights:edit) asks the configured
+// data sources (services/enrich.js); sources lists them with configured true/false and this month's calls.
 // booking_ref: left out of every answer by default. `get` includes it only for a key with flights:read that
 // passes include_booking_ref=true. The audit row (mcp_call) never holds arguments or results.
 const flights = require('../../flights');
+const enrich = require('../../enrich');
 const { ToolError, clip } = require('../util');
 
 const LIST_MAX = 50;
 const NOTES_CHARS = 300;
 const EDIT_FIELDS = ['trip_id', 'airline_iata', 'airline_name', 'flight_number', 'origin_iata', 'dest_iata', 'sched_dep', 'sched_arr',
-    'actual_dep', 'actual_arr', 'aircraft_type', 'cabin', 'seat', 'booking_ref', 'status', 'notes'];
+    'actual_dep', 'actual_arr', 'aircraft_type', 'cabin', 'seat', 'booking_ref', 'status', 'notes',
+    'est_dep', 'est_arr', 'delay_min', 'dep_terminal', 'dep_gate', 'arr_terminal', 'arr_gate', 'baggage_belt', 'aircraft_reg'];
 
 function need(value, what, action) {
     if (value == null || value === '') throw new ToolError('bad_request', `The ${action} action needs ${what}.`);
@@ -49,7 +52,8 @@ module.exports = {
         + 'Times: sched_dep/sched_arr/actual_* are UTC (ISO with Z); dep_local/arr_local are the same times as the airport clock reads (origin for departure, destination for arrival), with dep_tz/arr_tz. '
         + 'When adding or suggesting, a time with Z or an offset is taken as given; one without an offset is read as the airport\'s local time. '
         + 'status is worked out from the times (scheduled before landing, completed after), unless status_override says completed or cancelled was set by hand. '
-        + 'Booking references are left out (has_booking_ref says one is stored).',
+        + 'Booking references are left out (has_booking_ref says one is stored). '
+        + 'Data sources fill est_dep/est_arr, actual times, delay_min, terminals, gates, baggage_belt, aircraft_type and aircraft_reg; a field changed by hand is listed in locked_fields and no source overwrites it (edit with unlock to hand it back). source_says_cancelled means a source reports the flight cancelled; it does not change status.',
     actions: {
         list: { scope: 'flights:read', describe: `list: flights, newest departure first (optional year, airport, airline, trip_id, status; limit 1-${LIST_MAX}, offset)` },
         get: { scope: 'flights:read', describe: 'get: one flight (id); include_booking_ref=true adds its booking reference' },
@@ -59,7 +63,9 @@ module.exports = {
         candidates: { scope: 'flights:read', describe: `candidates: found flights in the review queue (status pending (default), accepted, dismissed or all; limit 1-${LIST_MAX})` },
         suggest: { scope: 'flights:suggest', write: true, describe: 'suggest: file a found flight for Atit to review (airline_iata, flight_number, origin_iata, dest_iata, sched_dep; optional sched_arr, airline_name, cabin, seat, aircraft_type, booking_ref, notes, source gmail/calendar/manual, source_key, confidence 0-1, flight_status cancelled or completed if the source says so). Already a flight or already filed: says so and files nothing' },
         add: { scope: 'flights:edit', write: true, describe: 'add: file a flight directly (same fields as suggest, plus trip_id, status). Prefer suggest for flights you found yourself' },
-        edit: { scope: 'flights:edit', write: true, describe: 'edit: change one flight (id; only the fields sent change, null clears; status cancelled for a flight that did not happen; optional note = why). Every change is kept as a revision' },
+        edit: { scope: 'flights:edit', write: true, describe: 'edit: change one flight (id; only the fields sent change, null clears; status cancelled for a flight that did not happen; optional note = why; unlock = field names to hand back to the data sources). Every change is kept as a revision' },
+        refresh: { scope: 'flights:edit', write: true, describe: 'refresh: ask the configured data sources for fresh data on one flight (id; force=true to look up again within 6 h or for a flight over 30 days old). Answers one result per source: updated, unchanged, skipped_recent, skipped_old, cap_reached, not_configured or error' },
+        sources: { scope: 'flights:read', describe: 'sources: the flight data sources with enabled, priority (lower wins), monthly cap, calls this month and whether each is configured' },
     },
 
     input(z, actions) {
@@ -74,7 +80,8 @@ module.exports = {
         if (has('list', 'upcoming', 'candidates')) shape.limit = z.number().int().min(1).max(LIST_MAX).optional().describe('list/upcoming/candidates: how many');
         if (has('list', 'add', 'edit')) shape.status = z.string().max(20).optional().describe('list: filter by effective status (scheduled, completed, cancelled); add/edit: auto (default: scheduled until it has landed, then completed), completed or cancelled; candidates: pending, accepted, dismissed or all');
         else if (has('candidates')) shape.status = z.string().max(20).optional().describe('candidates: pending, accepted, dismissed or all');
-        if (has('get', 'edit')) shape.id = z.number().int().positive().optional().describe('get/edit: the flight id');
+        if (has('get', 'edit', 'refresh')) shape.id = z.number().int().positive().optional().describe('get/edit/refresh: the flight id');
+        if (has('refresh')) shape.force = z.boolean().optional().describe('refresh: true to skip the 6 h and 30 day checks (monthly caps still apply)');
         if (has('get')) shape.include_booking_ref = z.boolean().optional().describe('get: true to include the booking reference');
         if (has('list', 'suggest', 'add', 'edit')) shape.airline_iata = code(3).optional().describe('the airline code, like AA (list: filter)');
         if (has('suggest', 'add', 'edit')) {
@@ -100,6 +107,12 @@ module.exports = {
             shape.actual_dep = code(40).nullable().optional().describe('edit: actual departure, as sched_dep');
             shape.actual_arr = code(40).nullable().optional().describe('edit: actual arrival, as sched_arr');
             shape.note = z.string().max(200).optional().describe('edit: why it changed');
+            shape.est_dep = code(40).nullable().optional().describe('edit: estimated departure, as sched_dep');
+            shape.est_arr = code(40).nullable().optional().describe('edit: estimated arrival, as sched_arr');
+            shape.delay_min = z.number().int().nullable().optional().describe('edit: delay in minutes');
+            for (const k of ['dep_terminal', 'dep_gate', 'arr_terminal', 'arr_gate', 'baggage_belt']) shape[k] = code(10).nullable().optional().describe(`edit: ${k.replace('_', ' ')}`);
+            shape.aircraft_reg = code(12).nullable().optional().describe('edit: aircraft registration, like N123AA');
+            shape.unlock = z.array(z.enum(flights.ENRICHABLE)).optional().describe('edit: field names to hand back to the data sources');
         }
         if (has('list', 'add', 'edit')) shape.trip_id = z.number().int().positive().nullable().optional().describe('list: flights of this trip; add/edit: the trip (edit: null takes it out)');
         return shape;
@@ -137,10 +150,16 @@ module.exports = {
             return flights.create(db, { ...pick(args, EDIT_FIELDS), source: 'manual' }, key.name);
         case 'edit': {
             const id = need(args.id, 'an id', action);
-            const fields = pick(args, [...EDIT_FIELDS, 'note']);
+            const fields = pick(args, [...EDIT_FIELDS, 'note', 'unlock']);
             if (!Object.keys(fields).some((k) => k !== 'note')) throw new ToolError('bad_request', 'The edit action needs at least one field to change.');
             return flights.update(db, id, fields, key.name);
         }
+        case 'refresh': {
+            const id = need(args.id, 'an id', action);
+            return enrich.refresh(db, id, { force: args.force === true, actor: key.name });
+        }
+        case 'sources':
+            return enrich.listSources(db);
         default:
             throw new ToolError('bad_action', `Unknown action "${action}".`);
         }

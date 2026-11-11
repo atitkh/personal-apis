@@ -37,8 +37,9 @@ export const CATALOGUE = [
         scopes: [
             { scope: 'flights:read', label: 'Read', text: 'Read your flights (booking references included), trips, upcoming flights and the Passport stats through /hub.' },
             { scope: 'flights:suggest', label: 'Suggest', text: 'File a found flight (from email, the calendar or an agent) into the review queue, through the agent endpoint (write mode) and /hub. It cannot change any flight; accepting and dismissing stay with you.', write: true },
-            { scope: 'flights:edit', label: 'Edit', text: 'Lets an agent add flights and change existing ones through the agent endpoint, when Flights is in write mode. Every earlier version is kept; restoring and the review queue stay with you.', write: true },
-            { scope: 'flights:write', label: 'Write', text: 'Add and change flights and trips, restore older versions and change the flights settings through the /hub REST API. Needs Read as well.', write: true },
+            { scope: 'flights:edit', label: 'Edit', text: 'Lets an agent add flights, change existing ones and ask the data sources for fresh flight data (refresh) through the agent endpoint, when Flights is in write mode. Every earlier version is kept; restoring and the review queue stay with you.', write: true },
+            { scope: 'flights:write', label: 'Write', text: 'Add and change flights and trips, restore older versions, change the flights settings and data sources, and ask the data sources for fresh flight data (refresh), through the /hub REST API. Needs Read as well.', write: true },
+            { scope: 'flights:observe', label: 'Observe', text: 'Report what a data source read about a flight (gate, terminal, times, delay from status mails) through /hub; the hub merges it unless you locked that field. Needs Read as well. It cannot change anything else.', write: true },
         ],
     },
     {

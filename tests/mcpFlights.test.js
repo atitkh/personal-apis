@@ -61,7 +61,7 @@ const errorOf = (r) => {
 };
 const settle = () => new Promise((r) => setTimeout(r, 20));
 const writeMode = () => domains.setMcpMode(db.get(), 'flights', 'write', 'test');
-const READ = ['candidates', 'get', 'list', 'stats', 'trips', 'upcoming'];
+const READ = ['candidates', 'get', 'list', 'sources', 'stats', 'trips', 'upcoming'];
 
 describe('mcp flights: what a key sees', () => {
     test('read mode: the read actions for every flights:read key; nothing for suggest-only', async () => {
@@ -80,8 +80,8 @@ describe('mcp flights: what a key sees', () => {
         expect(await actionsOf('reader')).toEqual(READ);
         expect(await actionsOf('rest-writer')).toEqual(READ);
         expect(await actionsOf('job')).toEqual([...READ, 'suggest'].sort());
-        expect(await actionsOf('editor')).toEqual(['add', 'edit', ...READ].sort());
-        expect(await actionsOf('all')).toEqual(['add', 'edit', ...READ, 'suggest'].sort());
+        expect(await actionsOf('editor')).toEqual(['add', 'edit', 'refresh', ...READ].sort());
+        expect(await actionsOf('all')).toEqual(['add', 'edit', 'refresh', ...READ, 'suggest'].sort());
         expect(await actionsOf('suggest-only')).toBeNull();
         const t = await tool('job');
         expect(t.description).toMatch(/suggest:/);
@@ -190,7 +190,7 @@ describe('mcp flights: audit', () => {
         const r = await rpc('reader', 'tools/call', { name: 'hub_overview', arguments: {} }).expect(200);
         const o = JSON.parse(r.body.result.content[0].text.replace(`${DATA_NOTE}\n`, ''));
         const d = o.domains.find((x) => x.name === 'flights');
-        expect(d).toMatchObject({ mcpMode: 'read', actions: ['list', 'get', 'upcoming', 'stats', 'trips', 'candidates'] });
+        expect(d).toMatchObject({ mcpMode: 'read', actions: ['list', 'get', 'upcoming', 'stats', 'trips', 'candidates', 'sources'] });
         expect(d.records).toBeGreaterThanOrEqual(2);
     });
 });

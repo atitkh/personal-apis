@@ -5,11 +5,16 @@
 //   flights:suggest  POST /candidates only: file a found flight for a person to accept or dismiss (the answer
 //                    never carries a booking reference). Accepting and dismissing are admin-only
 //                    (/admin/api/flights/candidates), never over /hub.
+//   flights:observe  POST /:id/observations only (with flights:read to find the flight): a push source (Gmail
+//                    status mails) reports what it read; merged like a looked-up source.
+// Data sources: GET /sources (read), PUT /sources (write), POST /:id/refresh (read + write) asks the configured
+// sources now. Keys are never shown, only configured true/false.
 // There is no delete: a flight that did not happen gets status cancelled.
 // booking_ref is in flight answers (every route needs flights:read), never in audit rows: changes are
 // audited with flights.auditDetail (id, flight number, route, date).
 const express = require('express');
 const flights = require('../../services/flights');
+const enrich = require('../../services/enrich');
 const audit = require('../../services/audit');
 const apiKeys = require('../../services/apiKeys');
 const { requireScope } = require('../../middleware/apiKey');
@@ -51,6 +56,16 @@ module.exports = (handle) => {
         const result = flights.putSettings(conn, req.body, req.apiKey.name);
         audit.record(conn, req.apiKey.name, 'flight_settings_changed', { keys: Object.keys(req.body || {}) }, req.ip);
         res.json(result);
+    }));
+
+    router.get('/sources', read, handle((req, res, conn) => {
+        res.json(enrich.listSources(conn));
+    }));
+
+    router.put('/sources', write, handle((req, res, conn) => {
+        const names = enrich.putSources(conn, req.body);
+        audit.record(conn, req.apiKey.name, 'flight_sources_changed', { sources: names }, req.ip);
+        res.json(enrich.listSources(conn));
     }));
 
     router.get('/trips', read, handle((req, res, conn) => {
@@ -103,6 +118,25 @@ module.exports = (handle) => {
 
     router.patch('/:id', write, handle((req, res, conn) => {
         changed(req, res, conn, 'flight_updated', flights.update(conn, req.params.id, req.body, req.apiKey.name));
+    }));
+
+    router.post('/:id/refresh', write, handle(async (req, res, conn) => {
+        const result = await enrich.refresh(conn, req.params.id, { force: (req.body || {}).force === true, actor: req.apiKey.name });
+        if (result.looked_up || result.status === 'updated') {
+            audit.record(conn, req.apiKey.name, 'flight_refreshed', { ...flights.auditDetail(result), results: result.results.map((r) => `${r.source}:${r.result}`) }, req.ip);
+        }
+        res.json(result);
+    }));
+
+    // Body { source, fields, source_status }. 201 with the observation and what the merge did.
+    router.post('/:id/observations', [requireScope('flights:observe'), alsoRead, requireDomain('flights')], handle((req, res, conn) => {
+        const body = req.body || {};
+        const observation = enrich.observe(conn, req.params.id, body.source, body.fields,
+            { source_status: body.source_status, actor: req.apiKey.name, strict: true });
+        const merged = enrich.applyObservations(conn, observation.flight_id, req.apiKey.name);
+        const { from: _from, ...result } = merged;
+        audit.record(conn, req.apiKey.name, 'flight_observed', { ...flights.auditDetail(result), source: observation.source, observed: observation.fields }, req.ip);
+        res.status(201).json({ observation, result });
     }));
 
     router.post('/:id/restore', write, handle((req, res, conn) => {

@@ -13,6 +13,7 @@ const domains = require('../../services/domains');
 const digests = require('../../services/digests');
 const places = require('../../services/places');
 const flights = require('../../services/flights');
+const enrich = require('../../services/enrich');
 const backup = require('../../services/backup');
 const agents = require('../../services/mcp/agents');
 
@@ -42,7 +43,7 @@ const ACTIVITY_TYPES = {
     places: ['place_created', 'place_updated', 'place_restored', 'place_deleted', 'place_rule_added', 'place_rule_updated', 'place_rule_removed',
         'place_suggestion_accepted', 'place_suggestion_dismissed'],
     flights: ['flight_created', 'flight_updated', 'flight_restored', 'trip_created', 'trip_updated', 'flight_settings_changed',
-        'flight_candidate_filed', 'flight_candidate_accepted', 'flight_candidate_dismissed'],
+        'flight_candidate_filed', 'flight_candidate_accepted', 'flight_candidate_dismissed', 'flight_refreshed', 'flight_observed', 'flight_sources_changed'],
     signins: ['login', 'logout', 'login_failed'],
 };
 
@@ -363,14 +364,18 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
     // are for a person only, so they live here and not on /hub. Audited as `admin` with the candidate id, the
     // flight label and the flight it became; never the booking reference. ----
     const flightHandler = (fn) => (req, res) => {
-        try {
-            fn(req, res, db.get());
-        } catch (err) {
+        const fail = (err) => {
             if (err instanceof flights.FlightError) {
                 return res.status(err.status).json({ error: err.message, code: err.code, ...(err.extra || {}) });
             }
             console.error('admin flights error:', err);
             res.status(500).json({ error: 'Something went wrong.' });
+        };
+        try {
+            const out = fn(req, res, db.get());
+            if (out && typeof out.then === 'function') out.catch(fail);
+        } catch (err) {
+            fail(err);
         }
     };
 
@@ -451,6 +456,25 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
 
     api.post('/flights', flightHandler((req, res, conn) => {
         flightChanged(req, res, conn, 'flight_created', flights.create(conn, req.body, 'admin'), 201);
+    }));
+
+    // ---- flights: data sources (enrichment). Settings and calls this month; keys are only "configured". ----
+    api.get('/flights/sources', flightHandler((req, res, conn) => {
+        res.json(enrich.listSources(conn));
+    }));
+
+    api.put('/flights/sources', flightHandler((req, res, conn) => {
+        const names = enrich.putSources(conn, req.body);
+        audit.record(conn, 'admin', 'flight_sources_changed', { sources: names }, req.ip);
+        res.json(enrich.listSources(conn));
+    }));
+
+    api.post('/flights/:id/refresh', flightHandler(async (req, res, conn) => {
+        const result = await enrich.refresh(conn, req.params.id, { force: (req.body || {}).force === true, actor: 'admin' });
+        if (result.looked_up || result.status === 'updated') {
+            audit.record(conn, 'admin', 'flight_refreshed', { ...flights.auditDetail(result), results: result.results.map((r) => `${r.source}:${r.result}`) }, req.ip);
+        }
+        res.json(result);
     }));
 
     api.get('/flights/:id', flightHandler((req, res, conn) => {
