@@ -745,12 +745,13 @@ function statusChip(status) {
 
 function flightRow(f, unit) {
     const link = h('a', { class: 'row-link', href: flightHref(f.id), 'data-key': `flight:${f.id}` }, day(f.dep_local_date));
+    const live = rowExtras(f);
     return h('tr', { onclick: (event) => { if (!event.target.closest('a, button')) link.click(); } },
         h('td', { class: 'cell-main' }, link, f.dep_local ? h('span', { class: 'muted', text: ` ${clock(f.dep_local)}` }) : null),
-        h('td', { 'data-label': 'Route' }, h('span', { class: 'route' }, f.origin_iata, h('span', { class: 'route-arrow', 'aria-hidden': 'true', text: '→' }), hidden(' to '), f.dest_iata)),
+        h('td', { 'data-label': 'Route' }, h('span', { class: 'route' }, f.origin_iata, h('span', { class: 'route-arrow', 'aria-hidden': 'true', text: '→' }), hidden(' to '), f.dest_iata), live.gate),
         h('td', { 'data-label': 'Flight' }, flightName(f), f.airline_name ? h('span', { class: 'muted', text: ` ${f.airline_name}` }) : null),
         h('td', { 'data-label': 'Aircraft', class: f.aircraft_type ? '' : 'is-empty', text: f.aircraft_type || '' }),
-        h('td', { 'data-label': 'Status' }, statusChip(f.status)),
+        h('td', { 'data-label': 'Status' }, statusChip(f.status), live.delay),
         h('td', { 'data-label': 'Distance', class: f.distance_km != null ? 'num' : 'num is-empty', text: f.distance_km != null ? distanceText(f.distance_km, unit) : '' }),
         h('td', { class: 'cell-side only-narrow' }, h('a', { class: 'btn ghost icon-only', href: flightHref(f.id), tabindex: '-1', 'aria-hidden': 'true' }, icon('next'))));
 }
@@ -785,7 +786,7 @@ function select(label, name, value, options, onChange) {
     return sel;
 }
 
-function flightsTab(ctx, data, upcoming, trips, home) {
+function flightsTab(ctx, data, upcoming, trips, home, sources) {
     const q = ctx.route.query;
     const unit = getUnit();
     const f = { year: q.get('year') || '', airport: q.get('airport') || '', airline: q.get('airline') || '', status: q.get('status') || '', q: (q.get('q') || '').trim() };
@@ -844,7 +845,8 @@ function flightsTab(ctx, data, upcoming, trips, home) {
             all.length ? h('h2', { id: 'f-count', class: 'section-title', text: filtered ? `${shown.length} of ${plural(all.length, 'flight')}` : plural(all.length, 'flight') }) : null,
             data.total > all.length ? h('p', { class: 'note', text: `Showing the newest ${all.length} of ${data.total.toLocaleString()} flights.` }) : null,
             body),
-        homeRow);
+        homeRow,
+        sources ? sourcesCard(ctx, sources) : null);
 }
 
 /* ---------- Found flights tab ---------- */
@@ -992,13 +994,14 @@ export async function render(ctx) {
     const show = SHOW.some(([id]) => id === q.get('show')) ? q.get('show') : 'pending';
     const year = /^\d{4}$/.test(q.get('year') || '') ? q.get('year') : null;
 
-    const [cand, stats, list, upcoming, trips, settings] = await Promise.all([
+    const [cand, stats, list, upcoming, trips, settings, sources] = await Promise.all([
         ctx.api(`/flights/candidates?status=${tab === 'found' ? show : 'pending'}&limit=${tab === 'found' ? 200 : 1}`),
         tab === 'passport' ? ctx.api(`/flights/stats${year ? `?year=${year}` : ''}`) : null,
         tab === 'flights' ? ctx.api('/flights?limit=500') : null,
         tab === 'flights' ? ctx.api('/flights/upcoming?limit=3') : null,
         tab === 'flights' ? ctx.api('/flights/trips') : null,
         tab === 'flights' ? ctx.api('/flights/settings') : null,
+        tab === 'flights' ? ctx.api('/flights/sources').catch(() => null) : null,
     ]);
     let home = null;
     if (settings && settings.home_airport) {
@@ -1039,7 +1042,7 @@ export async function render(ctx) {
                 found: h('a', { class: 'btn quiet small', href: tabHref('found'), text: `Review ${plural(pending, 'found flight')}` }),
             },
         });
-    } else if (tab === 'flights') panel = flightsTab(ctx, list, upcoming.flights, trips.trips, home);
+    } else if (tab === 'flights') panel = flightsTab(ctx, list, upcoming.flights, trips.trips, home, sources);
     else panel = foundTab(ctx, cand, show);
 
     return h('div', { class: 'view flights' },
