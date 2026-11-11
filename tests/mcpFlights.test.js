@@ -166,6 +166,25 @@ describe('mcp flights: suggest, add, edit', () => {
         expect(errorOf(await call('editor', { action: 'add', airline_iata: 'B6', flight_number: '15', origin_iata: 'JFK', dest_iata: 'BOS', sched_dep: '2030-04-01T08:00' }))).toBe('duplicate');
         expect(errorOf(await call('job', { action: 'edit', id: made.id, seat: '1A' }))).toBe('refused');
     });
+
+    test('sources (read) and refresh (flights:edit, write mode); edit locks enrichable fields, unlock frees them', async () => {
+        delete process.env.AERODATABOX_API_KEY;
+        const src = jsonOf(await call('reader', { action: 'sources' }));
+        expect(src.sources.find((s) => s.name === 'aerodatabox')).toMatchObject({ configured: false, kind: 'pull' });
+        expect(errorOf(await call('editor', { action: 'refresh', id: soon }))).toBe('refused');
+        writeMode();
+        expect(errorOf(await call('reader', { action: 'refresh', id: soon }))).toBe('refused');
+        const r = jsonOf(await call('editor', { action: 'refresh', id: soon }));
+        expect(r.results).toEqual([expect.objectContaining({ source: 'aerodatabox', result: 'not_configured' })]);
+        expect(JSON.stringify(r)).not.toContain(REF);
+        expect(errorOf(await call('editor', { action: 'refresh' }))).toBe('bad_request');
+        const e = jsonOf(await call('editor', { action: 'edit', id: soon, dep_gate: 'k4', delay_min: 12 }));
+        expect(e.locked_fields).toEqual(['delay_min', 'dep_gate']);
+        const got = jsonOf(await call('editor', { action: 'get', id: soon }));
+        expect(got).toMatchObject({ dep_gate: 'K4', delay_min: 12, locked_fields: ['delay_min', 'dep_gate'], source_says_cancelled: false });
+        expect(got.booking_ref).toBeUndefined();
+        expect(jsonOf(await call('editor', { action: 'edit', id: soon, unlock: ['dep_gate', 'delay_min'] })).locked_fields).toEqual([]);
+    });
 });
 
 describe('mcp flights: audit', () => {
