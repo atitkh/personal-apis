@@ -35,7 +35,7 @@ const CSP = [
 // Activity filters: which audit actions each chip shows.
 const ACTIVITY_TYPES = {
     all: null,
-    keys: ['key_created', 'key_revoked'],
+    keys: ['key_created', 'key_updated', 'key_revoked'],
     agents: ['mcp_call', 'domain_mcp_changed'],
     backups: ['backup_run'],
     domains: ['domain_enabled', 'domain_disabled', 'domain_mcp_changed'],
@@ -192,6 +192,24 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         } catch (err) {
             const dup = /UNIQUE/i.test(err.message);
             res.status(dup ? 409 : 400).json({ error: dup ? `A key named "${name}" is already active.` : err.message });
+        }
+    });
+
+    // Edit a live key in place: name and/or scopes. The secret never changes and is never returned.
+    api.patch('/keys/:id', (req, res) => {
+        const conn = db.get();
+        const id = Number(req.params.id);
+        const { name, scopes, confirm_all: confirmAll } = req.body || {};
+        try {
+            const out = apiKeys.update(conn, id, { name, scopes, confirmAll });
+            if (out.added.length || out.removed.length || out.renamedFrom) {
+                audit.record(conn, 'admin', 'key_updated', {
+                    id, name: out.key.name, ...(out.renamedFrom ? { renamed_from: out.renamedFrom } : {}), added: out.added, removed: out.removed,
+                }, req.ip);
+            }
+            res.json(out.key);
+        } catch (err) {
+            res.status(err.status || 500).json({ error: err.status ? err.message : 'Could not update the key.' });
         }
     });
 

@@ -23,7 +23,7 @@ const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backu
 const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
-    key_created: 'keys', key_revoked: 'keys',
+    key_created: 'keys', key_updated: 'keys', key_revoked: 'keys',
     domain_enabled: 'overview', domain_disabled: 'overview', domain_mcp_changed: 'agents',
     digest_edited: 'digests', digest_restored: 'digests',
     backup_run: 'backup', mcp_call: 'agents',
@@ -44,6 +44,15 @@ const readableScope = (s) => { const e = explain(s); return e.domain === '*' ? '
 function keyRef(d) {
     const name = d && d.name ? d.name : 'a key';
     return d && d.id ? h('a', { class: 'link', href: href('keys', [String(d.id)]), text: name }) : strong(name);
+}
+
+// " (renamed from x; added Flights observe; removed Places edit)" for a key_updated row.
+function keyChanges(d) {
+    const parts = [];
+    if (d && d.renamed_from) parts.push(`renamed from ${d.renamed_from}`);
+    if (d && d.added && d.added.length) parts.push(`added ${d.added.map(readableScope).join(', ')}`);
+    if (d && d.removed && d.removed.length) parts.push(`removed ${d.removed.map(readableScope).join(', ')}`);
+    return parts.length ? ` (${parts.join('; ')})` : '';
 }
 
 // A place by its label (ids and labels are all the audit log keeps; never a street).
@@ -68,6 +77,7 @@ function sentence(e) {
     case 'logout': return [who, ' signed out'];
     case 'login_failed': return ['Someone tried a wrong admin key'];
     case 'key_created': return [who, ' created key ', keyRef(d), d.scopes ? ` (${d.scopes.map(readableScope).join(', ')})` : ''];
+    case 'key_updated': return [who, ' updated key ', keyRef(d), keyChanges(d)];
     case 'key_revoked': return [who, ' revoked key ', keyRef(d)];
     case 'domain_enabled': return [who, ' turned on ', domainName(d.name)];
     case 'domain_disabled': return [who, ' turned off ', domainName(d.name)];
