@@ -1291,3 +1291,23 @@ td .chip { margin-left: 8px; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Key scope editing: the Keys drawer form and the Agent access cell drawer. */
+.access-form, .cell-editor { display: grid; gap: 14px; }
+.access-form .pick-groups { margin-top: 0; }
+.save-bar { display: grid; gap: 8px; position: sticky; bottom: -20px; margin: 0 -20px -20px; padding: 12px 20px 16px; background: var(--surface); border-top: 1px solid var(--line); z-index: 2; }
+.diff-line { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.diff-line.is-empty { color: var(--muted); font-weight: 400; }
+.diff-line.is-bad { color: var(--bad); }
+.mode-context { padding: 10px 12px; border-radius: var(--r-panel); background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); }
+.section-links { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.access-btn { display: block; width: 100%; min-height: 44px; position: relative; text-align: left; font: inherit; color: inherit; cursor: pointer;
+    background: transparent; border: 1px solid transparent; border-radius: var(--r-panel); padding: 6px 28px 6px 6px; }
+.access-btn:hover { background: var(--accent-soft); border-color: var(--line); }
+.access-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.access-edit { position: absolute; top: 6px; right: 6px; color: var(--muted); opacity: .55; display: inline-flex; }
+.access-btn:hover .access-edit, .access-btn:focus-visible .access-edit { opacity: 1; color: var(--accent); }
+.access-edit .icon { width: 16px; height: 16px; }
+@media (max-width: 640px) {
+    .access-btn { border-color: var(--line); padding-right: 32px; }
+}

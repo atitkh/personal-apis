@@ -1,11 +1,12 @@
-// API keys. #/keys is the table; #/keys/12 opens that key's drawer (scopes explained, recent agent calls,
-// revoke); #/keys?new=1 opens the create drawer (scope picker, the secret shown once with a copy button).
+// API keys. #/keys is the table; #/keys/12 opens that key's drawer (rename and edit its scopes in place, recent
+// agent calls, revoke); #/keys?new=1 opens the create drawer (scope picker, the secret shown once with a copy button).
 // The URL is the truth: closing a drawer goes back to #/keys.
 import {
     h, icon, button, plural, when, ago, dot, emptyState, errorState, toast, confirmDialog, openDrawer, copyButton, fact, hidden,
 } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 import { CATALOGUE, explain, scopeChip, scopeHue } from '../scopes.js';
+import { scopeEditor, saveKey, saveBar, APPLIES } from '../scopeEditor.js';
 
 let drawer = null;      // { kind: 'key' | 'new', id, handle, fromList }
 let lastWasList = false; // the previous render was the plain table (so closing a drawer can go back)
@@ -19,7 +20,55 @@ function closeDrawerTo(fromList) {
 
 /* ---------- key drawer ---------- */
 
-function keyDrawer(ctx, k, use) {
+// Rename and scope checkboxes for a live key. The secret stays; hooks.saved(updatedKey) rebuilds the drawer.
+function accessForm(ctx, k, hooks) {
+    const name = h('input', { type: 'text', id: 'ke-name', name: 'name', value: k.name, maxlength: '60', autocomplete: 'off', spellcheck: 'false', 'aria-describedby': 'ke-name-help' });
+    const renamed = () => name.value.trim() !== k.name;
+    const editor = scopeEditor({ initial: k.scopes, prefix: 'ke', onChange: () => bar.refresh() });
+    const bar = saveBar({
+        editor,
+        extraDirty: renamed,
+        extraDiff: () => (renamed() && name.value.trim() ? `Renames it to ${name.value.trim()}.` : ''),
+        onCancel: () => { name.value = k.name; name.removeAttribute('aria-invalid'); editor.reset(); },
+    });
+    name.addEventListener('input', () => bar.refresh());
+    hooks.dirty = () => editor.dirty() || renamed();
+    return h('form', {
+        class: 'access-form',
+        novalidate: true,
+        onsubmit: async (event) => {
+            event.preventDefault();
+            const nm = name.value.trim();
+            if (!nm) {
+                name.setAttribute('aria-invalid', 'true');
+                bar.error.textContent = 'Give the key a name.';
+                name.focus();
+                return;
+            }
+            name.removeAttribute('aria-invalid');
+            bar.save.disabled = true;
+            try {
+                const updated = await saveKey(ctx, k, { name: nm, scopes: editor.get() });
+                if (!updated) { bar.refresh(); return; } // backed out of the all-access confirmation
+                toast(`Saved ${updated.name}. It applies on the key's next call.`);
+                hooks.dirty = () => false;
+                await hooks.saved(updated);
+            } catch (err) {
+                bar.refresh();
+                bar.error.textContent = `Could not save. ${err.message}`;
+                toast(`Could not save the key. ${err.message}`, { kind: 'bad' });
+            }
+        },
+    },
+    h('div', { class: 'field' },
+        h('label', { for: 'ke-name', text: 'Name' }), name,
+        h('p', { class: 'help', id: 'ke-name-help', text: 'One active key per name. Agent calls are logged by name, so earlier calls stay under the old name after a rename.' })),
+    h('p', { class: 'note', text: APPLIES }),
+    editor.el,
+    bar.el);
+}
+
+function keyDrawer(ctx, k, use, hooks = {}) {
     const revoked = Boolean(k.revoked_at);
     const calls = h('div', { class: 'calls' }, h('p', { class: 'muted', text: 'Loading recent calls…' }));
 
@@ -64,12 +113,17 @@ function keyDrawer(ctx, k, use) {
                 fact('Key starts with', h('code', { text: `${k.key_prefix}…` })),
                 fact('Last used', k.last_used_at ? `${ago(k.last_used_at)} (${when(k.last_used_at)})` : 'Never'),
                 fact('Agent calls', use ? `${use.calls30d.toLocaleString()} in 30 days${use.lastCallAt ? `, last ${ago(use.lastCallAt)}` : ''}` : 'None'))),
-        h('section', { class: 'drawer-section', 'aria-labelledby': 'kd-scopes' },
-            h('h3', { id: 'kd-scopes', text: 'What it may do' }),
-            h('ul', { class: 'scope-list' }, k.scopes.map((s) => {
-                const e = explain(s);
-                return h('li', {}, h('div', { class: 'scope-line' }, scopeChip(s), h('code', { class: 'scope-code', text: s })), h('p', { class: 'scope-text', text: e.text }));
-            }))),
+        revoked
+            ? h('section', { class: 'drawer-section', 'aria-labelledby': 'kd-scopes' },
+                h('h3', { id: 'kd-scopes', text: 'What it may do' }),
+                h('p', { class: 'note', text: 'A revoked key cannot be edited. Create a new key to give access again.' }),
+                h('ul', { class: 'scope-list' }, k.scopes.map((s) => {
+                    const e = explain(s);
+                    return h('li', {}, h('div', { class: 'scope-line' }, scopeChip(s), h('code', { class: 'scope-code', text: s })), h('p', { class: 'scope-text', text: e.text }));
+                })))
+            : h('section', { class: 'drawer-section', 'aria-labelledby': 'kd-scopes' },
+                h('h3', { id: 'kd-scopes', text: 'Access' }),
+                accessForm(ctx, k, hooks)),
         reach ? h('section', { class: 'drawer-section', 'aria-labelledby': 'kd-reach' },
             h('h3', { id: 'kd-reach', text: 'Through the agent endpoint, right now' }),
             use.canWrite ? h('p', { class: 'warn-line' }, icon('warn'), 'Can change data') : null,
@@ -241,10 +295,25 @@ function openCreate(ctx, fromList) {
 }
 
 function openKey(ctx, k, use, fromList) {
+    const hooks = { dirty: () => false };
+    const rebuild = async (updated) => {
+        const agents = await ctx.api('/agents');
+        handle.setTitle(updated.name, 'API key');
+        handle.setContent(keyDrawer(ctx, updated, agents.keys.find((x) => x.id === updated.id), hooks));
+        ctx.rerender(); // the table and the chips behind the drawer
+    };
+    hooks.saved = rebuild;
     const handle = openDrawer({
         title: k.name,
         subtitle: k.revoked_at ? 'Revoked key' : 'API key',
-        content: keyDrawer(ctx, k, use),
+        content: keyDrawer(ctx, k, use, hooks),
+        beforeClose: async () => !hooks.dirty() || confirmDialog({
+            title: 'Discard your changes?',
+            body: `${k.name} has changes to its name or access that are not saved.`,
+            confirm: 'Discard changes',
+            cancel: 'Keep editing',
+            danger: true,
+        }),
         onClose: () => {
             const mine = drawer && drawer.handle === handle;
             if (mine) { drawer = null; closeDrawerTo(fromList); }
