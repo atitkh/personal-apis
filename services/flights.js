@@ -422,6 +422,58 @@ const hoursOf = (r) => (r.sched_dep && r.sched_arr ? (Date.parse(r.sched_arr) - 
 const round1 = (n) => Math.round(n * 10) / 10;
 const top = (map, n) => [...map.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, n);
 
+// Arrival delay in whole minutes (negative = early): actual vs scheduled arrival, else the stored delay_min, else
+// actual vs scheduled departure. null when none of these is known.
+function arrivalDelay(r) {
+    const diff = (a, b) => (a && b && Number.isFinite(Date.parse(a)) && Number.isFinite(Date.parse(b)) ? Math.round((Date.parse(a) - Date.parse(b)) / 60000) : null);
+    const byArr = diff(r.actual_arr, r.sched_arr);
+    if (byArr != null) return byArr;
+    if (r.delay_min != null) return r.delay_min;
+    return diff(r.actual_dep, r.sched_dep);
+}
+
+const ON_TIME_MIN = 15;
+const rate = (n, d) => (d ? Math.round((n / d) * 1000) / 1000 : null);
+
+// Punctuality over the flown flights in `rows` (already year-filtered) plus the year's cancelled count.
+function delayStats(rows, cancelled, names) {
+    const list = [];
+    for (const r of rows) {
+        const d = arrivalDelay(r);
+        if (d != null) list.push({ r, d });
+    }
+    const summary = (items) => {
+        const late = items.filter((x) => x.d > ON_TIME_MIN).length;
+        return { measured: items.length, on_time_rate: rate(items.length - late, items.length), avg_delay_min: items.length ? round1(items.reduce((s, x) => s + x.d, 0) / items.length) : null };
+    };
+    const base = summary(list);
+    let worst = null;
+    for (const x of list) if (x.d > 0 && (!worst || x.d > worst.delay_min)) worst = { id: x.r.id, route: `${x.r.origin_iata}-${x.r.dest_iata}`, airline_iata: x.r.airline_iata, flight_number: x.r.flight_number, date: x.r.dep_local_date, delay_min: x.d };
+    const group = (keyOf) => {
+        const m = new Map();
+        for (const x of list) { const k = keyOf(x.r); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }
+        return m;
+    };
+    const byAirline = [...group((r) => r.airline_iata).entries()].map(([code, items]) => ({ airline: code, name: names.get(code) || null, ...summary(items) }))
+        .sort((a, b) => b.measured - a.measured || (a.airline < b.airline ? -1 : 1)).slice(0, 5);
+    const byYear = [...group((r) => r.dep_local_date.slice(0, 4)).entries()].map(([year, items]) => ({ year, ...summary(items) }))
+        .sort((a, b) => (a.year < b.year ? -1 : 1));
+    return {
+        measured: base.measured,
+        of: rows.length,
+        on_time_rate: base.on_time_rate,
+        avg_delay_min: base.avg_delay_min,
+        total_delay_min: list.reduce((s, x) => s + (x.d > 0 ? x.d : 0), 0),
+        early_count: list.filter((x) => x.d < 0).length,
+        late_count: list.filter((x) => x.d > ON_TIME_MIN).length,
+        worst,
+        by_airline: byAirline,
+        by_year: byYear,
+        cancelled,
+        cancelled_rate: rate(cancelled, rows.length + cancelled),
+    };
+}
+
 function stats(db, { year, now: at = new Date() } = {}) {
     const y = cleanYear(year);
     const iso = new Date(at).toISOString();
@@ -445,6 +497,8 @@ function stats(db, { year, now: at = new Date() } = {}) {
     }
 
     const rows = y ? flown.filter((r) => r.dep_local_date.startsWith(y)) : flown;
+    const cancelledCount = db.prepare(`SELECT dep_local_date FROM flights WHERE status = 'cancelled'`).all()
+        .filter((r) => !y || r.dep_local_date.startsWith(y)).length;
     const visits = new Map();
     const countries = new Set();
     const airlines = new Map();
@@ -500,6 +554,7 @@ function stats(db, { year, now: at = new Date() } = {}) {
             .map((p) => ({ ...p, distance_km: Math.round(p.distance_km), hours: round1(p.hours) })),
         upcoming: upcomingCount,
         unmatched: { flights: unmatchedFlights, airports: [...unmatchedAirports].sort() },
+        delays: delayStats(rows, cancelledCount, names),
     };
 }
 

@@ -67,6 +67,15 @@ describe('admin flights view API: reading', () => {
         expect(JSON.stringify(s.map)).not.toMatch(/flight_number|booking|dep_local/);
     });
 
+    test('stats carry the delays block (punctuality) and the year narrows it; no booking reference in it', async () => {
+        const s = (await agent.get('/admin/api/flights/stats').expect(200)).body;
+        expect(Object.keys(s.delays).sort()).toEqual(['avg_delay_min', 'by_airline', 'by_year', 'cancelled', 'cancelled_rate', 'early_count', 'late_count', 'measured', 'of', 'on_time_rate', 'total_delay_min', 'worst']);
+        expect(s.delays.of).toBe(s.flights);
+        const y = (await agent.get('/admin/api/flights/stats?year=2025').expect(200)).body;
+        expect(y.delays.of).toBe(y.flights);
+        expect(JSON.stringify(s.delays)).not.toContain(REF);
+    });
+
     test('upcoming lists the next flights', async () => {
         const u = (await agent.get('/admin/api/flights/upcoming?limit=3').expect(200)).body;
         expect(u.flights.map((f) => f.flight_number)).toEqual(['400']);

@@ -212,6 +212,99 @@ describe('stats', () => {
     });
 });
 
+describe('stats: delays (punctuality)', () => {
+    const d = () => flights.stats(conn, { now: NOW }).delays;
+    // Scheduled 12:05-13:20Z on the day; `late` minutes after the scheduled arrival.
+    const lateBy = (day, late, extra = {}) => add({
+        flight_number: String(Number(day) * 100 + Math.abs(late)), sched_dep: `2026-03-${day}T12:05:00Z`, sched_arr: `2026-03-${day}T13:20:00Z`,
+        actual_dep: `2026-03-${day}T12:05:00Z`, actual_arr: new Date(Date.parse(`2026-03-${day}T13:20:00Z`) + late * 60000).toISOString(), ...extra,
+    });
+
+    test('empty: nothing measured, rates are null, nothing breaks', () => {
+        expect(d()).toEqual({
+            measured: 0, of: 0, on_time_rate: null, avg_delay_min: null, total_delay_min: 0, early_count: 0, late_count: 0,
+            worst: null, by_airline: [], by_year: [], cancelled: 0, cancelled_rate: null,
+        });
+        add();                                                          // flown, no actual times, no delay
+        expect(d()).toMatchObject({ measured: 0, of: 1, on_time_rate: null, avg_delay_min: null, worst: null });
+    });
+
+    test('one on-time flight', () => {
+        lateBy('01', 5);
+        expect(d()).toMatchObject({ measured: 1, of: 1, on_time_rate: 1, avg_delay_min: 5, total_delay_min: 5, early_count: 0, late_count: 0 });
+        expect(d().worst).toMatchObject({ route: 'LIT-DFW', airline_iata: 'AA', date: '2026-03-01', delay_min: 5 });
+    });
+
+    test('one flight 40 minutes late is late, the worst, and all the lost time', () => {
+        const id = lateBy('01', 40);
+        expect(d()).toMatchObject({ measured: 1, on_time_rate: 0, avg_delay_min: 40, total_delay_min: 40, late_count: 1 });
+        expect(d().worst).toEqual({ id, route: 'LIT-DFW', airline_iata: 'AA', flight_number: '140', date: '2026-03-01', delay_min: 40 });
+    });
+
+    test('exactly 15 minutes is still on time; early flights count negative and add no lost time', () => {
+        lateBy('01', 15);
+        lateBy('02', -10);
+        lateBy('03', 30);
+        const s = d();
+        expect(s).toMatchObject({ measured: 3, of: 3, early_count: 1, late_count: 1, total_delay_min: 45 });
+        expect(s.on_time_rate).toBeCloseTo(0.667, 3);
+        expect(s.avg_delay_min).toBe(11.7);
+    });
+
+    test('arrival delay falls back to delay_min, then to the departure delay; unmeasured flights are skipped', () => {
+        add({ flight_number: '1', delay_min: 25 });
+        add({ flight_number: '2', sched_dep: '2026-03-02T12:05:00Z', sched_arr: '2026-03-02T13:20:00Z', actual_dep: '2026-03-02T12:35:00Z' });
+        add({ flight_number: '3', sched_dep: '2026-03-03T12:05:00Z', sched_arr: '2026-03-03T13:20:00Z' });
+        const s = d();
+        expect(s).toMatchObject({ measured: 2, of: 3, late_count: 2, total_delay_min: 55 });
+        expect(s.worst.delay_min).toBe(30);
+    });
+
+    test('cancelled flights are counted, with their share of flown plus cancelled, and are not measured', () => {
+        lateBy('01', 0);
+        lateBy('02', 0);
+        lateBy('03', 0);
+        add({ flight_number: '9', sched_dep: '2026-04-01T12:00:00Z', sched_arr: null, status: 'cancelled' });
+        expect(d()).toMatchObject({ measured: 3, of: 3, cancelled: 1, cancelled_rate: 0.25 });
+    });
+
+    test('the year filter narrows every number, including cancelled', () => {
+        lateBy('01', 40);
+        add({ flight_number: '7', sched_dep: '2025-03-01T12:05:00Z', sched_arr: '2025-03-01T13:20:00Z', actual_arr: '2025-03-01T13:25:00Z' });
+        add({ flight_number: '8', sched_dep: '2025-04-01T12:05:00Z', sched_arr: null, status: 'cancelled' });
+        const y25 = flights.stats(conn, { year: '2025', now: NOW }).delays;
+        expect(y25).toMatchObject({ measured: 1, of: 1, on_time_rate: 1, avg_delay_min: 5, cancelled: 1, cancelled_rate: 0.5 });
+        expect(y25.by_year.map((x) => x.year)).toEqual(['2025']);
+        const all = d();
+        expect(all).toMatchObject({ measured: 2, cancelled: 1 });
+        expect(all.by_year.map((x) => [x.year, x.measured, x.on_time_rate, x.avg_delay_min])).toEqual([['2025', 1, 1, 5], ['2026', 1, 0, 40]]);
+        expect(flights.stats(conn, { year: '2019', now: NOW }).delays).toMatchObject({ measured: 0, of: 0, on_time_rate: null });
+    });
+
+    test('by_airline: top five by measured count, ties by code, with each airline\'s rate and average', () => {
+        let day = 1;
+        const go = (air, late, n = 1) => { for (let i = 0; i < n; i++) { lateBy(String(day).padStart(2, '0'), late, { airline_iata: air, flight_number: String(100 + day) }); day += 1; } };
+        go('AA', 0, 3);
+        go('AA', 30, 1);
+        go('UA', 20, 2);
+        go('DL', 0, 2);
+        go('WN', 0, 1);
+        go('B6', 0, 1);
+        go('F9', 0, 1);
+        const by = d().by_airline;
+        expect(by.map((a) => a.airline)).toEqual(['AA', 'DL', 'UA', 'B6', 'F9']);
+        expect(by[0]).toMatchObject({ measured: 4, on_time_rate: 0.75, avg_delay_min: 7.5 });
+        expect(by[2]).toMatchObject({ measured: 2, on_time_rate: 0, avg_delay_min: 20 });
+    });
+
+    test('unknown airports still count; no booking reference or notes anywhere in the delays', () => {
+        lateBy('01', 20, { origin_iata: 'QQZ', booking_ref: 'ZZ9ZZ9', notes: 'secretnote' });
+        const s = flights.stats(conn, { now: NOW });
+        expect(s.delays).toMatchObject({ measured: 1, late_count: 1, worst: { route: 'QQZ-DFW' } });
+        expect(JSON.stringify(s)).not.toMatch(/ZZ9ZZ9|secretnote/);
+    });
+});
+
 describe('trips and settings', () => {
     test('trips: create, list with counts, get with flights, update', () => {
         const t = flights.createTrip(conn, { title: ' Nepal ', start_date: '2026-06-01', end_date: '2026-07-01' }, 'tester');
