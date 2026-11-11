@@ -246,3 +246,41 @@ Next: stage B dashboard (drawer fields, lock chips with Unlock, Data sources car
 stage C `flights_scan.py --status` pushing Gmail observations (needs a key with flights:read +
 flights:observe); stage D live AeroDataBox test. Open: free-tier size and storage terms on API.Market;
 observations are never pruned (small, but grows by one row per lookup).
+
+## Flight data sources (enrichment), stage B dashboard (2026-11-10)
+Local commits only (not pushed, not deployed). No server change: stage A's admin API is used as is.
+
+- New module `routes/admin/public/flightlive.js` (plain browser JS, no build step); `views/flights.js` imports it.
+- Drawer (`#/flights/12`): top section **Live details**: delay chip (`+25 min`, `on time`, `N min early`), departure and
+  arrival columns (scheduled, estimated, actual in airport-local time, terminal, gate, baggage belt), aircraft type and
+  registration, and the "A data source reports this flight as cancelled. Set the status yourself if it is true." hint (a
+  chip plus the sentence; the status is never changed by it). Under it the **Refresh from sources** button (`POST
+  /admin/api/flights/:id/refresh`, a Force checkbox or Shift sends `force: true`) and a per-source result list in plain
+  words (updated: fields, nothing new, skipped looked up recently, skipped over 30 days, cap reached, not configured,
+  failed: code); the flight reloads afterwards. Deviation from the brief: the button is disabled only when no pull source
+  is switched on (hint: "No source is switched on..."); with sources on but no key it stays clickable and says "No
+  source has a key yet, so a refresh will only say so", so the "not configured" result can be seen.
+- Edit form: new collapsible "Live details by hand" (estimated times, terminals, gates, belt, registration; local time
+  for the estimated times) plus the existing Actual times and Aircraft. A field in `locked_fields` gets a lock chip
+  ("Edited by hand", "Sources will not overwrite it.") and an Unlock button (`PATCH {unlock:[field]}`, asks first when
+  the form has unsaved edits). One line under the section: "Fields you edit here are locked so sources do not overwrite
+  them." Delay is read-only. Only changed fields are sent, as before. Compare view lists the live fields when set.
+- Flights tab: a row shows "Terminal B, gate B12" (small) under the route and a delay chip next to the status chip,
+  only when known. New **Data sources** card below Home airport: per source name, Configured / Not configured chip (never
+  a key), "Not checked against live data yet" chip while `verified` is false, one-line hint, on/off switch, priority
+  number with up/down buttons (renumbered 10, 20, ...; lower wins), monthly cap input (empty = no cap), "N / cap calls
+  this month" with a thin bar (Gmail: "Not counted"), the sentence that refresh is on demand only, **Save sources**
+  (`PUT /admin/api/flights/sources`, toast, error text, unsaved-changes note).
+- Not done: palette action "Refresh flight from sources" (optional, skipped); Overview untouched.
+- CSS: `.live-*`, `.lock-*`, `.refresh-*`, `.sources-card`, `.source-*`, `.usage-*` in style.css; icon `lock` in ui.js.
+- Browser checks (scratch hub, port 3999, scripts in the OpenClaw workspace `tmp/hub-flights-e2e/`):
+  `./reset.sh` then `docker run --rm -v /tmp/pa-flights:/app -v $PWD:/e2e -v /tmp/pa-scratch-data:/tmp/pa-scratch-data
+  -e HUB_DATA_DIR=/tmp/pa-scratch-data -w /app node:20 node /e2e/sources-seed.js` (three invented future flights: one
+  with AeroDataBox observations, one Gmail "cancelled", one plain; ids in `sources-ids.json`) then `node
+  run-sources.mjs` (18 checks: live details and delay chip, cancelled hint, Refresh "not configured", lock chip and
+  Unlock, list row, Data sources card, switch/priority/cap persistence, Refresh disabled when every source is off, dark
+  mode, 390 px). The old flow stays `./reset.sh; MORE="docker run --rm -v /tmp/pa-flights:/app -v $PWD:/e2e -v
+  /tmp/pa-scratch-data:/tmp/pa-scratch-data -e HUB_DATA_DIR=/tmp/pa-scratch-data -w /app node:20 node /e2e/more.js" node
+  run.mjs` (36 checks). Reseed with reset.sh between the two. Scratch container: `docker rm -f pa-scratch` when done.
+- Suite: 329 pass in node:20 (no test added: no admin behaviour changed; the "every admin module parses" test covers
+  flightlive.js).

@@ -80,7 +80,7 @@ export function liveDetails(f) {
         const shown = rows.filter(([, v]) => v);
         return h('div', { class: 'live-col' }, h('h4', { text: title }),
             shown.length
-                ? h('dl', { class: 'facts live-facts' }, shown.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]))
+                ? h('dl', { class: 'live-facts' }, shown.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]))
                 : h('p', { class: 'muted', text: 'Nothing yet' }));
     };
     const terminal = (t, g) => [['Terminal', t], ['Gate', g]];
@@ -218,8 +218,8 @@ export function refreshBar({ sources, lastResult, labelOf, onRefresh }) {
 
 // Small gate and terminal text for the departure, only when known.
 export function gateText(f) {
-    const parts = [f.dep_terminal ? `T${f.dep_terminal}` : null, f.dep_gate ? `gate ${f.dep_gate}` : null].filter(Boolean);
-    return parts.length ? parts.join(' ') : null;
+    const parts = [f.dep_terminal ? `Terminal ${f.dep_terminal}` : null, f.dep_gate ? `${f.dep_terminal ? 'gate' : 'Gate'} ${f.dep_gate}` : null].filter(Boolean);
+    return parts.length ? parts.join(', ') : null;
 }
 
 // Appended to the route cell and the status cell of a row.
@@ -323,7 +323,7 @@ export function sourcesCard(ctx, initial) {
 
     let saveBtn;
     function paint(focusKey) {
-        saveBtn = button({ text: busy ? 'Saving…' : 'Save', size: 'small', 'data-key': 'src-save', disabled: busy || !dirty(), onClick: save });
+        saveBtn = button({ text: busy ? 'Saving…' : 'Save sources', size: 'small', 'data-key': 'src-save', disabled: busy || !dirty(), onClick: save });
         root.replaceChildren(
             h('h2', { id: 'src-title', class: 'section-title', text: 'Data sources' }),
             h('p', { class: 'note', text: 'Flights are refreshed on demand only: press Refresh from sources in a flight. Nothing looks them up in the background. Where sources disagree, the lower priority number wins, and a field you edited by hand is never overwritten.' }),
@@ -331,7 +331,7 @@ export function sourcesCard(ctx, initial) {
             h('div', { class: 'row source-actions' }, saveBtn,
                 dirty() && !busy ? h('span', { class: 'note', text: 'You have unsaved changes.' }) : null,
                 month ? h('span', { class: 'muted', text: `Usage month: ${month}` }) : null),
-            error ? h('p', { class: 'error', role: 'alert', text: error }) : null);
+            error ? h('p', { class: 'error', role: 'alert', text: error }) : '');
         if (focusKey) {
             const alt = focusKey.startsWith('up:') ? `down:${focusKey.slice(3)}` : focusKey.startsWith('down:') ? `up:${focusKey.slice(5)}` : null;
             const el = [focusKey, alt].map((k) => k && root.querySelector(`[data-key="${k}"]`)).find((e) => e && !e.disabled);

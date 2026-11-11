@@ -972,7 +972,9 @@ label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ac
 .live-chips:empty { display: none; }
 .live-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; }
 .live-col h4 { margin: 0 0 6px; font-size: var(--fs-sm); }
-.live-facts { gap: 4px 16px; }
+.live-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; }
+.live-facts dt { color: var(--muted); }
+.live-facts dd { margin: 0; }
 .live-craft { margin: 0; }
 .delay-chip.is-ontime { background: var(--good-soft); }
 .delay-chip.is-slight { background: var(--warn-soft); }
