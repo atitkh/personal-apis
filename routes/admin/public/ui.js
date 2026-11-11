@@ -160,11 +160,12 @@ export function toggleSwitch({ checked, label, onChange, disabled = false, key }
 }
 
 // Segmented control as a radio group: one tab stop, arrow keys move and select.
-export function segmented({ options, value, label, onChange, iconOnly = false, key, cls = '' }) {
-    const group = h('div', { class: `segmented ${iconOnly ? 'icon-seg' : ''} ${cls}`.trim(), role: 'radiogroup', 'aria-label': label });
+// `pressed`: plain toggle buttons with aria-pressed (in a role=group) instead of radios; every button stays in the tab order.
+export function segmented({ options, value, label, onChange, iconOnly = false, key, cls = '', pressed = false }) {
+    const group = h('div', { class: `segmented ${iconOnly ? 'icon-seg' : ''} ${cls}`.trim(), role: pressed ? 'group' : 'radiogroup', 'aria-label': label });
     const buttons = options.map((o) => h('button', {
         type: 'button',
-        role: 'radio',
+        role: pressed ? null : 'radio',
         class: 'seg',
         'data-value': o.value,
         'data-key': key ? `${key}:${o.value}` : null,
@@ -177,8 +178,8 @@ export function segmented({ options, value, label, onChange, iconOnly = false, k
     const paint = (v) => {
         for (const b of buttons) {
             const on = b.dataset.value === v;
-            b.setAttribute('aria-checked', String(on));
-            b.tabIndex = on ? 0 : -1;
+            if (pressed) b.setAttribute('aria-pressed', String(on));
+            else { b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; }
         }
         group.dataset.value = v;
     };

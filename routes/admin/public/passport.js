@@ -89,6 +89,56 @@ export function routeMap(map, { home } = {}) {
     return wrap;
 }
 
+/* ---------- punctuality ---------- */
+
+const minutesText = (m) => {
+    const n = Math.round(Math.abs(m));
+    return n >= 60 ? `${Math.floor(n / 60)} h ${n % 60} min` : `${n} min`;
+};
+const signedMin = (m) => `${m > 0 ? '+' : m < 0 ? '\u2212' : ''}${Math.abs(Math.round(m))} min`;
+const pct = (r) => `${Math.round(r * 100)}%`;
+
+// The Punctuality section (s.delays). Late = more than 15 minutes after the scheduled arrival (the US DOT rule).
+function punctuality(d, year) {
+    const head = h('div', { class: 'section-head' },
+        h('h2', { id: 'pp-punct', class: 'section-title', text: 'Punctuality' }),
+        h('p', { class: 'muted', text: year ? `Flights in ${year}` : 'All flights' }));
+    if (!d || !d.measured) {
+        return h('section', { 'aria-labelledby': 'pp-punct', class: 'panel punct-panel', 'data-testid': 'punctuality' }, head,
+            h('p', { class: 'muted punct-empty', text: d && d.of
+                ? `No actual times for ${plural(d.of, 'flight')} yet, so there is nothing to measure. Punctuality appears once flights carry actual times.`
+                : 'No flights to measure yet.' }),
+            d && d.cancelled ? h('p', { class: 'help', text: `${plural(d.cancelled, 'flight')} cancelled.` }) : null);
+    }
+    const w = d.worst;
+    const worstTile = h('li', { class: 'stat-tile' },
+        h('p', { class: 'stat-value', text: w ? signedMin(w.delay_min) : 'None' }),
+        h('p', { class: 'stat-label', text: 'Worst delay' }),
+        w
+            ? h('p', { class: 'stat-sub' }, h('a', { class: 'link', href: `#/flights/${w.id}`, text: routeText(w.route) }),
+                ` ${w.airline_iata} ${w.flight_number}, ${dayLabel(w.date, { month: 'short', day: 'numeric', year: 'numeric' })}`)
+            : h('p', { class: 'stat-sub', text: 'Nothing arrived late' }));
+    const grid = h('ul', { class: 'stat-grid stat-grid-4', 'aria-label': 'Punctuality' },
+        tile('On-time rate', pct(d.on_time_rate), `${d.measured} of ${plural(d.of, 'flight')} measured`),
+        tile('Average delay', signedMin(d.avg_delay_min), d.avg_delay_min < 0 ? 'early on average' : d.avg_delay_min > 0 ? 'late on average' : 'on the dot on average'),
+        tile('Total time lost', minutesText(d.total_delay_min), d.late_count ? `${plural(d.late_count, 'flight')} more than 15 min late` : 'no flight more than 15 min late'),
+        worstTile);
+    const bars = d.by_airline.length
+        ? h('ul', { class: 'punct-bars', 'aria-label': 'On-time rate by airline' }, d.by_airline.map((a) => h('li', { class: 'punct-row' },
+            h('span', { class: 'punct-name', text: a.name || a.airline }),
+            h('span', { class: 'punct-bar', 'aria-hidden': 'true' }, h('span', { class: 'punct-fill', style: `width:${Math.max(2, Math.round(a.on_time_rate * 100))}%` })),
+            h('span', { class: 'punct-num', text: `${pct(a.on_time_rate)} on time` }),
+            h('span', { class: 'punct-sub muted', text: `${plural(a.measured, 'flight')}, ${signedMin(a.avg_delay_min)} avg` }))))
+        : null;
+    const notes = [];
+    if (d.measured < d.of) notes.push(`Actual times known for ${d.measured} of ${d.of} flights; older flights have none.`);
+    if (d.cancelled) notes.push(`${plural(d.cancelled, 'flight')} cancelled (${pct(d.cancelled_rate)} of flights flown or cancelled).`);
+    if (d.early_count) notes.push(`${plural(d.early_count, 'flight')} arrived early.`);
+    return h('section', { 'aria-labelledby': 'pp-punct', class: 'panel punct-panel', 'data-testid': 'punctuality' }, head, grid,
+        bars ? h('div', { class: 'punct-airlines' }, h('h3', { text: 'By airline' }), bars) : null,
+        notes.map((t) => h('p', { class: 'help', text: t })));
+}
+
 /* ---------- tiles, records, lists ---------- */
 
 function tile(label, value, sub) {
@@ -169,6 +219,7 @@ export function passportTab(ctx, s, { year, unit, links, pending }) {
     return h('div', { class: 'tab-panel', id: 'panel-passport', role: 'tabpanel', 'aria-labelledby': 'tab-passport' },
         h('div', { class: 'toolbar' }, nav, units),
         tiles(s, unit),
+        punctuality(s.delays, year),
         h('section', { 'aria-labelledby': 'pp-map', class: 'panel map-panel' },
             h('div', { class: 'section-head' },
                 h('h2', { id: 'pp-map', class: 'section-title', text: year ? `Where you flew in ${year}` : 'Where you have flown' }),

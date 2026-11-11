@@ -207,7 +207,7 @@ code, kbd { font-family: var(--font-mono); font-size: 0.92em; }
     background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm); cursor: pointer; white-space: nowrap;
 }
 .seg:hover { color: var(--ink); }
-.seg[aria-checked="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line-strong); }
+.seg[aria-checked="true"], .seg[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line-strong); }
 .seg:focus-visible { outline-offset: 1px; position: relative; z-index: 1; }
 .icon-seg .seg { padding: 0; width: 30px; justify-content: center; }
 .icon-seg .icon { width: 16px; height: 16px; }
@@ -920,6 +920,18 @@ label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ac
 .stat-value { font-size: var(--fs-xl); font-weight: 600; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .stat-label { font-weight: 600; }
 .stat-sub { color: var(--muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.stat-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.punct-panel { display: grid; gap: 12px; padding: 16px; }
+.punct-empty { margin: 0; }
+.punct-airlines { display: grid; gap: 8px; }
+.punct-airlines h3 { font-size: var(--fs-sm); }
+.punct-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.punct-row { display: grid; grid-template-columns: minmax(90px, 1.2fr) minmax(80px, 3fr) auto minmax(0, 1.6fr); gap: 12px; align-items: center; }
+.punct-name { font-weight: 600; overflow-wrap: anywhere; }
+.punct-bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.punct-fill { display: block; height: 100%; border-radius: 4px; background: var(--teal); }
+.punct-num { font-variant-numeric: tabular-nums; }
+.punct-sub { font-size: var(--fs-xs); }
 .map-panel { display: grid; gap: 12px; padding: 16px; }
 .map-wrap { position: relative; width: 100%; aspect-ratio: 360 / 142; border-radius: var(--r-ctl); overflow: hidden; background: var(--surface-2); }
 .route-map { display: block; width: 100%; height: 100%; }
@@ -1042,6 +1054,10 @@ input.iata::placeholder { text-transform: none; }
     .stat-tile:nth-child(3n + 1) { border-left: 0; }
     .stat-tile:nth-child(n + 4) { border-top: 1px solid var(--line); }
     .top-lists { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat-grid.stat-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat-grid-4 .stat-tile:nth-child(n) { border-left: 1px solid var(--line); border-top: 0; }
+    .stat-grid-4 .stat-tile:nth-child(2n + 1) { border-left: 0; }
+    .stat-grid-4 .stat-tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
     .skel .count-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
@@ -1050,6 +1066,9 @@ input.iata::placeholder { text-transform: none; }
     .stat-tile:nth-child(2n + 1) { border-left: 0; }
     .stat-tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
     .records, .top-lists, .up-list, .group-grid, .live-grid { grid-template-columns: minmax(0, 1fr); }
+    .punct-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 4px; }
+    .punct-bar { grid-column: 1 / -1; grid-row: 2; }
+    .punct-sub { grid-column: 1 / -1; grid-row: 3; }
     table.stack td.is-empty { display: none; }
     .skel .count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .skel .sk-map { height: 160px; }
