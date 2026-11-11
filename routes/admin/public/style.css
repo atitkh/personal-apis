@@ -966,6 +966,53 @@ label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ac
 .home-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 16px; }
 .home-row > .icon { color: var(--teal); }
 .home-row > p { flex: 1 1 260px; }
+/* Live details (data sources) */
+.live-details { display: grid; gap: 10px; }
+.live-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.live-chips:empty { display: none; }
+.live-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; }
+.live-col h4 { margin: 0 0 6px; font-size: var(--fs-sm); }
+.live-facts { gap: 4px 16px; }
+.live-craft { margin: 0; }
+.delay-chip.is-ontime { background: var(--good-soft); }
+.delay-chip.is-slight { background: var(--warn-soft); }
+.delay-chip.is-late { background: var(--bad-soft); font-weight: 600; }
+.cancel-hint-chip { border-style: dashed; border-color: var(--warn); background: var(--warn-soft); }
+.cancel-hint-chip .icon { width: 14px; height: 14px; color: var(--warn); }
+.cancel-hint { margin: 0; }
+.live-note { display: block; font-size: var(--fs-xs); font-weight: 400; }
+.lock-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 4px 0 0; }
+.lock-chip { border-style: dashed; background: var(--accent-soft); }
+.lock-chip .icon { width: 14px; height: 14px; color: var(--accent); }
+.lock-text { color: var(--muted); font-size: var(--fs-xs); }
+.lock-hint { margin: 12px 0 0; }
+.refresh-bar { display: grid; gap: 6px; }
+.force-check { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); cursor: pointer; }
+.force-check input { width: 16px; height: 16px; }
+.refresh-result { border: 1px solid var(--line); border-radius: var(--r-panel); padding: 8px 12px; background: var(--surface-2); }
+.refresh-result p { margin: 0 0 4px; }
+.refresh-result ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+/* Data sources card */
+.sources-card { display: grid; gap: 12px; margin-top: 16px; }
+.sources-card .section-title { margin: 0; }
+.source-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.source-row { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-panel); background: var(--surface); }
+.source-row.is-off .source-name { color: var(--muted); }
+.source-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.source-row .hint { margin: 0; }
+.source-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; }
+.source-controls .ctl { display: flex; align-items: center; gap: 8px; }
+.ctl-cap input { width: 110px; }
+.prio-num { min-width: 2.2em; text-align: center; font-variant-numeric: tabular-nums; }
+.cfg-yes { background: var(--good-soft); }
+.cfg-no { border-style: dashed; color: var(--muted); }
+.cfg-unverified { border-style: dashed; background: var(--warn-soft); }
+.usage { display: grid; gap: 4px; max-width: 420px; }
+.usage-text { margin: 0; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.usage-bar { display: block; height: 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.usage-fill { display: block; height: 100%; background: var(--teal); }
+.usage-bar.is-full .usage-fill { background: var(--bad); }
+.source-actions { margin-top: 2px; }
 .flights-table tbody tr { cursor: pointer; }
 .flights-table tbody tr:hover td { background: var(--surface-2); }
 
@@ -1000,7 +1047,7 @@ input.iata::placeholder { text-transform: none; }
     .stat-tile:nth-child(3n + 1) { border-left: 1px solid var(--line); }
     .stat-tile:nth-child(2n + 1) { border-left: 0; }
     .stat-tile:nth-child(n + 3) { border-top: 1px solid var(--line); }
-    .records, .top-lists, .up-list, .group-grid { grid-template-columns: minmax(0, 1fr); }
+    .records, .top-lists, .up-list, .group-grid, .live-grid { grid-template-columns: minmax(0, 1fr); }
     table.stack td.is-empty { display: none; }
     .skel .count-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .skel .sk-map { height: 160px; }

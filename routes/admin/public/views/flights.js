@@ -12,6 +12,9 @@ import {
 } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 import { passportTab, getUnit, distanceText } from '../passport.js';
+import {
+    liveDetails, liveFields, addLockNotes, refreshBar, rowExtras, sourcesCard, localInputValue, LIVE_TITLE,
+} from '../flightlive.js';
 
 const TABS = [['passport', 'Passport'], ['flights', 'Flights'], ['found', 'Found flights']];
 const SHOW = [['pending', 'Waiting'], ['accepted', 'Added'], ['dismissed', 'Dismissed'], ['all', 'All']];
@@ -264,7 +267,7 @@ function clean(v) {
 
 // mode: 'create' sends every filled field, 'edit' and 'accept' send only the fields the person changed (so a time
 // they did not touch keeps its instant even when an airport changes).
-function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirty }) {
+function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirty, live }) {
     const base = clean(values);
     const f = {};
     const from = airportField(ctx.api, { label: 'From', name: 'origin_iata', value: values.origin_iata, help: 'Airport code or city.' });
@@ -289,6 +292,8 @@ function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirt
 
     const error = h('p', { class: 'error', role: 'alert' });
     const save = button({ text: submit, type: 'submit', size: 'small', 'data-key': 'ff-save' });
+    // Edit mode only: the live fields (estimated times, terminals, gates, belt, registration) and the lock notes.
+    const extra = live ? liveFields(live.flight) : null;
 
     const current = () => ({
         airline_iata: f.airline_iata.value, airline_name: f.airline_name.value, flight_number: f.flight_number.value,
@@ -299,7 +304,7 @@ function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirt
     });
     const dirty = () => {
         const now = clean(current());
-        return trip.value === '__new' || FORM_FIELDS.some((k) => now[k] !== base[k]);
+        return trip.value === '__new' || FORM_FIELDS.some((k) => now[k] !== base[k]) || Boolean(extra && extra.dirty());
     };
 
     const group = (title, ...kids) => h('fieldset', { class: 'flight-group' }, h('legend', { text: title }), h('div', { class: 'group-grid' }, kids));
@@ -332,6 +337,7 @@ function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirt
                     body = Object.fromEntries(FORM_FIELDS.filter((k) => now[k] != null).map((k) => [k, now[k]]));
                 } else {
                     body = Object.fromEntries(FORM_FIELDS.filter((k) => now[k] !== base[k]).map((k) => [k, now[k]]));
+                    if (extra) Object.assign(body, extra.changes());
                 }
                 await onSave(body, { now });
             } catch (err) {
@@ -361,17 +367,26 @@ function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirt
         tx('seat', 'Seat', { maxlength: '8' }),
         ref,
         h('div', { class: 'wide-field' }, field('Notes', notes))),
-    h('details', { class: 'flight-extra' },
+    h('details', { class: 'flight-extra', open: Boolean(live && (values.actual_dep || values.actual_arr || (live.flight.locked_fields || []).some((k) => k === 'actual_dep' || k === 'actual_arr'))) },
         h('summary', { text: 'Actual times (optional)' }),
         h('div', { class: 'group-grid' },
             dt('actual_dep', 'Actual departure', 'The clock at the departure airport.'),
             dt('actual_arr', 'Actual arrival', 'The clock at the arrival airport.'))),
+    extra ? extra.el : null,
     error,
     h('div', { class: 'row' }, save, onCancel ? button({ text: 'Cancel', variant: 'quiet', size: 'small', onClick: onCancel }) : null));
+    if (live) addLockNotes(form, live.flight.locked_fields || [], live.onUnlock);
     return { el: form, dirty, save };
 }
 
 /* ---------- compare two revisions ---------- */
+
+// Live details lines, only for a flight that has any (older flights keep their old compare view).
+function liveSnapshot(f) {
+    const times = [['est_dep', f.dep_tz], ['est_arr', f.arr_tz]].filter(([k]) => f[k]).map(([k, tz]) => `${LIVE_TITLE[k]}: ${localInputValue(f[k], tz).replace('T', ' ')}`);
+    const text = ['dep_terminal', 'dep_gate', 'arr_terminal', 'arr_gate', 'baggage_belt', 'aircraft_reg'].filter((k) => f[k]).map((k) => `${LIVE_TITLE[k]}: ${f[k]}`);
+    return [...times, ...text, ...(f.delay_min != null ? [`Delay: ${f.delay_min} min`] : [])];
+}
 
 function snapshotLines(f, tripName) {
     return [
@@ -384,6 +399,7 @@ function snapshotLines(f, tripName) {
         `Status: ${STATUS[f.status] || f.status}${f.status_override ? ' (set by hand)' : ' (automatic)'}`,
         `Trip: ${f.trip_id ? tripName(f.trip_id) : 'none'}`,
         `Aircraft: ${f.aircraft_type || 'none'}`,
+        ...liveSnapshot(f),
         `Cabin: ${f.cabin || 'none'}`,
         `Seat: ${f.seat || 'none'}`,
         `Booking reference: ${f.booking_ref ? 'set' : 'none'}`,
@@ -411,6 +427,8 @@ function closeDrawerTo(fromList) {
 function flightDrawer(ctx, id, fromList, mark) {
     let flight = null;
     let trips = [];
+    let sources = null;      // pull and push sources (null when they could not load)
+    let lastRefresh = null;  // the answer of the last Refresh, shown under the button until the drawer closes
     let form = null;
     const tripName = (tid) => (trips.find((t) => t.id === tid) || { title: `trip ${tid}` }).title;
 
@@ -441,7 +459,8 @@ function flightDrawer(ctx, id, fromList, mark) {
     async function load(key) {
         const top = handle.body.scrollTop;
         try {
-            [flight, trips] = await Promise.all([ctx.api(`/flights/${id}`), ctx.api('/flights/trips').then((r) => r.trips)]);
+            [flight, trips, sources] = await Promise.all([ctx.api(`/flights/${id}`), ctx.api('/flights/trips').then((r) => r.trips),
+                ctx.api('/flights/sources').then((r) => r.sources).catch(() => null)]);
         } catch (err) {
             if (err.status === 401) return;
             if (err.status === 404) {
@@ -466,6 +485,7 @@ function flightDrawer(ctx, id, fromList, mark) {
             values: startValues(flight),
             trips,
             mode: 'edit',
+            live: { flight, onUnlock: unlock },
             submit: 'Save changes',
             onSave: async (body) => {
                 if (!Object.keys(body).length) { toast('Nothing changed', { kind: 'info' }); form.save.disabled = false; return; }
@@ -476,6 +496,33 @@ function flightDrawer(ctx, id, fromList, mark) {
             },
         });
         return form.el;
+    }
+
+    async function unlock(name) {
+        if (form && form.dirty() && !(await confirmDialog({ title: 'Discard your changes?', body: 'Unlocking reloads the flight. What you typed and did not save is lost.', confirm: 'Unlock and discard', danger: true }))) return;
+        try {
+            await ctx.api(`/flights/${flight.id}`, { method: 'PATCH', body: { unlock: [name] } });
+            toast(`${LIVE_TITLE[name] || name} unlocked: sources may fill it again`);
+            form = null;
+            await changed(`f-${name}`);
+        } catch (err) {
+            toast(`Could not unlock. ${err.message}`, { kind: 'bad' });
+        }
+    }
+
+    const sourceLabel = (name) => ((sources || []).find((s) => s.name === name) || { label: name }).label;
+
+    async function refresh(force) {
+        if (form && form.dirty() && !(await confirmDialog({ title: 'Discard your changes?', body: 'Refreshing reloads the flight. What you typed and did not save is lost.', confirm: 'Refresh and discard', danger: true }))) return;
+        try {
+            const res = await ctx.api(`/flights/${flight.id}/refresh`, { method: 'POST', body: force ? { force: true } : {} });
+            lastRefresh = res;
+            toast(res.status === 'updated' ? `Refreshed: ${res.fields.length ? res.fields.map((k) => (LIVE_TITLE[k] || k).toLowerCase()).join(', ') : 'updated'}` : res.results.length ? 'Refreshed, nothing new' : 'No source is switched on', { kind: res.status === 'updated' ? 'good' : 'info' });
+            form = null;
+            await changed('refresh-flight');
+        } catch (err) {
+            if (err.status !== 401) toast(`Could not refresh. ${err.message}`, { kind: 'bad' });
+        }
     }
 
     async function restore(rev) {
@@ -533,6 +580,10 @@ function flightDrawer(ctx, id, fromList, mark) {
         } });
 
         return [
+            h('section', { class: 'drawer-section', 'aria-labelledby': 'fd-live' },
+                h('h3', { id: 'fd-live', text: 'Live details' }),
+                liveDetails(flight),
+                refreshBar({ sources, lastResult: lastRefresh, labelOf: sourceLabel, onRefresh: refresh })),
             h('section', { class: 'drawer-section', 'aria-labelledby': 'fd-details' },
                 h('h3', { id: 'fd-details', text: 'Details' }),
                 details(),
