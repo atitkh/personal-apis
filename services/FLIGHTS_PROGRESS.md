@@ -425,7 +425,7 @@ Done (local commits, not pushed or deployed): the Globe placeholder is replaced 
   double-click / Home on LIT, focus tooltip, labels without overlaps or back labels, year switch keeps rotation and zoom, no
   frames after switching to Flat or leaving the page, dark palette, reduced motion (no spin, no idle frames, no inertia), 390 px
   with a real CDP touch drag (no horizontal scroll), no console errors. A requestAnimationFrame wrapper counts frames.
-  `run-passport.mjs` check 15 now expects the globe instead of the placeholder (main 17/17, plain 3/3). `run-sources.mjs` 14/18
+  `run-passport.mjs` check 13 now expects the globe instead of the placeholder (main 17/17, plain 3/3). `run-sources.mjs` 14/18
   (the known 4). `run.mjs` gives 34/36 on this code and 33-34/36 on the stage 1 commit: checks 25 and 26 (Accept all / Added
   view) fail on both today, and 29-34 are occasionally flaky (a drawer left open), not caused by the globe.
   Screenshots: `workspace/tmp/hub-flights-shots/globe-light.jpg`, `globe-dark.jpg`, `globe-mobile.jpg`.
