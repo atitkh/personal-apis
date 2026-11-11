@@ -284,3 +284,43 @@ Local commits only (not pushed, not deployed). No server change: stage A's admin
   run.mjs` (36 checks). Reseed with reset.sh between the two. Scratch container: `docker rm -f pa-scratch` when done.
 - Suite: 329 pass in node:20 (no test added: no admin behaviour changed; the "every admin module parses" test covers
   flightlive.js).
+
+## Flight data sources (enrichment), stage C Gmail status source (2026-11-10)
+Script in the OpenClaw workspace: `scripts/flights_status.py` (python3 -I, stdlib, reuses flights_scan.py's gog/fetch/
+date helpers). Gmail READ-ONLY through gog exactly like flights_scan.py. No hub code changed.
+
+- Run: `python3 -I scripts/flights_status.py --dry-run` (prints `<AIRLINE> <NUMBER> <date> <field names>`, pushes
+  nothing, keeps state), `python3 -I scripts/flights_status.py` (new mails only), `--rescan` (re-read all; still pushes
+  only what differs from the last push), `--days N` (flights departed in the last N days, default 30, plus every
+  upcoming one), `--max-threads N`. Key: `flights_observe_key` in ~/.config/personal-hub/config.json
+  (flights:read + flights:observe). State: ~/.config/personal-hub/flights_status_state.json (message ids, merged
+  per-flight values, a signature of the last push per flight; no booking refs, no mail text).
+- Flights from GET /hub/flights/upcoming + GET /hub/flights (dep_local_date in the window). Mails: airline senders with
+  status words in the subject (delay, gate, cancel, rescheduled, changed, check-in, boarding, departing, travel alert),
+  plus travel-site boarding-pass/gate/delay subjects, from 330 days before the earliest covered flight. Upgrade offers,
+  SeatBid and similar marketing are skipped by subject.
+- Matching: one mail, at most one flight: airline + number + airport-local date from the mail; number + the mail's date
+  window when the mail gives no date (Frontier gate change); booking ref (in memory only) for mails with no flight
+  number (Frontier "departing from gate"; cancellations, then up to 400 days ahead).
+- Push: one observation per flight carrying everything Gmail knows (the hub keeps only the newest observation per
+  source); per field the newest mail wins; est_dep/est_arr in UTC (converted with the hub's dep_tz/arr_tz), delay_min =
+  est_dep - sched_dep; an estimate equal to the schedule is not sent and clears an older mail's estimate. source_status:
+  newest of cancelled/delayed/schedule_change/gate_change, else boarding/check_in. Check-in reminders without a gate are
+  not pushed.
+- Formats: Frontier delay ("new estimated departure time is ..."), gate change ("updated to Gate X"), "departing from
+  gate X" (+ "at Terminal X"), Important Travel Information (delay); American delay/rebook blocks (times, Terminal:,
+  Gate: both ends); Korean Air delay/itinerary change (previous and new side by side, the new half is read; 00:01
+  placeholder times ignored); Cathay reschedule (labelled departure/arrival) and "flight details changed" (times before
+  the code, "+2" day offset; original itinerary ignored); Spirit cancellation (booking ref). Delta check-in mails carry
+  no gate/terminal (airports by name). United, Southwest and Qatar: no status mails in the mailbox, no patterns.
+- Run 2026-11-10 (30 days): 8 flights, 49 status-like mails scanned, 4 matched (Cathay), 3 observations pushed (CX 891,
+  603, 640: schedule_change only; the hub's schedule already matches the newest mails, so no time fields), 42 outside
+  the window, 0 unmatched. Re-run and --rescan push nothing. A wide dry run (--days 900) matched 27 mails to 17 flights
+  (F9 16 mails, CX 4, KE 2, AA 2, NK 1) and was spot-checked against the mails (KE 1431 +15, AA 280 terminals/gates,
+  F9 3293 +40 and newest gate, CX 640 cleared by the newer reschedule). Old flights were not pushed.
+- Lock check on a scratch hub (invented flight, dep_gate edited by hand): a Gmail push with dep_gate, est_dep and
+  delay_min merged est_dep/delay_min and left dep_gate as edited. No live flight has locked fields.
+- Gaps: not scheduled (run by hand or add a cron later); a field dropped from a later push stays on the flight (the merge
+  only writes values it has); a mail processed while its flight was not in the hub is not re-read without --rescan;
+  five Frontier July mails for a friend's flights (not in the hub) stay unmatched; check-in mails give no gates for any
+  airline seen; no baggage belt in any mail seen.
