@@ -948,6 +948,24 @@ label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ac
     background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: .02em; line-height: 16px;
 }
 .map-label.is-home { color: var(--accent); }
+.map-label.pos-below { transform: translate(-50%, 35%); }
+.map-label.pos-right { transform: translate(7px, -50%); }
+.map-label.pos-left { transform: translate(calc(-100% - 7px), -50%); }
+.map-label.is-hidden { visibility: hidden; }
+.map-host { display: grid; gap: 8px; }
+.seg-soon:not([aria-pressed="true"]) { opacity: .55; }
+.map-soon { display: grid; place-items: center; text-align: center; padding: 16px; }
+.heat-map .land { fill: color-mix(in srgb, var(--muted) 16%, var(--surface)); }
+.heat-map .heat-route { fill: none; stroke: var(--teal); stroke-width: 3.5px; stroke-linecap: round; vector-effect: non-scaling-stroke; mix-blend-mode: multiply; }
+.heat-map .heat-glow { mix-blend-mode: multiply; pointer-events: none; }
+[data-theme="dark"] .heat-map .heat-route, [data-theme="dark"] .heat-map .heat-glow { mix-blend-mode: screen; }
+.heat-map .heat-hit { fill: transparent; stroke: none; cursor: pointer; }
+.heat-map .heat-hit:focus-visible { stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; outline: none; }
+.map-tip { position: absolute; transform: translate(-50%, -140%); padding: 2px 8px; border-radius: 6px; pointer-events: none; white-space: nowrap; z-index: 2;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); font-size: 12px; font-weight: 600; line-height: 18px; }
+.heat-legend { display: flex; align-items: center; gap: 8px; }
+.heat-swatch { display: inline-block; width: 56px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--teal) 10%, transparent), var(--teal)); }
+
 .records-section { display: grid; gap: 12px; }
 .records { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .record { display: grid; gap: 2px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); }
