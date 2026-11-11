@@ -107,7 +107,7 @@ describe('dashboard API', () => {
         const root = path.join(__dirname, '../routes/admin/public');
         const files = ['.', 'views'].flatMap((dir) => fs.readdirSync(path.join(root, dir))
             .filter((f) => f.endsWith('.js')).map((f) => path.posix.join(dir, f).replace(/^\.\//, '')));
-        expect(files).toEqual(expect.arrayContaining(['app.js', 'skeletons.js', 'shortcuts.js', 'views/settings.js', 'views/flights.js', 'passport.js', 'worldmap.js', 'mapviews.js', 'globedata.js']));
+        expect(files).toEqual(expect.arrayContaining(['app.js', 'skeletons.js', 'shortcuts.js', 'views/settings.js', 'views/flights.js', 'passport.js', 'worldmap.js', 'mapviews.js', 'globedata.js', 'globe.js']));
         for (const file of files) {
             const source = fs.readFileSync(path.join(root, file), 'utf8');
             const check = spawnSync(process.execPath, ['--input-type=module', '--check'], { input: source, encoding: 'utf8' });
