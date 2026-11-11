@@ -957,6 +957,7 @@ label.check input { width: 18px; height: 18px; margin: 0; accent-color: var(--ac
 .map-soon { display: grid; place-items: center; text-align: center; padding: 16px; }
 .heat-map .land { fill: color-mix(in srgb, var(--muted) 16%, var(--surface)); }
 .heat-map .heat-route { fill: none; stroke: var(--teal); stroke-width: 3.5px; stroke-linecap: round; vector-effect: non-scaling-stroke; mix-blend-mode: multiply; }
+.heat-map .heat-stop { stop-color: var(--teal); }
 .heat-map .heat-glow { mix-blend-mode: multiply; pointer-events: none; }
 [data-theme="dark"] .heat-map .heat-route, [data-theme="dark"] .heat-map .heat-glow { mix-blend-mode: screen; }
 .heat-map .heat-hit { fill: transparent; stroke: none; cursor: pointer; }

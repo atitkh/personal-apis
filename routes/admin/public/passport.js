@@ -31,6 +31,11 @@ const minutesText = (m) => {
     return n >= 60 ? `${Math.floor(n / 60)} h ${n % 60} min` : `${n} min`;
 };
 const signedMin = (m) => `${m > 0 ? '+' : m < 0 ? '\u2212' : ''}${Math.abs(Math.round(m))} min`;
+const fill = (rate) => {
+    const el = h('span', { class: 'punct-fill' });
+    el.style.width = `${Math.max(2, Math.round(rate * 100))}%`;
+    return el;
+};
 const pct = (r) => `${Math.round(r * 100)}%`;
 
 // The Punctuality section (s.delays). Late = more than 15 minutes after the scheduled arrival (the US DOT rule).
@@ -61,7 +66,7 @@ function punctuality(d, year) {
     const bars = d.by_airline.length
         ? h('ul', { class: 'punct-bars', 'aria-label': 'On-time rate by airline' }, d.by_airline.map((a) => h('li', { class: 'punct-row' },
             h('span', { class: 'punct-name', text: a.name || a.airline }),
-            h('span', { class: 'punct-bar', 'aria-hidden': 'true' }, h('span', { class: 'punct-fill', style: `width:${Math.max(2, Math.round(a.on_time_rate * 100))}%` })),
+            h('span', { class: 'punct-bar', 'aria-hidden': 'true' }, fill(a.on_time_rate)),
             h('span', { class: 'punct-num', text: `${pct(a.on_time_rate)} on time` }),
             h('span', { class: 'punct-sub muted', text: `${plural(a.measured, 'flight')}, ${signedMin(a.avg_delay_min)} avg` }))))
         : null;

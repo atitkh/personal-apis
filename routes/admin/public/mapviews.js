@@ -5,6 +5,7 @@
 //   mapData = GET /admin/api/flights/stats -> `map`: { airports: [{ iata, city, lat, lon, visits }], routes: [{ a, b, flights }] }
 //             (airports the hub does not know are already left out; no flight numbers, dates or booking references)
 //   ctx     = { home: IATA or null, unit: 'km'|'mi', year: '2026'|null, isDark() }
+// The admin CSP forbids style attributes: styling goes through classes, SVG presentation attributes or el.style.
 // Plain DOM and inline SVG, no libraries and no network. The map is equirectangular (x = longitude + 180,
 // y = 90 - latitude), cropped to 84 N..58 S; the land outline is worldmap.js.
 import { h, svg, plural } from './ui.js';
@@ -149,13 +150,13 @@ export function heatView(container, map) {
     const maxVisits = Math.max(1, ...map.airports.map((a) => a.visits));
     const byCode = new Map(map.airports.map((a) => [a.iata, a]));
     const defs = svg('defs', {}, svg('radialGradient', { id: 'heat-glow' },
-        svg('stop', { offset: '0%', style: 'stop-color:var(--teal);stop-opacity:.95' }),
-        svg('stop', { offset: '35%', style: 'stop-color:var(--teal);stop-opacity:.5' }),
-        svg('stop', { offset: '100%', style: 'stop-color:var(--teal);stop-opacity:0' })));
+        svg('stop', { class: 'heat-stop', offset: '0%', 'stop-opacity': '.95' }),
+        svg('stop', { class: 'heat-stop', offset: '35%', 'stop-opacity': '.5' }),
+        svg('stop', { class: 'heat-stop', offset: '100%', 'stop-opacity': '0' })));
     const routes = [];
     for (const r of map.routes) {
         for (const d of arcPaths(byCode.get(r.a), byCode.get(r.b))) {
-            routes.push(svg('path', { class: 'heat-route', d, style: `opacity:${heatRouteOpacity(r.flights).toFixed(2)}`, 'data-flights': r.flights }));
+            routes.push(svg('path', { class: 'heat-route', d, opacity: heatRouteOpacity(r.flights).toFixed(2), 'data-flights': r.flights }));
         }
     }
     const tip = h('div', { class: 'map-tip', role: 'tooltip', hidden: true });
@@ -170,7 +171,7 @@ export function heatView(container, map) {
         const label = `${a.iata}${a.city ? `, ${a.city}` : ''}: ${plural(a.visits, 'visit')}`;
         glows.push(svg('circle', {
             class: 'heat-glow', cx: cx.toFixed(1), cy: cy.toFixed(1), r: r.toFixed(1), fill: 'url(#heat-glow)',
-            style: `opacity:${heatOpacity(level).toFixed(2)}`, 'data-iata': a.iata, 'data-visits': a.visits, 'data-level': level.toFixed(2),
+            opacity: heatOpacity(level).toFixed(2), 'data-iata': a.iata, 'data-visits': a.visits, 'data-level': level.toFixed(2),
         }));
         const spot = svg('circle', {
             class: 'heat-hit', cx: cx.toFixed(1), cy: cy.toFixed(1), r: Math.max(3, r * 0.55).toFixed(1), tabindex: '0', role: 'img',
