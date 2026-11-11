@@ -93,6 +93,20 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
   `services/FLIGHTS_PROGRESS.md` (stage 3). Teal channel, `g f`, nav and tab badges for found flights, palette entries.
 - Verified in headless Chrome on a scratch hub: 36 flow checks and 5 empty-hub checks (see the progress file). Tests: 294 pass.
 
+## Key scope editing (2026-11-11)
+
+- `apiKeys.update(db, id, { name?, scopes?, confirmAll? })` changes a live key in place; the secret and hash stay. Errors carry
+  `.status`: 400 (empty/invalid scopes, name not 1-60 chars, nothing to change, `*` without confirm), 404, 409 (revoked, or
+  the name is taken by another live key). `PATCH /admin/api/keys/:id` returns the key in `list()` shape, never the secret.
+- Granting `*` needs `confirm_all: true` in the body (the UI asks first). Narrowing, or renaming a key that already has `*`, does not.
+- Audit row `key_updated`: `{ id, name, renamed_from?, added: [...], removed: [...] }`, scope names only. A request that
+  changes nothing writes no row. It is in the Activity `keys` filter and has a sentence ("updated key x (added Flights observe; removed Places edit)").
+- No caching: `verify()` reads the key row on every request, so a change applies to the key's next call (tested on `/hub/places`,
+  `/hub/digests` and MCP `tools/list`).
+- Calls are logged by key name (`mcp_call` actor), so after a rename earlier calls stay under the old name and the drawer's
+  recent calls and the 30-day count start again under the new one. The rename help text says so.
+- Done: backend + tests (commits `Keys:`). UI stages (drawer, Agent access cells, browser checks) are listed below as they land.
+
 ## Open
 
 - Segmented options are 42 px tall on phones inside a 46 px control (the switch has a 44 px hit area);
