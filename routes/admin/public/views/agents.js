@@ -1,8 +1,11 @@
 // Agent access: per key and per domain what an agent can do right now (read, suggest, edit, publish) and why not,
 // the latest MCP calls (tool.action, key, time, outcome; never content), and the endpoint itself.
-// Every key name links to its drawer on the Keys page.
-import { h, icon, plural, when, ago, emptyState, copyButton, hidden, domainHue } from '../ui.js';
+// Every key name links to its drawer on the Keys page. Each key x domain cell is a button: it opens a drawer with
+// just that domain's scopes to change (the PATCH leaves the key's other scopes alone).
+import { h, icon, plural, when, ago, emptyState, copyButton, hidden, domainHue, openDrawer, confirmDialog, toast } from '../ui.js';
 import { href } from '../router.js';
+import { CATALOGUE } from '../scopes.js';
+import { scopeEditor, saveKey, saveBar, APPLIES } from '../scopeEditor.js';
 import { MCP_LABEL } from './overview.js';
 
 const VERB = { read: 'Read', suggest: 'Suggest', edit: 'Edit', publish: 'Publish', write: 'Write' };
@@ -45,6 +48,70 @@ function accessCell(verbs) {
         !yes.length && reasons.length ? h('p', { class: 'access-why', 'aria-hidden': 'true', text: `No access: ${reasons[0]}.` }) : null);
 }
 
+// What the domain's agent access means for this key, in plain words.
+function modeContext(d) {
+    if (!d || !d.enabled) return 'Domain is off: agents see nothing here until you switch it on on the Overview board.';
+    if (d.mcpMode === 'off') return 'Domain mode: Off: agents cannot use this domain until you allow agent access on the Overview board.';
+    if (d.mcpMode === 'read') return 'Domain mode: Read: write actions stay hidden until you switch the domain to Read and write on the Overview board.';
+    return 'Domain mode: Read and write: a key with the matching scopes can change data here.';
+}
+
+// A drawer for one key and one domain. Saves through the same PATCH as the Keys page.
+function openCell(ctx, k, t, d) {
+    const title = t.title || t.domain;
+    const hasDomain = CATALOGUE.some((x) => x.domain === t.domain);
+    const star = k.scopes.includes('*');
+    const guard = { dirty: () => false };
+    const intro = h('p', { class: 'note mode-context', text: modeContext(d) });
+    const overview = h('a', { class: 'link', href: href('overview'), text: 'Open the Overview board' });
+    const keyLink = h('a', { class: 'link', href: href('keys', [String(k.id)]), text: `Open ${k.name} on the Keys page` });
+    let body;
+    if (star || !hasDomain) {
+        body = [intro, h('p', { class: 'note', text: star
+            ? 'This key has all access (*), so it can use every domain. To narrow it, edit the key on the Keys page.'
+            : `${title} has no scopes to pick here. Edit the key on the Keys page.` }), h('p', {}, keyLink)];
+    } else {
+        const editor = scopeEditor({ initial: k.scopes, only: t.domain, prefix: `ac-${k.id}`, onChange: () => bar.refresh() });
+        const bar = saveBar({ editor, onCancel: () => handle.close() });
+        guard.dirty = () => editor.dirty();
+        body = [intro, h('p', {}, overview),
+            h('p', { class: 'note', text: `${APPLIES} Only ${title} scopes change here; the key's other scopes stay as they are.` }),
+            h('form', {
+                class: 'access-form',
+                novalidate: true,
+                onsubmit: async (event) => {
+                    event.preventDefault();
+                    bar.save.disabled = true;
+                    try {
+                        const updated = await saveKey(ctx, k, { scopes: editor.get() });
+                        if (!updated) { bar.refresh(); return; }
+                        toast(`Saved ${updated.name}. It applies on the key's next call.`);
+                        guard.dirty = () => false;
+                        handle.close(true);
+                        ctx.rerender();
+                    } catch (err) {
+                        bar.refresh();
+                        bar.error.textContent = `Could not save. ${err.message}`;
+                        toast(`Could not save the key. ${err.message}`, { kind: 'bad' });
+                    }
+                },
+            }, editor.el, bar.el)];
+    }
+    const handle = openDrawer({
+        title: `${k.name}: ${title}`,
+        subtitle: 'What this key may do in this domain',
+        content: h('div', { class: 'cell-editor' }, body),
+        beforeClose: async () => !guard.dirty() || confirmDialog({
+            title: 'Discard your changes?',
+            body: `${k.name} has unsaved changes to its ${title} access.`,
+            confirm: 'Discard changes',
+            cancel: 'Keep editing',
+            danger: true,
+        }),
+        returnFocus: () => document.querySelector(`[data-cell="${k.id}:${t.tool}"]`),
+    });
+}
+
 export async function render(ctx) {
     const [a, { domains }] = await Promise.all([ctx.api('/agents'), ctx.api('/domains')]);
     const active = a.keys.filter((k) => !k.revoked);
@@ -71,7 +138,19 @@ export async function render(ctx) {
                 h('th', { scope: 'col', text: 'Last call' }))),
             h('tbody', {}, active.map((k) => h('tr', {},
                 h('th', { scope: 'row', class: 'cell-main' }, h('a', { class: 'row-link', href: href('keys', [String(k.id)]), 'data-key': `ak:${k.id}` }, k.name)),
-                tools.map((t) => h('td', { 'data-label': t.title || t.domain }, accessCell(access(k, t, domainOf(t.domain))))),
+                tools.map((t) => {
+                    const verbs = access(k, t, domainOf(t.domain));
+                    const can = verbs.filter((v) => v.yes).map((v) => VERB[v.verb] || v.verb);
+                    return h('td', { 'data-label': t.title || t.domain },
+                        h('button', {
+                            type: 'button',
+                            class: 'access-btn',
+                            'data-cell': `${k.id}:${t.tool}`,
+                            'aria-haspopup': 'dialog',
+                            'aria-label': `${k.name}, ${t.title || t.domain}: ${can.length ? `can ${can.join(', ').toLowerCase()}` : 'no access now'}. Change access`,
+                            onclick: () => openCell(ctx, k, t, domainOf(t.domain)),
+                        }, accessCell(verbs), h('span', { class: 'access-edit', 'aria-hidden': 'true' }, icon('edit'))));
+                }),
                 h('td', { class: 'num', 'data-label': 'Calls, 30 days', text: k.calls30d.toLocaleString() }),
                 h('td', { 'data-label': 'Last call', text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }),
                 h('td', { class: 'cell-side only-narrow' }, h('a', { class: 'btn ghost icon-only', href: href('keys', [String(k.id)]), tabindex: '-1', 'aria-hidden': 'true' }, icon('next'))))))))
@@ -104,11 +183,13 @@ export async function render(ctx) {
     const endpointField = h('input', { type: 'text', class: 'secret', readonly: true, value: url, 'aria-label': 'Agent endpoint URL', onfocus: (e) => e.target.select() });
 
     return h('div', { class: 'view agents' },
-        h('p', { class: 'lede', text: "Agents reach the hub through one MCP endpoint. What a key can do depends on its scopes, whether the domain is on, and the domain's agent access on the overview." }),
+        h('p', { class: 'lede', text: "Agents reach the hub through one MCP endpoint. What a key can do depends on its scopes, whether the domain is on, and the domain's agent access on the overview. Select a cell to change what that key may do in that domain." }),
         h('section', { 'aria-labelledby': 'ag-matrix' },
             h('div', { class: 'section-head' },
                 h('h2', { id: 'ag-matrix', class: 'section-title', text: 'What each key can do now' }),
-                h('a', { class: 'link', href: href('overview'), text: 'Change domain access' })),
+                h('span', { class: 'section-links' },
+                    h('a', { class: 'btn small', href: href('keys', [], { new: '1' }), 'data-key': 'new-key-shortcut' }, icon('plus'), h('span', { text: 'New key' })),
+                    h('a', { class: 'link', href: href('overview'), text: 'Change domain access' }))),
             matrix,
             revokedCount ? h('p', { class: 'note', text: `${plural(revokedCount, 'revoked key')} not shown.` }) : null),
         h('section', { 'aria-labelledby': 'ag-calls' },
