@@ -376,3 +376,60 @@ placeholder and Heat, and label collision avoidance on the Flat map.
   "not configured" checks of `run-sources.mjs` (5 and 10) fail. With the `.env` out, `run-sources.mjs` gives 14 of 18: checks
   1, 3, 9 and 15 fail on the commit before this stage as well, because their seeded flights are in December and estimated
   times are only trusted within 72 h of departure (the stage D rule), so the seed needs flights dated within 72 h of "now".
+
+## Passport stage 2: the Globe (2026-11-11)
+
+Done (local commits, not pushed or deployed): the Globe placeholder is replaced by a real view (`MAP_VIEWS.globe` =
+`globeView` in `mapviews.js`, same contract as Flat and Heat; `globePlaceholder` is gone, nothing is `soon` any more).
+
+- **Data**: `routes/admin/public/globedata.js` (12.7 KB, 113 rings, about 2300 points) built by `scripts/globe-build.js` from
+  Natural Earth 110m land (public domain; the curl line is in the script header). RDP simplification at 0.25 degree, coordinates
+  in half-degree integers, one string per ring (first point absolute, then deltas), decoded by `landRings()`. Antarctica is
+  left out (rings entirely south of 60 S). Every ring is turned counter-clockwise at build time; the one hole (the Caspian) is
+  `GLOBE_LAKES`, drawn on top in the ocean colour. `worldmap.js` (Flat, Heat) is unchanged.
+- **Geometry** (`routes/admin/public/globe.js`, pure, no DOM): `project(lon, lat, rot)` (orthographic, rot = the centre point
+  {lon, lat}, returns [x, y, z], y up, z toward the viewer), `isFront`, `greatCircle(a, b, n)` (slerp), `arcLift` (bump of
+  0.03..0.2 radii by route length), `routeRuns` (48 lifted samples, a lifted point is hidden only when behind the sphere and
+  inside the disc), `lineRuns` (graticule, cut exactly at the horizon), `clipRing`, `midpoint`, `pathData`, clamps.
+  **Clipping**: a ring's vertices are projected; walking from a hidden vertex, the ring is cut into visible runs that start and
+  end where an edge's chord meets the plane z = 0 (normalised onto the horizon circle). Since rings are counter-clockwise and
+  the front hemisphere keeps orientation, land continues counter-clockwise along the horizon after a run leaves: each run is
+  joined to the run whose entry is nearest counter-clockwise from its exit, with horizon points every 6 degrees, until the
+  polygon closes. Fully visible rings pass through; fully hidden ones are dropped. A full clip of all land takes under 1 ms.
+- **View**: SVG 500 x 500, radius 205 x zoom (so the highest arcs fit at 1x). Layers: ocean circle, 30-degree graticule (dashed,
+  reuses `.graticule`), land (fill only: no stroke, so the antimeridian splits and the horizon do not show), lake, rim, route
+  arcs (`.arc arc-weak/mid/strong` like Flat), airport dots (radius 3..7.8 by sqrt of visits, home in the accent colour,
+  back-facing ones `.is-back` = display none), invisible focusable hit circles with the `.map-tip` tooltip "LIT · Little Rock
+  · 3 visits" on hover and focus (follows the dot while turning). Labels: up to 12 HTML labels with `placeLabels` (now takes
+  cached sizes and an `off` flag, so it can run every frame without layout reads; Flat behaves as before); labels near the limb
+  (z < 0.15) are hidden. Colours from CSS (`.globe-ocean/.globe-lake` = teal 9% over surface-2, land muted 28%), so dark and
+  light themes follow the page.
+- **Controls**: drag (pointer events, mouse, pen, touch; `touch-action: none` on the SVG only) turns it, vertical tilt clamped
+  to +/-80; inertia after release (friction 0.92 per 16 ms); pinch and wheel zoom, buttons − / + (x1.2), clamp 0.8x..2.5x;
+  Reset button, double-click and the Home key recentre on the home airport (settings `home_airport` if it is on the map, else
+  the most visited) at 1x; arrow keys turn by 10 degrees when the globe has focus, +/- zoom (tabindex 0, role img,
+  aria-label "Globe of N routes and M airports. ...", 3 px focus ring). Slow auto-spin (6 degrees/s eastward) until any
+  interaction; the Spin button (aria-pressed) toggles it. `prefers-reduced-motion: reduce`: no auto-spin, no inertia (Spin can
+  still be switched on by hand). Initial centre: the remembered rotation, else the home airport, else the visit-weighted
+  midpoint of the airports.
+- **Frames**: requestAnimationFrame with a dirty flag; frames only while spinning, coasting, or once per change; none while idle.
+  Rotation, zoom and spin state live in a module-level memo, so the year switcher (which re-renders the Passport) and switching
+  views keep the view; a reload starts fresh. `destroy()` cancels the pending frame, disconnects the ResizeObserver and removes
+  all listeners. The wrap exposes `data-lon/-lat/-zoom/-spin` for tests.
+- **Tests**: `tests/globe.test.js` (6 tests, runs globe.js in a child node process since jest is CommonJS: projection, great
+  circles across the date line, clipping of synthetic rings and of all land from 60 viewpoints, runs, clamps); both new files
+  are in the "every admin module parses" list. Jest 347 (was 341).
+- **Browser checks**: `tmp/hub-flights-e2e/run-globe.mjs` (scratch hub, `SEED=passport-seed.js sh reset.sh`): 19 checks, all
+  pass: render (sphere, land, 6 dots, 6 arcs), a11y, land inside the disc, auto-spin, hover tooltip, drag moves a dot, spin stops
+  on drag, inertia then zero idle frames, arrow keys and lat clamp, focus ring, zoom buttons/keys/wheel and clamps, Reset /
+  double-click / Home on LIT, focus tooltip, labels without overlaps or back labels, year switch keeps rotation and zoom, no
+  frames after switching to Flat or leaving the page, dark palette, reduced motion (no spin, no idle frames, no inertia), 390 px
+  with a real CDP touch drag (no horizontal scroll), no console errors. A requestAnimationFrame wrapper counts frames.
+  `run-passport.mjs` check 15 now expects the globe instead of the placeholder (main 17/17, plain 3/3). `run-sources.mjs` 14/18
+  (the known 4). `run.mjs` gives 34/36 on this code and 33-34/36 on the stage 1 commit: checks 25 and 26 (Accept all / Added
+  view) fail on both today, and 29-34 are occasionally flaky (a drawer left open), not caused by the globe.
+  Screenshots: `workspace/tmp/hub-flights-shots/globe-light.jpg`, `globe-dark.jpg`, `globe-mobile.jpg`.
+- **Known limits**: a ring that contained the whole visible hemisphere with every vertex hidden would be dropped (no 110m land
+  ring is that large); tiny slivers along the limb can have reversed winding (area < 1e-3, invisible); land detail is 110m
+  (small islands missing, coastlines coarse at 2.5x); the wheel zooms the globe instead of scrolling the page while the pointer
+  is over it; the globe SVG is role img with focusable airport circles inside (as Heat does); Reset jumps rather than animates.
