@@ -140,7 +140,7 @@ export function flatView(container, map, ctx = {}) {
 // Home returns to the home airport; arrow keys turn it when focused. It spins slowly until touched (Spin resumes);
 // prefers-reduced-motion means no spin and no inertia. Rotation, zoom and spin are kept for the page's life, so the
 // year switcher redraws without losing the view. The wrap carries data-lon/-lat/-zoom/-spin for tests.
-const G = { size: 500, radius: 230, spin: -0.006, friction: 0.92, keyStep: 10, zoomStep: 1.2 };
+const G = { size: 500, radius: 205, spin: -0.006, friction: 0.92, keyStep: 10, zoomStep: 1.2 };
 const globeMemo = { rot: null, zoom: 1, spin: true };
 export const resetGlobeMemo = () => Object.assign(globeMemo, { rot: null, zoom: 1, spin: true });
 let landCache = null;
