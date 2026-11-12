@@ -1,18 +1,11 @@
 const digests = require('../../../services/digests');
+const { adminHandler } = require('../../lib/handle');
 
 module.exports = (api, ctx) => {
-    const { db, audit } = ctx;
+    const { audit } = ctx;
 
     // ---- digests (the dashboard may read and edit them even while the domain is switched off) ----
-    const digestHandler = (fn) => (req, res) => {
-        try {
-            fn(req, res, db.get());
-        } catch (err) {
-            if (err instanceof digests.DigestError) return res.status(err.status).json({ error: err.message });
-            console.error('admin digest error:', err);
-            res.status(500).json({ error: 'Something went wrong.' });
-        }
-    };
+    const digestHandler = adminHandler(digests.DigestError, 'admin digest error:', { code: false });
 
     api.get('/digests', digestHandler((req, res, conn) => {
         const { kind, q, limit, offset, from, to } = req.query;

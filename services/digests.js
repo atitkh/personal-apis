@@ -1,6 +1,7 @@
 // Digests: dated narratives of Atit's days and weeks. Every change adds a revision; revision 1 is never
 // touched, so a human edit can always be compared with what was generated.
 const { HubError } = require('./errors');
+const { clampLimit, clampOffset } = require('./lib/listing');
 
 const PERIOD_RE = {
     daily: /^\d{4}-\d{2}-\d{2}$/,   // 2026-11-08, the local (America/Chicago) date
@@ -165,8 +166,8 @@ function list(db, { kind, from, to, limit = 50, offset = 0 } = {}) {
     if (kind) { check(kind, kind === 'daily' ? '2000-01-01' : '2000-W01'); where.push('d.kind = ?'); args.push(kind); }
     if (from) { where.push('d.period >= ?'); args.push(String(from)); }
     if (to) { where.push('d.period <= ?'); args.push(String(to)); }
-    const n = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 500);
-    const o = Math.max(parseInt(offset, 10) || 0, 0);
+    const n = clampLimit(limit, 50, 500);
+    const o = clampOffset(offset);
     const sql = `SELECT d.kind, d.period, d.current_rev AS rev, r.source, r.actor, r.model, r.meta, r.at AS revisedAt, length(r.body) AS chars
                  FROM digests d JOIN digest_revisions r ON r.digest_id = d.id AND r.rev = d.current_rev
                  ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY d.period DESC, d.kind LIMIT ? OFFSET ?`;
@@ -188,7 +189,7 @@ function search(db, q, { kind, limit = 20 } = {}) {
     const terms = String(q || '').match(/[\p{L}\p{N}]+/gu) || [];
     if (terms.length === 0) throw new DigestError(400, 'bad_query', 'Give at least one word to search for.');
     const match = terms.map((t) => `"${t}"`).join(' ');
-    const n = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const n = clampLimit(limit, 20, 100);
     const sql = `SELECT d.kind, d.period, snippet(digest_search, 0, '[', ']', '…', 14) AS snippet
                  FROM digest_search JOIN digests d ON d.id = digest_search.rowid
                  WHERE digest_search MATCH ? ${kind ? 'AND d.kind = ?' : ''} ORDER BY rank LIMIT ?`;
