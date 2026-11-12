@@ -7,7 +7,7 @@
 // The reference (a document or policy number) is masked until you press Show and appears only in the drawer and the
 // forms, never in a table, a toast or the palette. Server text goes in as text. Nothing is ever deleted.
 import {
-    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, openDrawer, chipNav, fact, hidden, actorName, dayLabel,
+    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, fact, hidden, actorName, dayLabel,
 } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
@@ -410,6 +410,20 @@ async function endIt(ctx, d) {
     }
 }
 
+// Permanent delete: the dialog says what goes and offers a backup first. Resolves the answer, or null when cancelled.
+async function deleteIt(ctx, d) {
+    let pre;
+    try { pre = await ctx.api(`/deadlines/${d.id}/delete-preview`); } catch (err) { if (err.status !== 401) toast(`Could not check what a delete would take. ${err.message}`, { kind: 'bad' }); return null; }
+    const out = await deleteDialog({
+        title: `Delete ${pre.label}?`,
+        goes: [`The deadline ${pre.label}`, plural(pre.counts.revisions, 'revision'), 'Any reminder for it in the briefing and on Today'],
+        stays: ['Anything outside this hub: the bill, the policy or the subscription itself'],
+        run: (o) => ctx.api(`/deadlines/${d.id}`, { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+    });
+    if (out) toast(`Deleted ${out.label}`);
+    return out;
+}
+
 /* ---------- the deadline drawer ---------- */
 
 function closeDrawerTo(fromList) {
@@ -526,6 +540,14 @@ function deadlineDrawer(ctx, id, fromList, mark) {
             ? [button({ text: item.repeat_kind === 'none' ? 'Mark done' : 'Done, roll to next date', iconName: 'check', 'data-key': 'drawer-done', onClick: act(() => markDone(ctx, item), 'drawer-done') }),
                 button({ text: 'End this deadline', variant: 'danger', iconName: 'close', 'data-key': 'drawer-end', onClick: act(() => endIt(ctx, item), 'history') })]
             : [button({ text: 'Reopen', iconName: 'retry', 'data-key': 'drawer-reopen', onClick: act(() => reopen(ctx, item), 'history') })];
+        buttons.push(button({ text: 'Delete permanently', variant: 'quiet-danger', iconName: 'trash', 'data-key': 'drawer-delete', onClick: async () => {
+            if (!(await deleteIt(ctx, item))) return;
+            form = null;
+            drawer = null;
+            handle.close(true);
+            closeDrawerTo(fromList);
+            ctx.rerender();
+        } }));
         return [
             h('section', { class: 'drawer-section', 'aria-labelledby': 'dd-state' },
                 h('h3', { id: 'dd-state', text: 'Status' }),
@@ -550,7 +572,7 @@ function deadlineDrawer(ctx, id, fromList, mark) {
                         button({ text: 'Compare', variant: 'quiet', size: 'small', label: `Compare revision ${r.rev} with the current one`, onClick: () => compare(r.rev) }),
                         button({ text: 'Restore', variant: 'quiet', size: 'small', label: `Restore revision ${r.rev}`, onClick: () => restore(r.rev) })))))),
             h('section', { class: 'drawer-section danger-zone' },
-                h('p', { class: 'note', text: 'A deadline is never deleted. Ending it keeps it and its history but stops the reminders.' })),
+                h('p', { class: 'note', text: 'Ending a deadline keeps it and its history but stops the reminders. Delete permanently removes it and its history for good.' })),
         ];
     }
 
@@ -624,6 +646,7 @@ function actionsFor(ctx, d) {
     return [
         button({ text: 'Reopen', variant: 'quiet', size: 'small', iconName: 'retry', label: `Reopen ${d.title}`, 'data-key': `reopen:${d.id}`, onClick: async () => { if (await reopen(ctx, d)) after(); } }),
         h('a', { class: 'btn quiet small', href: deadlineHref(d.id), 'aria-label': `Open ${d.title}`, text: 'Open' }),
+        button({ text: 'Delete', variant: 'quiet-danger', size: 'small', iconName: 'trash', label: `Delete ${d.title} permanently`, 'data-key': `delete:${d.id}`, onClick: async () => { if (await deleteIt(ctx, d)) after(); } }),
     ];
 }
 

@@ -28,6 +28,7 @@ const { today, dayDiff } = require('./briefing');
 const validate = require('./lib/validate');
 const { needRow, commitRevision, findRevision } = require('./lib/revisions');
 const { limitOrDefault, clampOffset } = require('./lib/listing');
+const { needConfirm, count } = require('./lib/remove');
 const { toId } = validate;
 
 const KINDS = ['document', 'insurance', 'license', 'subscription', 'membership', 'bill', 'task', 'other'];
@@ -374,7 +375,28 @@ function restore(db, id, rev, actor) {
     })();
 }
 
+/* ---------- permanent delete (admin only: never on /hub or MCP) ---------- */
+
+// The deadline and its revisions go. Nothing else refers to a deadline.
+function removalPreview(db, id) {
+    const d = need(db, id);
+    return { id: d.id, label: d.title, counts: { revisions: count(db, 'SELECT COUNT(*) AS n FROM deadline_revisions WHERE deadline_id = ?', d.id) } };
+}
+
+function remove(db, id, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const pre = removalPreview(db, id);
+        db.prepare('DELETE FROM deadlines WHERE id = ?').run(pre.id);
+        return { status: 'deleted', ...pre };
+    })();
+}
+
+// id, title and the revision count: never the reference, notes or amounts.
+const removedAuditDetail = (r) => ({ id: r.id, title: r.label, ...r.counts });
+
 module.exports = {
+    removalPreview, remove, removedAuditDetail,
     DeadlineError, KINDS, MONEY_KINDS, REPEATS, STATUSES, CYCLES, FIELDS, MONEY_FIELDS, DEFAULT_LEAD, DEFAULT_URGENT, LIST_MAX,
     shape, nextDue, daysLeft, windowOf, addMonths, addDays, rollDate,
     list, get, history, upcoming, stats, create, update, done, end, restore, auditDetail,

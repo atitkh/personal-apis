@@ -1,12 +1,14 @@
 const deadlines = require('../../../services/deadlines');
 const { adminHandler } = require('../../lib/handle');
 const { adminChanged } = require('../../lib/changed');
+const { removal } = require('../../lib/remove');
+const { needConfirm } = require('../../../services/lib/remove');
 
 module.exports = (api) => {
     // ---- deadlines: everything the dashboard needs. The admin sees every field, the private reference included.
     // Works while the domain is switched off. Changes are audited as `admin` with id, title, revision and field
     // names (deadlines.auditDetail), never values. Fixed words come before /deadlines/:id. ----
-    const deadlineHandler = adminHandler(deadlines.DeadlineError, 'admin deadlines error:', { extra: true });
+    const deadlineHandler = adminHandler(deadlines.DeadlineError, 'admin deadlines error:', { extra: true, async: true });
     const deadlineChanged = adminChanged(deadlines.auditDetail);
 
     api.get('/deadlines', deadlineHandler((req, res, conn) => {
@@ -41,4 +43,17 @@ module.exports = (api) => {
     api.post('/deadlines/:id/restore', deadlineHandler((req, res, conn) => {
         deadlineChanged(req, res, conn, 'deadline_restored', deadlines.restore(conn, req.params.id, (req.body || {}).rev, 'admin'));
     }));
+
+    // Permanent delete (admin only). Body { confirm: true, backup?: true }.
+    const bad = (code, message, status) => new deadlines.DeadlineError(status || 400, code, message);
+
+    api.get('/deadlines/:id/delete-preview', deadlineHandler((req, res, conn) => {
+        res.json(deadlines.removalPreview(conn, req.params.id));
+    }));
+
+    api.delete('/deadlines/:id', deadlineHandler((req, res, conn) => removal(req, res, conn, 'deadline_deleted', {
+        plan: () => { needConfirm(bad, req.body); deadlines.removalPreview(conn, req.params.id); },
+        run: () => deadlines.remove(conn, req.params.id, req.body),
+        detail: deadlines.removedAuditDetail,
+    })));
 };
