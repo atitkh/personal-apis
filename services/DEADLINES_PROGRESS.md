@@ -50,4 +50,4 @@ Dates Atit must not miss: documents, insurance, licences, subscriptions, members
   attention (both in `attention`); else due inside the briefing horizon -> info in `upcoming`. Ids `deadlines:<id>:due-<date>`.
 
 ## Checks
-- Whole jest suite run in /tmp/pa-flights (see the brief); results in the final report of the run that built this.
+- Whole jest suite (26 suites): 454 tests green (baseline 390, +64 for deadlines). Run in /tmp/pa-flights with docker node:20, not on the NFS mount.
