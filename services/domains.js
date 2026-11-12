@@ -40,6 +40,14 @@ const REGISTRY = {
         stats: (db) => require('./flights').overview(db),
         briefing: (db, o) => require('./briefingHooks').flights(db, o),
     },
+    deadlines: {
+        title: 'Deadlines',
+        sensitivity: 'private',   // document and policy numbers, what Atit pays for
+        storage: 'db',
+        defaultEnabled: true,
+        stats: (db) => require('./deadlines').stats(db),
+        briefing: (db, o) => require('./briefingHooks').deadlines(db, o),
+    },
 };
 
 const names = () => Object.keys(REGISTRY);
