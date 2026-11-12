@@ -147,3 +147,11 @@ What needs the user now (`attention`) and what is coming (`upcoming`), collected
 - The admin rate limit (600 requests per 15 minutes) counts static files; heavy reloading can hit it.
 - Places skeletons match at 1280; at 390 the loaded list (stacked rows) is taller than its skeleton.
 - Deleting a place from a drawer opened off a list goes back to that list view (history back), queue included.
+
+## Overview dedupe (2026-11-11)
+- The Overview had two blocks for the same three conditions (found flights waiting, spots waiting for a name, yesterday's digest missing): the old "Needs attention" panel (from `/admin/api/overview` counts) and the Today card (from `/admin/api/briefing`). Now the briefing is the one source:
+  - `views/overview.js`: `healthIssues(o)` keeps the panel's own hub-health lines (database, backup, portfolio). `isShared(id)` names the shared ids (`flights:candidates:pending`, `places:suggestions:pending`, `digests:missing:<date>`).
+  - The briefing is loaded once (the Today card's request) and shared: `todayCard(api, ctx, onData)` hands the response to `render`, which repaints the panel. The panel shows health lines first, then the shared lines from the briefing `attention` list (same hints and "Open digests / Name it / Review it" links as before). The Today card leaves those three ids out and still shows every other attention item and upcoming; when only shared items existed it says "Nothing else needs you".
+  - Fallback: while the briefing has not arrived, or when it fails (card shows its error with Retry), the panel builds the three lines from the overview counts (`sharedFromOverview`), so none disappears. The headline sentence counts the panel's lines, so it counts every old line. The all-clear "Checked: ..." text is unchanged (all six areas are still checked).
+  - Known differences: the briefing skips a domain that is switched off (the old panel still showed its line), and its 20-item cap could in theory cut a shared item; the panel line wording now follows the briefing text (plus a full stop).
+- Test: `tests/briefing.test.js` "admin briefing carries the three shared ids ... agrees with /admin/api/overview" (498 tests). Browser: scratch hub `run-overview.mjs` (14 seeded + 5 empty checks), `run-briefing.mjs` updated (card no longer repeats the three ids; links tested from the panel).
