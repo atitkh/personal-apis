@@ -52,6 +52,15 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'preferences',
+        title: 'Preferences',
+        scopes: [
+            { scope: 'preferences:read', label: 'Read', text: 'Read your preferences (seat, call hours, favourite airline, food and so on) through the agent endpoint and /hub. They are plain facts; passwords, numbers and keys are refused when stored.' },
+            { scope: 'preferences:edit', label: 'Edit', text: 'Lets an agent set preferences (create or change them by area and key) and unset them, through the agent endpoint, when Preferences is in write mode. Unset hides a preference and keeps its history. It does not let an agent restore older versions. It needs Read as well to see anything.', write: true },
+            { scope: 'preferences:write', label: 'Write', text: 'Add and change preferences, unset them and restore older versions, through the /hub REST API. It does not let an agent edit through the agent endpoint; that is Edit. It needs Read as well, because the answer is the preference.', write: true },
+        ],
+    },
+    {
         domain: 'attendance',
         title: 'Attendance',
         scopes: [
