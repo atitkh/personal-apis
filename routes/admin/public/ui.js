@@ -296,10 +296,10 @@ export function formDialog({ title, intro, fields, submit = 'Save', danger = fal
 }
 
 // "Delete permanently": a red confirm that says what goes (`goes`), what does not (`stays`) and that it cannot be undone,
-// with a "Back up the database first" box (on by default) and any `options` ({ name, label, help, checked }).
+// an optional `warn` sentence, with a "Back up the database first" box (on by default) and any `options` ({ name, label, help, checked }).
 // `run({ backup, ...options })` makes the request; its error stays in the dialog (a 409 explains itself). Resolves the
 // result of `run`, or null when cancelled.
-export function deleteDialog({ title, goes = [], stays = [], options = [], run }) {
+export function deleteDialog({ title, goes = [], stays = [], warn = null, options = [], run }) {
     const boxes = [
         { name: 'backup', label: 'Back up the database first', help: 'Saves a copy named hub-pre-delete-<time>.db next to the daily backups. If the copy fails, nothing is deleted.', checked: true },
         ...options,
@@ -321,6 +321,7 @@ export function deleteDialog({ title, goes = [], stays = [], options = [], run }
             list(goes),
             stays.length ? h('p', { class: 'dialog-intro' }, h('strong', { text: 'This does not delete' })) : null,
             stays.length ? list(stays) : null,
+            warn ? h('p', { class: 'dialog-intro', text: warn }) : null,
             h('p', { class: 'dialog-intro' }, h('strong', { text: 'This cannot be undone.' })),
         ],
         fields,

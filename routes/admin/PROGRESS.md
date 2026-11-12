@@ -226,3 +226,43 @@ Adding a domain (8 steps):
 6. Audit action names in `ACTIVITY_TYPES` (`api/activity.js`) and scope text in `routes/admin/public/scopes.js`.
 7. Tests, including the ones that pin the domain list (`tests/admin.test.js`, `tests/digests.test.js`) and the route-table snapshot (regenerate and commit).
 8. Dashboard view `routes/admin/public/views/<name>.js` + `router.register(...)` in `app.js` (nav, badge, palette, activity sentence). Optional: an agent tool in `services/mcp/domains/<name>.js`.
+
+## Deleting entries (hardening run 3, 2026-11-12)
+
+Real, permanent delete for entries, for wrong or unneeded ones. It is for a person at the dashboard only: **admin session +
+`X-Requested-With`, never on `/hub` REST or MCP**, no new scope. It works while a domain is switched off. The soft actions stay
+(preferences Remove, deadlines End, flights Cancel, candidates Dismiss).
+
+| Domain | Route (`/admin/api`) | Goes with it | Stays |
+|---|---|---|---|
+| flights | `DELETE /flights/:id` | revisions, observations; `forget_candidate` (default true) deletes the candidate(s) that became it so a Gmail scan can file it again; `false` keeps them with `accepted_flight_id = NULL` | the booking in Gmail; the trip |
+| trips | `DELETE /flights/trips/:id` | the trip; 409 `trip_in_use` (with `flights` count) while flights use it unless `unassign: true`; deadlines' plain `trip_id` is nulled | flights, deadlines |
+| found flights | `DELETE /flights/candidates/:id`, `DELETE /flights/candidates/dismissed` | the row(s) of any status / all dismissed | an accepted candidate's flight |
+| places | `DELETE /places/:id` | rules (exclude rules too), revisions | queue spots (link nulled), digests |
+| queue spots | `DELETE /places/suggestions/:id`, `.../suggestions/dismissed` | the row(s) | places |
+| deadlines | `DELETE /deadlines/:id` | revisions | |
+| preferences | `DELETE /preferences/:id` (removed or live) | revisions | |
+| digests | `DELETE /digests/:kind/:period` | revisions and the `digest_search` row | other days; the nightly job does not recreate a past day |
+
+Every delete: body `{ confirm: true }` (else 400 `confirm_required`), optional `backup: true` (takes
+`hub-pre-delete-<YYYYMMDD-HHMMSS>.db` with `services/backup.snapshotBeforeDelete` before anything is deleted; a failed backup
+answers 500 and deletes nothing; the newest 20 are kept, daily pruning ignores them; the Backups list shows them), one
+transaction, one audit row. Each domain also has `GET .../:id/delete-preview` (counts, no writes) which the dialog uses.
+Audit actions `flight_deleted`, `trip_deleted`, `flight_candidate_deleted`, `place_deleted`, `place_suggestion_deleted`,
+`deadline_deleted`, `preference_deleted`, `digest_deleted`: id + short label + counts (and the backup file name), never a booking
+reference, notes, a preference value, a street or digest text. All are in `ACTIVITY_TYPES` and have Activity sentences
+('deleted the flight AA 500 DFW-LIT').
+
+Code: `services/lib/remove.js` (`needConfirm`, `count`), `routes/lib/remove.js` (`removal`: plan, backup, run, audit; the domain
+handler must be `async: true`), per-domain `removalPreview` / `remove*` / `removedAuditDetail` in the service, UI `deleteDialog`
+in `ui.js` (red confirm, lists what goes and what stays, "Back up the database first" on by default, domain options, optional
+`warn`) and a `quiet-danger` button variant. Entry points: flight drawer (plus "Delete the trip" for its trip), Found flights rows
+and "Delete all dismissed (N)", place drawer, Needs a name rows and bulk, deadline drawer beside End and Done tab rows,
+preference drawer and Removed rows, digest reader.
+
+**Left as it was:** `/hub` still has `DELETE /hub/places/:id` and `DELETE /hub/places/:id/rules/:ruleId` (older than this run,
+scope places write). `tests/noRemoteDelete.test.js` pins the /hub DELETE routes to exactly those two and fails on any new one; it also
+checks that no MCP action is named delete/remove/destroy/purge/forget. Remove them from /hub if that API should lose them too.
+
+Tests: `adminDeleteFlights`, `adminDeletePlaces`, `adminDeleteEntries`, `noRemoteDelete`, `backup` (pre-delete snapshot);
+route-table snapshot gained only the new admin routes. Browser: `run-delete.mjs` on a scratch hub (`SEED=delete-seed.js ./reset.sh`).

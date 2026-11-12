@@ -33,7 +33,13 @@ async function runOnce(conn = db.get(), { keep = KEEP, force = false } = {}) {
 
 // A one-off copy taken just before a permanent delete: hub-pre-delete-<timestamp>.db next to the daily ones. The daily
 // pruning never touches these; the newest KEEP_PRE_DELETE are kept. Resolves to the file name; rejects if the copy fails.
-const PRE_DELETE_RE = /^hub-pre-delete-\d{8}-\d{6}(-\d+)?\.db$/;
+const PRE_DELETE_RE = /^hub-pre-delete-(\d{8}-\d{6})(?:-(\d+))?\.db$/;
+// oldest first: by time stamp, then by the collision number (plain names have none)
+const byAge = (a, b) => {
+    const [, sa, na = '1'] = PRE_DELETE_RE.exec(a);
+    const [, sb, nb = '1'] = PRE_DELETE_RE.exec(b);
+    return sa === sb ? Number(na) - Number(nb) : (sa < sb ? -1 : 1);
+};
 const KEEP_PRE_DELETE = 20;
 
 async function snapshotBeforeDelete(conn = db.get(), { keep = KEEP_PRE_DELETE, at = new Date() } = {}) {
@@ -52,7 +58,7 @@ async function snapshotBeforeDelete(conn = db.get(), { keep = KEEP_PRE_DELETE, a
         try { fs.unlinkSync(tmp); } catch (e) { /* nothing to clean */ }
         throw err;
     }
-    const old = fs.readdirSync(dir).filter((f) => PRE_DELETE_RE.test(f)).sort();
+    const old = fs.readdirSync(dir).filter((f) => PRE_DELETE_RE.test(f)).sort(byAge);
     for (const f of old.slice(0, Math.max(0, old.length - keep))) fs.unlinkSync(path.join(dir, f));
     return name;
 }

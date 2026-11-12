@@ -379,8 +379,8 @@ async function deleteDigest(ctx, kind, period) {
     const out = await deleteDialog({
         title: `Delete ${what}?`,
         goes: [`The ${kind === 'daily' ? 'digest' : 'weekly review'} for ${what}`, plural(pre.counts.revisions, 'revision'), 'Its entry in digest search'],
-        stays: ['The other days and weeks',
-            kind === 'daily' ? 'The nightly job will not write this day again: a past day is never recreated. The missing-digest warning only applies to yesterday.' : null].filter(Boolean),
+        stays: ['The other days and weeks'],
+        warn: kind === 'daily' ? 'The nightly job will not write this day again: a past day is never recreated. The missing-digest warning only applies to yesterday.' : null,
         run: (o) => ctx.api(`/digests/${kind}/${period}`, { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
     });
     if (!out) return;

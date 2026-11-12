@@ -32,6 +32,25 @@ describe('daily backup', () => {
         expect(await backup.runOnce(conn)).toBeNull();
     });
 
+    test('a pre-delete snapshot has its own name, is restorable, never collides, and is pruned on its own', async () => {
+        apiKeys.create(conn, { name: 'ha', scopes: 'attendance:read' });
+        const at = new Date('2026-11-12T06:01:57.123Z');
+        const a = await backup.snapshotBeforeDelete(conn, { at });
+        const b = await backup.snapshotBeforeDelete(conn, { at });
+        expect(a).toBe('hub-pre-delete-20261112-060157.db');
+        expect(b).toBe('hub-pre-delete-20261112-060157-2.db');
+        const copy = new Database(path.join(dir, 'backups', a), { readonly: true });
+        expect(copy.prepare('SELECT name FROM api_keys').all()).toEqual([{ name: 'ha' }]);
+        copy.close();
+        await backup.snapshotBeforeDelete(conn, { at: new Date('2026-11-13T00:00:00Z'), keep: 2 });
+        const left = fs.readdirSync(path.join(dir, 'backups')).filter((f) => backup.PRE_DELETE_RE.test(f)).sort();
+        expect(left).toEqual(['hub-pre-delete-20261112-060157-2.db', 'hub-pre-delete-20261113-000000.db']); // the older plain name went first
+        // the daily pruning and today's snapshot are not affected by them
+        expect(await backup.runOnce(conn)).toMatch(/hub-\d{4}-\d{2}-\d{2}\.db$/);
+        expect(fs.readdirSync(path.join(dir, 'backups')).filter((f) => backup.PRE_DELETE_RE.test(f))).toHaveLength(2);
+        expect(await backup.snapshotBeforeDelete(db.open(':memory:'))).toBeNull();
+    });
+
     test('keeps only the newest snapshots', () => {
         const backups = path.join(dir, 'backups');
         fs.mkdirSync(backups);
