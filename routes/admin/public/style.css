@@ -620,6 +620,26 @@ mark { background: var(--warn-soft); color: inherit; padding: 0 2px; border-radi
 .field-label { font-weight: 600; }
 fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 
+/* Today card */
+.today { display: grid; gap: 14px; align-content: start; }
+.today-head { align-items: center; flex-wrap: wrap; }
+.today-head h2 { font-size: var(--fs-md); }
+.today-lists { display: grid; gap: 16px; }
+.today-sub { font-size: var(--fs-sm); color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+.today-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.today-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 10px; border-radius: var(--r-ctl); background: var(--surface-2); }
+.today-item.sev-urgent { background: var(--bad-soft); }
+.today-item.sev-attention { background: var(--warn-soft); }
+.today-text { font-weight: 500; }
+.today-link { color: inherit; text-decoration: none; flex: 1 1 14rem; min-width: 0; }
+.today-link:hover .today-text { text-decoration: underline; }
+.today-item > .today-text { flex: 1 1 14rem; min-width: 0; }
+.today-date { font-size: var(--fs-xs); margin-left: auto; white-space: nowrap; }
+.sev-chip.sev-urgent { border-color: var(--bad); color: var(--bad); font-weight: 600; }
+.sev-chip.sev-attention { border-color: var(--warn); color: var(--warn); font-weight: 600; }
+.sev-chip.sev-info { color: var(--muted); }
+.today-more { margin: 0; font-size: var(--fs-xs); }
+
 /* chips */
 .chip {
     display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 9px;

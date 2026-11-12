@@ -3,7 +3,7 @@
 // Refetches when the tab comes back and every 60 s while it is visible.
 import {
     h, icon, toggleSwitch, segmented, confirmDialog, toast, emptyState,
-    plural, ago, domainHue, hidden,
+    plural, ago, domainHue, hidden, dayLabel, errorState,
 } from '../ui.js';
 import { dayBars, coverageStrip, legend } from '../charts.js';
 import { href } from '../router.js';
@@ -264,6 +264,89 @@ function headline(o, s, list) {
     return [first, second];
 }
 
+/* ---------- Today card (the briefing: what needs you, what is coming up) ---------- */
+
+const DAYS_KEY = 'hub-briefing-days';
+const HORIZONS = [14, 30, 60];
+const SEVERITY_WORD = { urgent: 'Urgent', attention: 'Attention', info: 'Info' };
+
+function savedDays() {
+    try {
+        const n = Number(localStorage.getItem(DAYS_KEY));
+        return HORIZONS.includes(n) ? n : 14;
+    } catch (e) { return 14; }
+}
+
+// Where an item leads: the record when its ref is known, otherwise the place that handles that kind of item.
+function itemLink(i) {
+    if (i.id.startsWith('flights:candidates')) return href('flights', [], { tab: 'found' });
+    if (i.id.startsWith('places:suggestions')) return href('places', [], { tab: 'queue' });
+    if (i.id.startsWith('digests:missing')) return href('digests');
+    if (i.ref && i.ref.domain === 'flights' && /^\d+$/.test(String(i.ref.id))) return href('flights', [String(i.ref.id)]);
+    return i.ref && i.ref.domain ? href(i.ref.domain) : null;
+}
+
+function todayItem(i, showSeverity) {
+    const link = itemLink(i);
+    const text = h('span', { class: 'today-text', text: i.text });
+    return h('li', { class: `today-item sev-${i.severity}`, 'data-id': i.id },
+        showSeverity ? h('span', { class: `chip sev-chip sev-${i.severity}` }, hidden('Severity: '), h('span', { text: SEVERITY_WORD[i.severity] || i.severity })) : null,
+        link ? h('a', { class: 'today-link', href: link }, text) : text,
+        i.date ? h('span', { class: 'today-date muted', text: dayLabel(i.date) }) : null);
+}
+
+function todayBody(b) {
+    if (!b.attention.length && !b.upcoming.length) {
+        return emptyState({ title: 'Nothing needs you right now.', text: `Nothing is coming up in the next ${b.days} days either.`, iconName: 'good' });
+    }
+    return h('div', { class: 'today-lists' },
+        b.attention.length ? h('section', { 'aria-label': 'Needs you' },
+            h('h3', { class: 'today-sub', text: 'Needs you' }),
+            h('ul', { class: 'today-list' }, b.attention.map((i) => todayItem(i, true)))) : null,
+        b.upcoming.length ? h('section', { 'aria-label': `Next ${b.days} days` },
+            h('h3', { class: 'today-sub', text: 'Coming up' }),
+            h('ul', { class: 'today-list' }, b.upcoming.map((i) => todayItem(i, false)))) : null,
+        b.more ? h('p', { class: 'today-more muted', text: `${plural(b.more, 'more item')} not shown.` }) : null);
+}
+
+function todayCard(api, ctx) {
+    let days = savedDays();
+    const body = h('div', { class: 'today-body', 'aria-live': 'polite' });
+    const seg = segmented({
+        options: HORIZONS.map((n) => ({ value: String(n), label: `Next ${n} days` })),
+        value: String(days),
+        label: 'Look-ahead',
+        key: 'today-days',
+        cls: 'today-seg',
+        onChange: (v) => {
+            days = Number(v);
+            try { localStorage.setItem(DAYS_KEY, String(days)); } catch (e) { /* private mode: not remembered */ }
+            seg.setValue(v);
+            load();
+        },
+    });
+    const skeleton = () => h('div', { class: 'skeleton-block skel', 'aria-busy': 'true', 'aria-label': 'Loading' },
+        h('div', { class: 'skeleton w-60' }), h('div', { class: 'skeleton w-80' }), h('div', { class: 'skeleton w-40' }));
+    let ticket = 0;
+    async function load() {
+        const mine = ++ticket;
+        body.replaceChildren(skeleton());
+        try {
+            const b = await api(`/briefing?days=${days}`);
+            if (mine === ticket && ctx.isCurrent()) body.replaceChildren(todayBody(b));
+        } catch (err) {
+            if (mine === ticket && ctx.isCurrent()) body.replaceChildren(errorState({ err, what: 'The briefing', retry: load }));
+        }
+    }
+    load();
+    return {
+        el: h('section', { class: 'panel today', 'aria-labelledby': 'today-title' },
+            h('div', { class: 'panel-head today-head' }, h('h2', { id: 'today-title', text: 'Today' }), seg),
+            body),
+        reload: load,
+    };
+}
+
 /* ---------- view ---------- */
 
 export async function render(ctx) {
@@ -275,6 +358,7 @@ export async function render(ctx) {
     const sub = h('p', { class: 'updated', 'aria-live': 'polite' });
     const b = board(api);
     const lower = h('div', { class: 'overview-lower' });
+    const today = todayCard(api, ctx);
     let fetchedAt = Date.now();
 
     function paint() {
@@ -294,7 +378,7 @@ export async function render(ctx) {
         try {
             [o, s] = await load();
             fetchedAt = Date.now();
-            if (ctx.isCurrent()) paint();
+            if (ctx.isCurrent()) { paint(); today.reload(); }
         } catch (err) {
             sub.replaceChildren(`Could not refresh${err.network ? ': the hub did not answer' : ''}. Showing data from ${new Date(fetchedAt).toLocaleTimeString()}. `,
                 h('button', { type: 'button', class: 'link', 'data-key': 'refresh-retry', onclick: () => refresh(), text: 'Retry' }));
@@ -314,6 +398,7 @@ export async function render(ctx) {
 
     return h('div', { class: 'overview' },
         h('div', { class: 'summary' }, lead, sub),
+        today.el,
         b.el,
         lower);
 }
