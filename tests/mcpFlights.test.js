@@ -21,8 +21,8 @@ beforeAll(() => {
     make('reader', 'flights:read');
     make('job', 'flights:read, flights:suggest');
     make('suggest-only', 'flights:suggest');
-    make('editor', 'flights:read, flights:edit');
-    make('rest-writer', 'flights:read, flights:write');
+    make('editor', 'flights:read, flights:agent-write');
+    make('rest-writer', 'flights:read, flights:api-write');
     make('all', 'flights:*');
     const conn = db.get();
     past = flights.create(conn, {
@@ -75,7 +75,7 @@ describe('mcp flights: what a key sees', () => {
         expect(t.annotations.readOnlyHint).toBe(true);
     });
 
-    test('write mode adds suggest with flights:suggest and add/edit with flights:edit; flights:write grants none', async () => {
+    test('write mode adds suggest with flights:suggest and add/edit with flights:agent-write; flights:api-write grants none', async () => {
         writeMode();
         expect(await actionsOf('reader')).toEqual(READ);
         expect(await actionsOf('rest-writer')).toEqual(READ);
@@ -152,7 +152,7 @@ describe('mcp flights: suggest, add, edit', () => {
         expect(errorOf(await call('reader', { action: 'suggest', ...args }))).toBe('refused');
     });
 
-    test('add and edit (flights:edit, write mode): revisions; a duplicate is refused', async () => {
+    test('add and edit (flights:agent-write, write mode): revisions; a duplicate is refused', async () => {
         expect(errorOf(await call('editor', { action: 'add', airline_iata: 'AA', flight_number: '1' }))).toBe('refused');
         writeMode();
         const made = jsonOf(await call('editor', { action: 'add', airline_iata: 'B6', flight_number: '15', origin_iata: 'JFK', dest_iata: 'BOS', sched_dep: '2030-04-01T08:00' }));
@@ -167,7 +167,7 @@ describe('mcp flights: suggest, add, edit', () => {
         expect(errorOf(await call('job', { action: 'edit', id: made.id, seat: '1A' }))).toBe('refused');
     });
 
-    test('sources (read) and refresh (flights:edit, write mode); edit locks enrichable fields, unlock frees them', async () => {
+    test('sources (read) and refresh (flights:agent-write, write mode); edit locks enrichable fields, unlock frees them', async () => {
         delete process.env.AERODATABOX_API_KEY;
         const src = jsonOf(await call('reader', { action: 'sources' }));
         expect(src.sources.find((s) => s.name === 'aerodatabox')).toMatchObject({ configured: false, kind: 'pull' });
@@ -197,10 +197,10 @@ describe('mcp flights: audit', () => {
         await settle();
         const rows = audit.recent(db.get(), 300).filter((e) => e.action === 'mcp_call').slice(0, 4).reverse();
         expect(rows.map((r) => r.detail)).toEqual([
-            { key: 'reader', tool: 'flights', action: 'list', ok: true },
-            { key: 'reader', tool: 'flights', action: 'get', ok: true },
-            { key: 'job', tool: 'flights', action: 'suggest', ok: true },
-            { key: 'editor', tool: 'flights', action: 'get', ok: false, error: 'not_found' },
+            { key: 'reader', key_id: expect.any(Number), tool: 'flights', action: 'list', ok: true },
+            { key: 'reader', key_id: expect.any(Number), tool: 'flights', action: 'get', ok: true },
+            { key: 'job', key_id: expect.any(Number), tool: 'flights', action: 'suggest', ok: true },
+            { key: 'editor', key_id: expect.any(Number), tool: 'flights', action: 'get', ok: false, error: 'not_found' },
         ]);
         expect(JSON.stringify(audit.recent(db.get(), 500))).not.toMatch(new RegExp(`${REF}|ZX9CAN|canary`, 'i'));
     });

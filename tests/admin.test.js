@@ -208,12 +208,12 @@ describe('dashboard API', () => {
     test('keys can be created (shown once), listed without the secret, and revoked', async () => {
         const agent = await signedIn(app);
 
-        const created = (await agent.post('/admin/api/keys').set(H).send({ name: 'digest', scopes: 'digest:write' }).expect(201)).body;
+        const created = (await agent.post('/admin/api/keys').set(H).send({ name: 'digest', scopes: 'digest:api-write' }).expect(201)).body;
         expect(created.key).toMatch(/^pak_/);
 
         const listed = (await agent.get('/admin/api/keys').expect(200)).body.keys;
         expect(JSON.stringify(listed)).not.toContain(created.key);
-        expect(listed.find((k) => k.id === created.id)).toMatchObject({ name: 'digest', scopes: ['digest:write'] });
+        expect(listed.find((k) => k.id === created.id)).toMatchObject({ name: 'digest', scopes: ['digest:api-write'] });
         expect(apiKeys.verify(db.get(), created.key)).not.toBeNull();
 
         await agent.post('/admin/api/keys').set(H).send({ name: 'digest', scopes: '*' }).expect(409);
@@ -412,7 +412,7 @@ describe('dashboard: editing a key', () => {
     });
 
     test('changes scopes in place, returns the key without a secret, and records added and removed names', async () => {
-        const k = mk('patch-scopes', 'places:read, places:edit');
+        const k = mk('patch-scopes', 'places:read, places:agent-write');
         const agent = await signedIn(app);
         const res = await agent.patch(`/admin/api/keys/${k.id}`).set(H).send({ scopes: ['places:read', 'flights:observe'] }).expect(200);
         expect(res.body).toMatchObject({ id: k.id, name: 'patch-scopes', scopes: ['places:read', 'flights:observe'], key_prefix: k.key.slice(0, 8) });
@@ -422,7 +422,7 @@ describe('dashboard: editing a key', () => {
         expect(apiKeys.verify(db.get(), k.key).scopes).toEqual(['places:read', 'flights:observe']);
 
         const row = audit.recent(db.get(), 1, { actions: ['key_updated'] })[0];
-        expect(row).toMatchObject({ actor: 'admin', action: 'key_updated', detail: { id: k.id, name: 'patch-scopes', added: ['flights:observe'], removed: ['places:edit'] } });
+        expect(row).toMatchObject({ actor: 'admin', action: 'key_updated', detail: { id: k.id, name: 'patch-scopes', added: ['flights:observe'], removed: ['places:agent-write'] } });
         expect(row.detail).not.toHaveProperty('renamed_from');
         expect(JSON.stringify(row)).not.toContain(k.key);
     });

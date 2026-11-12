@@ -17,10 +17,10 @@ let other;
 beforeAll(() => {
     const conn = db.get();
     reader = apiKeys.create(conn, { name: 'flights-reader', scopes: 'flights:read' }).key;
-    writer = apiKeys.create(conn, { name: 'flights-editor', scopes: 'flights:read, flights:write' }).key;
-    writeOnly = apiKeys.create(conn, { name: 'flights-blind', scopes: 'flights:write' }).key;
+    writer = apiKeys.create(conn, { name: 'flights-editor', scopes: 'flights:read, flights:api-write' }).key;
+    writeOnly = apiKeys.create(conn, { name: 'flights-blind', scopes: 'flights:api-write' }).key;
     suggester = apiKeys.create(conn, { name: 'flights-job', scopes: 'flights:suggest' }).key;
-    other = apiKeys.create(conn, { name: 'places-only', scopes: 'places:read, places:write' }).key;
+    other = apiKeys.create(conn, { name: 'places-only', scopes: 'places:read, places:api-write' }).key;
 });
 afterAll(() => db.close());
 
@@ -112,7 +112,7 @@ describe('flights over REST', () => {
 
         const rows = audit.recent(conn, 200).filter((r) => r.action.startsWith('flight_'));
         expect(rows.map((r) => r.action)).toEqual(expect.arrayContaining(['flight_created', 'flight_updated', 'flight_restored']));
-        expect(rows.find((r) => r.action === 'flight_created').detail).toEqual({ id: expect.any(Number), flight: expect.stringMatching(/^AA \d+ LIT-DFW/), rev: 1 });
+        expect(rows.find((r) => r.action === 'flight_created').detail).toEqual({ id: expect.any(Number), flight: expect.stringMatching(/^AA \d+ LIT-DFW/), rev: 1, key_id: expect.any(Number) });
         const raw = conn.prepare('SELECT detail FROM audit_log').all().map((r) => r.detail || '').join('\n');
         expect(raw).not.toMatch(/ZK[456]|booking/i);
     });
@@ -226,7 +226,7 @@ describe('found flights (candidates) over REST', () => {
     test('filing is audited with the flight label only', async () => {
         const rows = audit.recent(db.get(), 300).filter((e) => e.action === 'flight_candidate_filed');
         expect(rows.length).toBe(1);
-        expect(rows[0].detail).toEqual({ id: expect.any(Number), flight: 'DL 7101 MEM-ATL 2026-06-01' });
+        expect(rows[0].detail).toEqual({ id: expect.any(Number), flight: 'DL 7101 MEM-ATL 2026-06-01', key_id: expect.any(Number) });
         expect(JSON.stringify(audit.recent(db.get(), 500))).not.toContain(BOOKING);
     });
 

@@ -25,10 +25,10 @@ beforeAll(async () => {
     const conn = db.get();
     const make = (name, scopes) => { keys[name] = apiKeys.create(conn, { name, scopes }).key; };
     make('reader', 'flights:read');
-    make('writer', 'flights:read, flights:write');
+    make('writer', 'flights:read, flights:api-write');
     make('observer', 'flights:read, flights:observe');
     make('observe-only', 'flights:observe');
-    make('editor', 'flights:read, flights:edit');
+    make('editor', 'flights:read, flights:agent-write');
     agent = request.agent(app);
     await agent.post('/admin/api/login').set(H).send({ key: KEY }).expect(200);
 });
@@ -333,7 +333,7 @@ describe('REST /hub/flights', () => {
         expect(a).not.toMatch(/ZX9QW1/);
     });
 
-    test('sources: read for flights:read, change with flights:write; never a key value', async () => {
+    test('sources: read for flights:read, change with flights:api-write; never a key value', async () => {
         process.env.AERODATABOX_API_KEY = 'secret-value-canary';
         const res = await request(app).get('/hub/flights/sources').set(auth('reader')).expect(200);
         const a = res.body.sources.find((s) => s.name === 'aerodatabox');

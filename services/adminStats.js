@@ -150,7 +150,9 @@ function series(conn, { days = 14, now = new Date(), tz = process.env.DIGEST_TZ 
     const n = Math.min(Math.max(Math.trunc(Number(days)) || 14, 1), 90);
     const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz });
     const list = [];
-    for (let i = n - 1; i >= 0; i--) list.push(fmt.format(new Date(now.getTime() - i * 24 * 3600 * 1000)));
+    // Step whole calendar days from today's local date (24-hour steps repeat or skip a day around a clock change).
+    const [ty, tm, td] = fmt.format(now).split('-').map(Number);
+    for (let i = n - 1; i >= 0; i--) list.push(new Date(Date.UTC(ty, tm - 1, td - i)).toISOString().slice(0, 10));
     const out = new Map(list.map((day) => [day, { day, calls: 0, failed: 0, byTool: {} }]));
     // One extra day of rows covers the time zone offset; rows outside the window are dropped below.
     const since = new Date(now.getTime() - (n + 1) * 24 * 3600 * 1000).toISOString();

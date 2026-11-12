@@ -15,9 +15,9 @@ const make = (name, scopes) => { keys[name] = apiKeys.create(db.get(), { name, s
 
 beforeAll(() => {
     make('reader', 'preferences:read');
-    make('editor', 'preferences:read, preferences:edit');
-    make('edit-only', 'preferences:edit');
-    make('rest-writer', 'preferences:read, preferences:write');
+    make('editor', 'preferences:read, preferences:agent-write');
+    make('edit-only', 'preferences:agent-write');
+    make('rest-writer', 'preferences:read, preferences:api-write');
     make('other', 'flights:read');
     make('all', 'preferences:*');
     const conn = db.get();
@@ -59,12 +59,12 @@ describe('visibility per key and mode', () => {
         expect(await actionsOf('other')).toBeNull();
     });
 
-    test('write mode adds set and unset only with preferences:edit', async () => {
+    test('write mode adds set and unset only with preferences:agent-write', async () => {
         domains.setMcpMode(db.get(), 'preferences', 'write', 'test');
         expect(await actionsOf('reader')).toEqual(['get', 'list']);
         expect(await actionsOf('editor')).toEqual(['get', 'list', 'set', 'unset']);
         expect(await actionsOf('all')).toEqual(['get', 'list', 'set', 'unset']);
-        expect(await actionsOf('rest-writer')).toEqual(['get', 'list']); // preferences:write is REST only
+        expect(await actionsOf('rest-writer')).toEqual(['get', 'list']); // preferences:api-write is REST only
         expect(await actionsOf('edit-only')).toBeNull();
     });
 

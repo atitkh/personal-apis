@@ -18,9 +18,9 @@ let netflix;
 
 beforeAll(() => {
     make('reader', 'deadlines:read');
-    make('editor', 'deadlines:read, deadlines:edit');
-    make('edit-only', 'deadlines:edit');
-    make('rest-writer', 'deadlines:read, deadlines:write');
+    make('editor', 'deadlines:read, deadlines:agent-write');
+    make('edit-only', 'deadlines:agent-write');
+    make('rest-writer', 'deadlines:read, deadlines:api-write');
     make('other', 'flights:read');
     make('all', 'deadlines:*');
     const conn = db.get();
@@ -62,12 +62,12 @@ describe('visibility per key and mode', () => {
         expect(await actionsOf('other')).toBeNull();
     });
 
-    test('write mode adds add, edit, done and end only with deadlines:edit', async () => {
+    test('write mode adds add, edit, done and end only with deadlines:agent-write', async () => {
         domains.setMcpMode(db.get(), 'deadlines', 'write', 'test');
         expect(await actionsOf('reader')).toEqual(['get', 'list', 'upcoming']);
         expect(await actionsOf('editor')).toEqual(['add', 'done', 'edit', 'end', 'get', 'list', 'upcoming']);
         expect(await actionsOf('all')).toEqual(['add', 'done', 'edit', 'end', 'get', 'list', 'upcoming']);
-        expect(await actionsOf('rest-writer')).toEqual(['get', 'list', 'upcoming']); // deadlines:write is REST only
+        expect(await actionsOf('rest-writer')).toEqual(['get', 'list', 'upcoming']); // deadlines:api-write is REST only
         expect(await actionsOf('edit-only')).toBeNull();
     });
 
@@ -135,7 +135,7 @@ describe('reading: the reference stays out by default', () => {
 describe('writing', () => {
     beforeEach(() => domains.setMcpMode(db.get(), 'deadlines', 'write', 'test'));
 
-    test('add, edit, done and end for a key with deadlines:edit; results never carry the reference', async () => {
+    test('add, edit, done and end for a key with deadlines:agent-write; results never carry the reference', async () => {
         const added = jsonOf(await call('editor', { action: 'add', title: 'Renters insurance', kind: 'insurance', due_date: '2099-09-01', reference: 'POL-99-ZZ', lead_days: 30, urgent_days: 7, repeat_kind: 'yearly' }));
         expect(added).toMatchObject({ status: 'created', title: 'Renters insurance', rev: 1 });
         expect(JSON.stringify(added)).not.toContain('POL-99-ZZ');

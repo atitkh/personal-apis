@@ -420,6 +420,6 @@ describe('hub_briefing, GET /hub/briefing, GET /admin/api/briefing', () => {
         expect(briefing.visibleDomainsFor(db.get(), { scopes: ['places:read'] })).toEqual(['places']);
         expect(registry.visibleTools(db.get(), { scopes: ['places:read'] }).map((t) => t.def.domain)).toEqual(['places']);
         expect(briefing.visibleDomainsFor(db.get(), { scopes: ['deadlines:read'] })).toEqual(['deadlines']);
-        expect(briefing.visibleDomainsFor(db.get(), { scopes: ['deadlines:edit'] })).toEqual([]);
+        expect(briefing.visibleDomainsFor(db.get(), { scopes: ['deadlines:agent-write'] })).toEqual([]);
     });
 });

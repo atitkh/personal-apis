@@ -16,9 +16,9 @@ let other;
 beforeAll(() => {
     const conn = db.get();
     reader = apiKeys.create(conn, { name: 'deadlines-reader', scopes: 'deadlines:read' }).key;
-    writer = apiKeys.create(conn, { name: 'deadlines-editor', scopes: 'deadlines:read, deadlines:write' }).key;
-    writeOnly = apiKeys.create(conn, { name: 'deadlines-blind', scopes: 'deadlines:write' }).key;
-    other = apiKeys.create(conn, { name: 'flights-only', scopes: 'flights:read, flights:write' }).key;
+    writer = apiKeys.create(conn, { name: 'deadlines-editor', scopes: 'deadlines:read, deadlines:api-write' }).key;
+    writeOnly = apiKeys.create(conn, { name: 'deadlines-blind', scopes: 'deadlines:api-write' }).key;
+    other = apiKeys.create(conn, { name: 'flights-only', scopes: 'flights:read, flights:api-write' }).key;
 });
 afterAll(() => db.close());
 
@@ -126,7 +126,7 @@ describe('audit', () => {
         const mine = rows.filter((r) => r.detail.id === id);
         expect(mine.map((r) => r.action).sort()).toEqual(['deadline_created', 'deadline_done', 'deadline_ended', 'deadline_restored', 'deadline_updated']);
         const updated = mine.find((r) => r.action === 'deadline_updated');
-        expect(updated.detail).toEqual({ id, title: 'Gym', rev: 2, fields: ['reference', 'amount_cents', 'notes'] });
+        expect(updated.detail).toEqual({ id, title: 'Gym', rev: 2, fields: ['reference', 'amount_cents', 'notes'], key_id: expect.any(Number) });
         expect(mine.find((r) => r.action === 'deadline_done').detail).toMatchObject({ id, title: 'Gym', next_due: expect.any(String) });
         expect(updated.actor).toBe('deadlines-editor');
         const everything = JSON.stringify(rows);

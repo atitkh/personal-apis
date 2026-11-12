@@ -20,8 +20,8 @@ describe('scopes', () => {
 
     test('hasScope matches exact, domain wildcard and global', () => {
         expect(apiKeys.hasScope(['attendance:read'], 'attendance:read')).toBe(true);
-        expect(apiKeys.hasScope(['attendance:read'], 'attendance:write')).toBe(false);
-        expect(apiKeys.hasScope(['attendance:*'], 'attendance:write')).toBe(true);
+        expect(apiKeys.hasScope(['attendance:read'], 'attendance:api-write')).toBe(false);
+        expect(apiKeys.hasScope(['attendance:*'], 'attendance:api-write')).toBe(true);
         expect(apiKeys.hasScope(['attendance:*'], 'flights:read')).toBe(false);
         expect(apiKeys.hasScope(['*'], 'anything:at-all')).toBe(true);
     });
@@ -57,8 +57,8 @@ describe('key lifecycle', () => {
     });
 
     test('an active name cannot be duplicated', () => {
-        apiKeys.create(conn, { name: 'digest', scopes: 'digest:write' });
-        expect(() => apiKeys.create(conn, { name: 'digest', scopes: 'digest:write' })).toThrow();
+        apiKeys.create(conn, { name: 'digest', scopes: 'digest:api-write' });
+        expect(() => apiKeys.create(conn, { name: 'digest', scopes: 'digest:api-write' })).toThrow();
     });
 
     test('list never exposes hashes or keys', () => {
@@ -114,11 +114,11 @@ describe('editing a key in place', () => {
     const status = (fn) => { try { fn(); } catch (err) { return err.status; } return null; };
 
     test('changes scopes and name, keeps the secret, reports added and removed names', () => {
-        const k = apiKeys.create(conn, { name: 'agent', scopes: 'places:read, places:edit' });
+        const k = apiKeys.create(conn, { name: 'agent', scopes: 'places:read, places:agent-write' });
         const out = apiKeys.update(conn, k.id, { name: 'agent-2', scopes: ['places:read', 'flights:observe'] });
         expect(out.key).toMatchObject({ id: k.id, name: 'agent-2', scopes: ['places:read', 'flights:observe'] });
         expect(out.added).toEqual(['flights:observe']);
-        expect(out.removed).toEqual(['places:edit']);
+        expect(out.removed).toEqual(['places:agent-write']);
         expect(out.renamedFrom).toBe('agent');
         expect(JSON.stringify(out)).not.toContain(k.key);
         expect(apiKeys.verify(conn, k.key)).toMatchObject({ id: k.id, name: 'agent-2', scopes: ['places:read', 'flights:observe'] });

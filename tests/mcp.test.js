@@ -23,9 +23,9 @@ const make = (name, scopes) => {
 
 beforeAll(() => {
     make('reader', 'digests:read');
-    make('editor', 'digests:read, digests:edit');
+    make('editor', 'digests:read, digests:agent-write');
     make('publisher', 'digests:read, digests:publish');
-    make('legacy-writer', 'digests:read, digests:write');
+    make('legacy-writer', 'digests:read, digests:api-write');
     make('digests-all', 'digests:*');
     make('everything', '*');
     make('portfolio-only', 'portfolio:read');
@@ -116,7 +116,7 @@ describe('mcp: which tools a key sees', () => {
         expect(await actionsOf('reader', 'digests')).toEqual(['get', 'recent', 'search']);
     });
 
-    test('the REST digests:write scope does not grant MCP edit or publish', async () => {
+    test('the REST digests:api-write scope does not grant MCP edit or publish', async () => {
         domains.setMcpMode(db.get(), 'digests', 'write', 'test');
         expect(await actionsOf('legacy-writer', 'digests')).toEqual(['get', 'recent', 'search']);
     });
@@ -330,9 +330,9 @@ describe('mcp: audit', () => {
         await settle();
         const rows = mcpRows().slice(0, mcpRows().length - before).reverse();
         expect(rows.map((r) => r.detail)).toEqual([
-            { key: 'publisher', tool: 'digests', action: 'publish', ok: true },
-            { key: 'reader', tool: 'digests', action: 'publish', ok: false, error: 'rejected' },
-            { key: 'reader', tool: 'no_such_tool', action: null, ok: false, error: 'rejected' },
+            { key: 'publisher', key_id: expect.any(Number), tool: 'digests', action: 'publish', ok: true },
+            { key: 'reader', key_id: expect.any(Number), tool: 'digests', action: 'publish', ok: false, error: 'rejected' },
+            { key: 'reader', key_id: expect.any(Number), tool: 'no_such_tool', action: null, ok: false, error: 'rejected' },
         ]);
         expect(rows.every((r) => r.actor === r.detail.key)).toBe(true);
         expect(JSON.stringify(rows)).not.toMatch(/AUDIT-CANARY|calendar/);
@@ -341,7 +341,7 @@ describe('mcp: audit', () => {
     test('a failing call is audited with its error code', async () => {
         await call('reader', 'digests', { action: 'get', kind: 'daily', period: '2019-01-01' });
         await settle();
-        expect(mcpRows()[0].detail).toEqual({ key: 'reader', tool: 'digests', action: 'get', ok: false, error: 'not_found' });
+        expect(mcpRows()[0].detail).toEqual({ key: 'reader', key_id: expect.any(Number), tool: 'digests', action: 'get', ok: false, error: 'not_found' });
     });
 
     test('tools/list is not audited', async () => {

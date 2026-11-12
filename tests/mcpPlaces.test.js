@@ -19,8 +19,8 @@ let cafe;
 beforeAll(() => {
     make('reader', 'places:read');
     make('suggester', 'places:read, places:suggest');
-    make('editor', 'places:read, places:edit');
-    make('rest-writer', 'places:read, places:write');
+    make('editor', 'places:read, places:agent-write');
+    make('rest-writer', 'places:read, places:api-write');
     make('all', 'places:*');
     make('digests', 'digests:read');
     const conn = db.get();
@@ -68,7 +68,7 @@ describe('mcp places: what a key sees', () => {
         expect(t.annotations.readOnlyHint).toBe(true);
     });
 
-    test('write mode adds suggest with places:suggest and add/edit with places:edit', async () => {
+    test('write mode adds suggest with places:suggest and add/edit with places:agent-write', async () => {
         writeMode();
         expect(await actionsOf('reader')).toEqual(['get', 'list', 'resolve']);
         expect(await actionsOf('suggester')).toEqual(['get', 'list', 'resolve', 'suggest']);
@@ -81,7 +81,7 @@ describe('mcp places: what a key sees', () => {
         expect(t.annotations.readOnlyHint).toBe(false);
     });
 
-    test('the REST places:write scope grants no MCP write action', async () => {
+    test('the REST places:api-write scope grants no MCP write action', async () => {
         writeMode();
         expect(await actionsOf('rest-writer')).toEqual(['get', 'list', 'resolve']);
     });
@@ -116,7 +116,7 @@ describe('mcp places: what a key sees', () => {
         expect(row('editor')).toMatchObject({ canWrite: true, visibleTools: [{ tool: 'places', actions: ['list', 'get', 'resolve', 'add', 'edit'] }] });
         expect(row('rest-writer').canWrite).toBe(false);
         const t = s.tools.find((x) => x.tool === 'places');
-        expect(t.actions).toEqual(expect.arrayContaining([{ name: 'edit', scope: 'places:edit', write: true }, { name: 'suggest', scope: 'places:suggest', write: true }]));
+        expect(t.actions).toEqual(expect.arrayContaining([{ name: 'edit', scope: 'places:agent-write', write: true }, { name: 'suggest', scope: 'places:suggest', write: true }]));
     });
 });
 
@@ -240,12 +240,12 @@ describe('mcp places: audit', () => {
         await settle();
         const rows = audit.recent(db.get(), 300).filter((e) => e.action === 'mcp_call').slice(0, 6).reverse();
         expect(rows.map((r) => r.detail)).toEqual([
-            { key: 'reader', tool: 'places', action: 'list', ok: true },
-            { key: 'reader', tool: 'places', action: 'get', ok: true },
-            { key: 'reader', tool: 'places', action: 'resolve', ok: true },
-            { key: 'suggester', tool: 'places', action: 'suggest', ok: true },
-            { key: 'editor', tool: 'places', action: 'add', ok: true },
-            { key: 'editor', tool: 'places', action: 'get', ok: false, error: 'not_found' },
+            { key: 'reader', key_id: expect.any(Number), tool: 'places', action: 'list', ok: true },
+            { key: 'reader', key_id: expect.any(Number), tool: 'places', action: 'get', ok: true },
+            { key: 'reader', key_id: expect.any(Number), tool: 'places', action: 'resolve', ok: true },
+            { key: 'suggester', key_id: expect.any(Number), tool: 'places', action: 'suggest', ok: true },
+            { key: 'editor', key_id: expect.any(Number), tool: 'places', action: 'add', ok: true },
+            { key: 'editor', key_id: expect.any(Number), tool: 'places', action: 'get', ok: false, error: 'not_found' },
         ]);
         expect(JSON.stringify(audit.recent(db.get(), 500))).not.toMatch(/maple|ridge|springfield|larkspur|canary|flat|11\.25|22\.5|brambleworth|tannery|quillfeather/i);
     });
@@ -262,7 +262,7 @@ describe('places: editing a key changes its tools at once', () => {
         expect(await actionsOf('live-mcp')).not.toContain('add');
         expect(await tool('live-mcp')).toBeDefined();
 
-        apiKeys.update(db.get(), k.id, { scopes: ['digests:read', 'places:read', 'places:edit'] });
+        apiKeys.update(db.get(), k.id, { scopes: ['digests:read', 'places:read', 'places:agent-write'] });
         expect(await actionsOf('live-mcp')).toContain('add');
 
         apiKeys.update(db.get(), k.id, { scopes: ['digests:read', 'places:read'] });

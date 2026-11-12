@@ -13,7 +13,7 @@ let other;
 beforeAll(() => {
     const conn = db.get();
     reader = apiKeys.create(conn, { name: 'agent', scopes: 'digests:read' }).key;
-    writer = apiKeys.create(conn, { name: 'digest-job', scopes: 'digests:read, digests:write' }).key;
+    writer = apiKeys.create(conn, { name: 'digest-job', scopes: 'digests:read, digests:api-write' }).key;
     other = apiKeys.create(conn, { name: 'flights', scopes: 'flights:read' }).key;
 });
 afterAll(() => db.close());

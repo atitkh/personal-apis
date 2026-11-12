@@ -16,9 +16,9 @@ let other;
 beforeAll(() => {
     const conn = db.get();
     reader = apiKeys.create(conn, { name: 'places-reader', scopes: 'places:read' }).key;
-    writer = apiKeys.create(conn, { name: 'places-editor', scopes: 'places:read, places:write' }).key;
+    writer = apiKeys.create(conn, { name: 'places-editor', scopes: 'places:read, places:api-write' }).key;
     suggester = apiKeys.create(conn, { name: 'nightly', scopes: 'places:read, places:suggest' }).key;
-    other = apiKeys.create(conn, { name: 'digest-only', scopes: 'digests:read, digests:write' }).key;
+    other = apiKeys.create(conn, { name: 'digest-only', scopes: 'digests:read, digests:api-write' }).key;
 });
 afterAll(() => db.close());
 
@@ -157,8 +157,8 @@ describe('places over HTTP', () => {
             'place_created', 'place_updated', 'place_restored', 'place_deleted', 'place_rule_added', 'place_rule_updated', 'place_rule_removed',
         ]));
         expect(rows.find((r) => r.action === 'place_created' && r.detail.label === 'Home')).toMatchObject({ actor: 'places-editor', detail: { id, label: 'Home', rev: 1 } });
-        expect(rows.find((r) => r.action === 'place_rule_added').detail).toEqual({ id, label: 'Home', rev: 3, rule_id: expect.any(Number), rule_type: 'radius' });
-        expect(rows.find((r) => r.action === 'place_deleted' && r.detail.label === 'Passing').detail).toEqual({ id: temp, label: 'Passing', rev: 1 });
+        expect(rows.find((r) => r.action === 'place_rule_added').detail).toEqual({ id, label: 'Home', rev: 3, rule_id: expect.any(Number), rule_type: 'radius', key_id: expect.any(Number) });
+        expect(rows.find((r) => r.action === 'place_deleted' && r.detail.label === 'Passing').detail).toEqual({ id: temp, label: 'Passing', rev: 1, key_id: expect.any(Number) });
         // The no-op edit and the reads (resolve, suggestions) left nothing behind.
         expect(rows.filter((r) => r.action === 'place_updated')).toHaveLength(1);
 
@@ -182,7 +182,7 @@ describe('suggestions over HTTP', () => {
         expect(pending.suggestions.length).toBe(all.counts.pending);
     });
 
-    test('accept and dismiss need places:write', async () => {
+    test('accept and dismiss need places:api-write', async () => {
         const s = await fileIt('9 Brambleworth Close');
         for (const key of [reader, suggester, other]) {
             await as(key).post(`/hub/places/suggestions/${s.id}/accept`, { label: 'Nope' }).expect(403);

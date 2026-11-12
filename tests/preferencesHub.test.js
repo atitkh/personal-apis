@@ -16,9 +16,9 @@ let other;
 beforeAll(() => {
     const conn = db.get();
     reader = apiKeys.create(conn, { name: 'prefs-reader', scopes: 'preferences:read' }).key;
-    writer = apiKeys.create(conn, { name: 'prefs-editor', scopes: 'preferences:read, preferences:write' }).key;
-    writeOnly = apiKeys.create(conn, { name: 'prefs-blind', scopes: 'preferences:write' }).key;
-    other = apiKeys.create(conn, { name: 'deadlines-only', scopes: 'deadlines:read, deadlines:write' }).key;
+    writer = apiKeys.create(conn, { name: 'prefs-editor', scopes: 'preferences:read, preferences:api-write' }).key;
+    writeOnly = apiKeys.create(conn, { name: 'prefs-blind', scopes: 'preferences:api-write' }).key;
+    other = apiKeys.create(conn, { name: 'deadlines-only', scopes: 'deadlines:read, deadlines:api-write' }).key;
 });
 afterAll(() => db.close());
 
@@ -107,7 +107,7 @@ describe('audit', () => {
         const rows = audit.recent(db.get(), 300).filter((r) => r.action.startsWith('preference_'));
         expect(rows.map((r) => r.action)).toEqual(expect.arrayContaining(['preference_set', 'preference_updated', 'preference_unset', 'preference_restored']));
         for (const r of rows) {
-            expect(Object.keys(r.detail).sort()).toEqual(['area', 'id', 'key']);
+            expect(Object.keys(r.detail).sort()).toEqual(['area', 'id', 'key', 'key_id']);
             expect(r.actor).toBe('prefs-editor');
         }
         const text = JSON.stringify(rows);
