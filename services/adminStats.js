@@ -24,8 +24,8 @@ function folder(name, ext) {
 }
 
 // Backup files in the configured folder, newest first (services/backup.js).
-function backups() {
-    return require('./backup').list(db.get());
+function backups(conn = db.get()) {
+    return require('./backup').list(conn);
 }
 
 function portfolio() {
@@ -94,11 +94,10 @@ function digestCoverage(conn, now = new Date(), tz = hubTz(conn), days = 30) {
     return { days: out, present: out.filter((d) => d.present).length, total: out.length };
 }
 
-function overview() {
-    const conn = db.get();
+function overview(conn = db.get()) {
     const health = db.health();
     const keys = apiKeys.list(conn);
-    const list = backups();
+    const list = backups(conn);
     const lastUsed = keys.map((k) => k.last_used_at).filter(Boolean).sort().pop() || null;
     const p = portfolio();
     const pkg = require('../package.json');
