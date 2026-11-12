@@ -3,7 +3,7 @@
 const express = require('express');
 const db = require('../../db');
 const digests = require('../../services/digests');
-const { HubError } = require('../../services/errors');
+const { hubHandle } = require('../lib/handle');
 const briefing = require('../../services/briefing');
 const { requireKey, requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
@@ -22,25 +22,7 @@ router.use((req, res, next) => {
 const read = [requireScope('digests:read'), requireDomain('digests')];
 const write = [requireScope('digests:api-write'), requireDomain('digests')];
 
-// Wraps a handler so an error meant for the caller (DigestError, PlaceError: any HubError) becomes a clean
-// JSON error and anything else a 500.
-// An async handler (flight refresh) is caught the same way.
-const handle = (fn) => (req, res) => {
-    const fail = (err) => {
-        if (err instanceof HubError) {
-            // `extra` carries safe ids only (a duplicate flight's id), never a submitted value.
-            return res.status(err.status).json({ error: err.code, message: err.message, ...(err.extra || {}) });
-        }
-        console.error('hub error:', err);
-        res.status(500).json({ error: 'server_error', message: 'Something went wrong.' });
-    };
-    try {
-        const out = fn(req, res, db.get());
-        if (out && typeof out.then === 'function') out.catch(fail);
-    } catch (err) {
-        fail(err);
-    }
-};
+const handle = hubHandle;
 
 // Fixed words first, so "search" is never read as a kind.
 router.get('/digests', read, handle((req, res, conn) => {
