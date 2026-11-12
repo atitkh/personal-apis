@@ -119,6 +119,7 @@ const ICONS = {
     next: ['M9 6l6 6-6 6'],
     places: ['M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z', 'c12 10 2.3'],
     flights: ['M21 15.5l-8-4.5V5.5a1.5 1.5 0 0 0-3 0V11l-8 4.5v2l8-2.2V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-3.7l8 2.2z'],
+    deadlines: ['M4 6h16v14H4z', 'M4 10h16', 'M8 3v4', 'M16 3v4', 'M12 13v3l2 1.5'],
     lock: ['M6 11h12v9H6z', 'M8.5 11V8a3.5 3.5 0 0 1 7 0v3'],
     trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13'],
 };
@@ -512,7 +513,7 @@ export const ADMIN_NAME = 'Atit';
 export const actorName = (actor) => (actor === 'admin' ? ADMIN_NAME : actor);
 
 // Domain colour slots. Known domains have fixed colours; new ones take the spare slots in order.
-const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal', places: 'plum' };
+const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal', places: 'plum', deadlines: 'rose' };
 const SPARE = ['plum', 'brick'];
 export function domainHue(name, index = 0) {
     return DOMAIN_HUES[name] || SPARE[index % SPARE.length];

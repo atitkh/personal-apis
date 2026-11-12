@@ -16,10 +16,10 @@ function brandMark() {
 export function createShell({ session, onSignOut, openPalette, api }) {
     const navLinks = new Map();
     const badges = new Map();
-    const paintBadge = (a, n) => {
+    const paintBadge = (a, n, name) => {
         for (const old of a.querySelectorAll('.nav-badge, .nav-badge-text')) old.remove();
         if (!n) return;
-        a.append(h('span', { class: 'nav-badge', 'aria-hidden': 'true', text: String(n) }), h('span', { class: 'visually-hidden nav-badge-text', text: `, ${n} waiting` }));
+        a.append(h('span', { class: 'nav-badge', 'aria-hidden': 'true', text: String(n) }), h('span', { class: 'visually-hidden nav-badge-text', text: `, ${n} ${name === 'deadlines' ? 'overdue or urgent' : 'waiting'}` }));
     };
     const routes = router.all().filter((r) => r.nav);
 
@@ -136,7 +136,7 @@ export function createShell({ session, onSignOut, openPalette, api }) {
                 h('ul', {},
                     rest.map((r) => {
                         const a = h('a', { class: 'sheet-link', href: router.href(r.name), 'aria-current': r.name === currentName ? 'page' : null }, icon(r.icon), h('span', { text: r.title }));
-                        paintBadge(a, badges.get(r.name));
+                        paintBadge(a, badges.get(r.name), r.name);
                         return h('li', {}, a);
                     }),
                     h('li', { class: 'sheet-sep' }, h('button', { type: 'button', class: 'sheet-link', onclick: (e) => { e.target.closest('dialog').close(); openPalette(); } }, icon('search'), h('span', { text: 'Search or jump to' }))),
@@ -170,7 +170,7 @@ export function createShell({ session, onSignOut, openPalette, api }) {
         // A small count on a menu entry (the rail, and the More sheet where the entry lives there). 0 hides it.
         setBadge(name, n) {
             badges.set(name, n);
-            for (const a of navLinks.get(name) || []) paintBadge(a, n);
+            for (const a of navLinks.get(name) || []) paintBadge(a, n, name);
         },
         setRoute(name, text) {
             currentName = name;

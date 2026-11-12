@@ -15,6 +15,7 @@ router.register('overview', { title: 'Overview', icon: 'overview', nav: true, mo
 router.register('digests', { title: 'Digests', icon: 'digests', nav: true, mobile: true, load: () => import('./views/digests.js') });
 router.register('places', { title: 'Places', icon: 'places', nav: true, load: () => import('./views/places.js') });
 router.register('flights', { title: 'Flights', icon: 'flights', nav: true, load: () => import('./views/flights.js') });
+router.register('deadlines', { title: 'Deadlines', icon: 'deadlines', nav: true, load: () => import('./views/deadlines.js') });
 router.register('keys', { title: 'API keys', short: 'Keys', icon: 'keys', nav: true, mobile: true, load: () => import('./views/keys.js') });
 router.register('agents', { title: 'Agent access', short: 'Agents', icon: 'agents', nav: true, mobile: true, load: () => import('./views/agents.js') });
 router.register('backups', { title: 'Backups', icon: 'backups', nav: true, load: () => import('./views/backups.js') });
@@ -143,14 +144,19 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
     refreshBadges();
 }
 
-// The side menu shows how many found flights wait for review (the Flights view refreshes it after each change).
+// The side menu shows how many found flights wait for review and how many deadlines are overdue or urgent
+// (each view refreshes them after a change, because a change re-renders the page).
 let badgeAt = 0;
 async function refreshBadges() {
     const at = ++badgeAt;
-    try {
-        const r = await api('/flights/candidates?limit=1');
-        if (at === badgeAt && shell) shell.setBadge('flights', r.counts.pending);
-    } catch (e) { /* the badge is a hint; leave it as it was */ }
+    const [flights, due] = await Promise.all([
+        api('/flights/candidates?limit=1').catch(() => null),
+        api('/deadlines?status=active&limit=200').catch(() => null),
+    ]);
+    if (at !== badgeAt || !shell) return;
+    // A failed request leaves its badge as it was: the badge is a hint.
+    if (flights) shell.setBadge('flights', flights.counts.pending);
+    if (due) shell.setBadge('deadlines', due.deadlines.filter((d) => d.window === 'urgent').length);
 }
 
 function onRoute(route, { initial }) {
@@ -216,6 +222,14 @@ addSource(() => [
         run: () => router.navigate(router.href('flights', [], { tab: 'found' })),
     },
     {
+        id: 'act:deadline', group: 'Actions', icon: 'plus', label: 'Add deadline', keywords: 'new deadline renewal expiry due date subscription document insurance', order: 7,
+        run: () => router.navigate(router.href('deadlines', [], { new: '1' })),
+    },
+    {
+        id: 'act:due-soon', group: 'Actions', icon: 'deadlines', label: 'Deadlines due soon', keywords: 'deadlines upcoming overdue urgent renewals expiring', order: 8,
+        run: () => router.navigate(router.href('deadlines')),
+    },
+    {
         id: 'act:key', group: 'Actions', icon: 'plus', label: 'Create key', keywords: 'new api key', order: 2,
         run: () => router.navigate(router.href('keys', [], { new: '1' })),
     },
@@ -230,12 +244,13 @@ addSource(() => [
 ]);
 
 addSource(async () => {
-    const [daily, weekly, keys, places, trips] = await Promise.all([
+    const [daily, weekly, keys, places, trips, due] = await Promise.all([
         api('/digests?kind=daily&limit=200').catch(() => ({ digests: [] })),
         api('/digests?kind=weekly&limit=60').catch(() => ({ digests: [] })),
         api('/keys').catch(() => ({ keys: [] })),
         api('/places').catch(() => ({ places: [] })),
         api('/flights?limit=200').catch(() => ({ flights: [] })),
+        api('/deadlines?status=active&limit=200').catch(() => ({ deadlines: [] })),
     ]);
     return [
         ...daily.digests.map((d, i) => digestCommand(d, 100 + i)),
@@ -254,6 +269,12 @@ addSource(async () => {
             id: `flight:${f.id}`, group: 'Flights', icon: 'flights', label: `${f.airline_iata} ${f.flight_number}  ${f.origin_iata} to ${f.dest_iata}`, hint: f.dep_local_date,
             keywords: `flight ${f.airline_name || ''} ${f.origin_iata} ${f.dest_iata} ${f.dep_local_date}`, order: 1000 + i,
             run: () => router.navigate(router.href('flights', [String(f.id)])),
+        })),
+        // Title, kind and date only: never the reference, amount, issuer or notes.
+        ...due.deadlines.map((d, i) => ({
+            id: `deadline:${d.id}`, group: 'Deadlines', icon: 'deadlines', label: d.title, hint: d.due_date,
+            keywords: `deadline ${d.kind} ${d.due_date}`, order: 1400 + i,
+            run: () => router.navigate(router.href('deadlines', [String(d.id)])),
         })),
     ];
 });

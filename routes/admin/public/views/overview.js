@@ -16,6 +16,7 @@ const WRITE_WARNING = {
     places: 'Agents holding a places suggest key can file streets into the Needs a name queue, and a places edit key can add and change places and their rules. Every earlier version is kept; deleting and naming the queue stay with you.',
 };
 WRITE_WARNING.flights = 'Agents holding a flights suggest key can file found flights into the review queue, and a flights edit key can add flights and change existing ones. Every earlier version is kept; accepting, dismissing and cancelling stay with you.';
+WRITE_WARNING.deadlines = 'Agents holding a deadlines edit key can add deadlines, change them and mark them done (a repeating one moves to its next date) or ended. Every earlier version is kept; restoring and anything private, like the reference, stay with you.';
 const writeWarning = (name) => WRITE_WARNING[name] || MCP_WRITE_WARNING;
 const REFRESH_MS = 60 * 1000;
 const UPCOMING = [{ name: 'flights', title: 'Flights', text: 'Next domain. Past and upcoming trips.' }];
@@ -283,6 +284,7 @@ function itemLink(i) {
     if (i.id.startsWith('places:suggestions')) return href('places', [], { tab: 'queue' });
     if (i.id.startsWith('digests:missing')) return href('digests');
     if (i.ref && i.ref.domain === 'flights' && /^\d+$/.test(String(i.ref.id))) return href('flights', [String(i.ref.id)]);
+    if (i.ref && i.ref.domain === 'deadlines' && /^\d+$/.test(String(i.ref.id))) return href('deadlines', [String(i.ref.id)]);
     return i.ref && i.ref.domain ? href(i.ref.domain) : null;
 }
 
