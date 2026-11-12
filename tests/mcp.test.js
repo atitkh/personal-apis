@@ -86,8 +86,8 @@ describe('mcp: access', () => {
         expect(JSON.stringify(res.body)).not.toMatch(/mcp|\/hub/i);
     });
 
-    test('a key with no hub scopes sees only hub_overview', async () => {
-        expect(await toolNames('flights')).toEqual(['hub_overview']);
+    test('a key with no hub scopes sees only the two hub tools', async () => {
+        expect(await toolNames('flights')).toEqual(['hub_briefing', 'hub_overview']);
     });
 });
 
@@ -100,7 +100,7 @@ describe('mcp: which tools a key sees', () => {
     });
 
     test('a key without a digests scope does not see the digests tool', async () => {
-        expect(await toolNames('portfolio-only')).toEqual(['hub_overview', 'portfolio']);
+        expect(await toolNames('portfolio-only')).toEqual(['hub_briefing', 'hub_overview', 'portfolio']);
     });
 
     test('mcp_mode read hides write actions even from a digests:* key', async () => {
@@ -123,13 +123,13 @@ describe('mcp: which tools a key sees', () => {
 
     test('mcp_mode off hides the tool', async () => {
         domains.setMcpMode(db.get(), 'digests', 'off', 'test');
-        expect(await toolNames('everything')).toEqual(['flights', 'hub_overview', 'places', 'portfolio']);
+        expect(await toolNames('everything')).toEqual(['flights', 'hub_briefing', 'hub_overview', 'places', 'portfolio']);
     });
 
     test('a disabled domain hides the tool even in write mode', async () => {
         domains.setMcpMode(db.get(), 'digests', 'write', 'test');
         domains.setEnabled(db.get(), 'digests', false, 'test');
-        expect(await toolNames('everything')).toEqual(['flights', 'hub_overview', 'places', 'portfolio']);
+        expect(await toolNames('everything')).toEqual(['flights', 'hub_briefing', 'hub_overview', 'places', 'portfolio']);
     });
 
     test('portfolio is read-only', async () => {
@@ -316,7 +316,7 @@ describe('mcp: portfolio', () => {
 
     test('a disabled portfolio domain hides the tool', async () => {
         domains.setEnabled(db.get(), 'portfolio', false, 'test');
-        expect(await toolNames('portfolio-only')).toEqual(['hub_overview']);
+        expect(await toolNames('portfolio-only')).toEqual(['hub_briefing', 'hub_overview']);
     });
 });
 
@@ -360,7 +360,7 @@ describe('mcp: real client over HTTP', () => {
             const client = new Client({ name: 'test', version: '1' });
             await client.connect(new StreamableHTTPClientTransport(url, { requestInit: { headers: { Authorization: `Bearer ${keys.reader}` } } }));
             const names = (await client.listTools()).tools.map((t) => t.name).sort();
-            expect(names).toEqual(['digests', 'hub_overview']);
+            expect(names).toEqual(['digests', 'hub_briefing', 'hub_overview']);
             const result = await client.callTool({ name: 'digests', arguments: { action: 'get', kind: 'daily', period: '2026-11-01' } });
             expect(result.isError).toBeFalsy();
             expect(result.content[0].text.startsWith(DATA_NOTE)).toBe(true);
