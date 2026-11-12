@@ -220,7 +220,7 @@ code, kbd { font-family: var(--font-mono); font-size: 0.92em; }
 /* ---------- forms ---------- */
 
 label { display: grid; gap: 6px; font-weight: 600; }
-input[type="text"], input[type="password"], input[type="search"], input[type="datetime-local"], textarea, select {
+input[type="text"], input[type="number"], input[type="password"], input[type="search"], input[type="datetime-local"], textarea, select {
     width: 100%; min-height: 38px; padding: 8px 10px;
     border: 1px solid var(--line-strong); border-radius: var(--r-ctl);
     background: var(--surface); color: var(--ink); font: inherit; font-weight: 400;
@@ -1209,6 +1209,13 @@ td .chip { margin-left: 8px; }
 .setting { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; justify-content: space-between; }
 .settings h2 { margin-bottom: 4px; }
 .settings .panel > h2 { margin-bottom: 14px; }
+.settings-form { display: grid; gap: 14px; }
+.settings-form > h2 { margin-bottom: 0; }
+.settings-form input[type="number"] { max-width: 160px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.switch-wrap { display: inline-flex; align-items: center; gap: 10px; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.good-text { color: var(--good); font-weight: 600; }
 .shortcuts { display: grid; grid-template-columns: max-content 1fr; gap: 12px 24px; margin: 0; align-items: baseline; }
 .shortcuts dt { white-space: nowrap; }
 .shortcuts dd { margin: 0; color: var(--muted); }
@@ -1394,3 +1401,9 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
     .pref-row { align-items: flex-start; flex-direction: column; gap: 6px; }
     .pref-row .row-actions { justify-content: flex-start; }
 }
+.switch-text { min-width: 2.2em; font-weight: 600; }
+.backup-status > div { display: grid; gap: 10px; min-width: 0; flex: 1; }
+.verify { display: flex; gap: 12px; align-items: flex-start; margin-top: 4px; }
+.verify.good > .icon { color: var(--good); }
+.verify.warn > .icon { color: var(--warn); }
+.verify-tables { margin: 4px 0 0; padding-left: 18px; color: var(--muted); font-size: var(--fs-sm); }

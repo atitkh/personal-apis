@@ -181,9 +181,13 @@ const isShared = (id) => id === 'flights:candidates:pending' || id === 'places:s
 function healthIssues(o) {
     const out = [];
     if (o.database.status !== 'healthy') out.push({ kind: 'bad', text: 'The database is not responding.', hint: 'Check the container logs (docker logs nodejs).' });
-    const newest = o.backups.newest;
-    if (!newest) out.push({ kind: 'warn', text: 'No backup has been made yet.', link: ['backups', 'Open backups'] });
-    else if (Date.now() - Date.parse(newest.modifiedAt) > 36 * 3600 * 1000) out.push({ kind: 'warn', text: `The last backup is ${ago(newest.modifiedAt).replace(' ago', '')} old.`, link: ['backups', 'Open backups'] });
+    const b = o.backups;
+    const newest = b.newest;
+    const staleMs = Math.max(36, (b.everyHours || 24) * 1.5) * 3600 * 1000;
+    if (b.error) out.push({ kind: 'bad', text: `Backups failing: ${b.error}`, hint: 'No new backup is being made until this is fixed. Check the folder in Settings, or use Test location.', link: ['settings', 'Open settings'] });
+    else if (b.enabled === false) out.push({ kind: 'warn', text: 'Automatic backups are off.', link: ['settings', 'Open settings'] });
+    else if (!newest) out.push({ kind: 'warn', text: 'No backup has been made yet.', link: ['backups', 'Open backups'] });
+    else if (Date.now() - Date.parse(newest.modifiedAt) > staleMs) out.push({ kind: 'warn', text: `The last backup is ${ago(newest.modifiedAt).replace(' ago', '')} old.`, link: ['backups', 'Open backups'] });
     if (o.portfolio.problems) out.push({ kind: 'warn', text: `${plural(o.portfolio.problems, 'portfolio file')} ${o.portfolio.problems === 1 ? 'needs' : 'need'} a look.`, link: ['portfolio', 'Open portfolio'] });
     return out;
 }

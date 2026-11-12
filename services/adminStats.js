@@ -94,6 +94,14 @@ function digestCoverage(conn, now = new Date(), tz = hubTz(conn), days = 30) {
     return { days: out, present: out.filter((d) => d.present).length, total: out.length };
 }
 
+// The overview's backup line: the newest file, and what the schedule expects (the attention panel judges staleness by it).
+function backupFacts(conn, list) {
+    const svc = require('./backup');
+    const cfg = svc.config(conn);
+    const newest = list.find((b) => b.kind === 'scheduled') || list[0] || null;
+    return { count: list.length, newest, error: (svc.lastError(conn) || {}).message || null, enabled: cfg.enabled, everyHours: cfg.everyHours };
+}
+
 function overview(conn = db.get()) {
     const health = db.health();
     const keys = apiKeys.list(conn);
@@ -115,7 +123,7 @@ function overview(conn = db.get()) {
             bytes: conn.memory ? 0 : size(conn.name),
             walBytes: conn.memory ? 0 : size(`${conn.name}-wal`),
         },
-        backups: { count: list.length, newest: list[0] || null, error: (require('./backup').lastError(conn) || {}).message || null },
+        backups: backupFacts(conn, list),
         keys: {
             active: keys.filter((k) => !k.revoked_at).length,
             revoked: keys.filter((k) => k.revoked_at).length,
