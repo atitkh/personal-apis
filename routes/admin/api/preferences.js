@@ -1,12 +1,14 @@
 const preferences = require('../../../services/preferences');
 const { adminHandler } = require('../../lib/handle');
 const { adminChanged } = require('../../lib/changed');
+const { removal } = require('../../lib/remove');
+const { needConfirm } = require('../../../services/lib/remove');
 
 module.exports = (api) => {
     // ---- preferences: the dashboard's API. Works while the domain is switched off. Changes are audited as `admin` with
     // id, area and key (preferences.auditDetail), never the value or the notes. There is no delete: unset hides, restore
     // brings back. ----
-    const preferenceHandler = adminHandler(preferences.PreferenceError, 'admin preferences error:', { extra: true });
+    const preferenceHandler = adminHandler(preferences.PreferenceError, 'admin preferences error:', { extra: true, async: true });
     const preferenceChanged = adminChanged(preferences.auditDetail);
 
     api.get('/preferences', preferenceHandler((req, res, conn) => {
@@ -37,4 +39,17 @@ module.exports = (api) => {
     api.post('/preferences/:id/restore', preferenceHandler((req, res, conn) => {
         preferenceChanged(req, res, conn, 'preference_restored', preferences.restore(conn, req.params.id, (req.body || {}).rev, 'admin'));
     }));
+
+    // Permanent delete (admin only; the soft Remove stays). Works on removed and live rows. Body { confirm: true, backup?: true }.
+    const bad = (code, message, status) => new preferences.PreferenceError(status || 400, code, message);
+
+    api.get('/preferences/:id/delete-preview', preferenceHandler((req, res, conn) => {
+        res.json(preferences.removalPreview(conn, req.params.id));
+    }));
+
+    api.delete('/preferences/:id', preferenceHandler((req, res, conn) => removal(req, res, conn, 'preference_deleted', {
+        plan: () => { needConfirm(bad, req.body); preferences.removalPreview(conn, req.params.id); },
+        run: () => preferences.remove(conn, req.params.id, req.body),
+        detail: preferences.removedAuditDetail,
+    })));
 };

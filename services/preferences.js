@@ -16,6 +16,7 @@ const { HubError } = require('./errors');
 const validate = require('./lib/validate');
 const { needRow, commitRevision, findRevision } = require('./lib/revisions');
 const { limitOrDefault, clampOffset } = require('./lib/listing');
+const { needConfirm, count } = require('./lib/remove');
 const { toId } = validate;
 
 const AREAS = ['travel', 'communication', 'work', 'food', 'health', 'devices', 'home', 'other'];
@@ -277,7 +278,30 @@ function restore(db, id, rev, actor) {
     })();
 }
 
+/* ---------- permanent delete (admin only: never on /hub or MCP; the soft unset above stays) ---------- */
+
+// Works on removed and live rows. The item and its revisions go; the value is never in the preview or the audit row.
+function removalPreview(db, id) {
+    const p = need(db, id);
+    return {
+        id: p.id, area: p.area, key: p.key, label: `${p.key.replace(/_/g, ' ')} (${p.area})`, removed: Boolean(p.removed_at),
+        counts: { revisions: count(db, 'SELECT COUNT(*) AS n FROM preference_revisions WHERE preference_id = ?', p.id) },
+    };
+}
+
+function remove(db, id, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const pre = removalPreview(db, id);
+        db.prepare('DELETE FROM preferences WHERE id = ?').run(pre.id);
+        return { status: 'deleted', ...pre };
+    })();
+}
+
+const removedAuditDetail = (r) => ({ id: r.id, area: r.area, key: r.key, ...r.counts });
+
 module.exports = {
+    removalPreview, remove, removedAuditDetail,
     PreferenceError, AREAS, FIELDS, LIST_MAX, VAULT_SENTENCE,
     looksSecret, shape, list, get, getByKey, history, stats, create, update, set, unset, unsetByKey, restore, auditDetail,
 };

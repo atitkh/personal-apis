@@ -61,8 +61,8 @@ describe('admin preferences: CRUD', () => {
         await agent.patch('/admin/api/preferences/9999').set(H).send({ value: 'x' }).expect(404);
     });
 
-    test('unset hides, Removed lists it, restore brings it back; there is no delete', async () => {
-        await agent.delete('/admin/api/preferences/1').set(H).expect(404);
+    test('unset hides, Removed lists it, restore brings it back; a delete without confirm does nothing', async () => {
+        await agent.delete('/admin/api/preferences/1').set(H).expect(400);
         expect((await agent.post('/admin/api/preferences/1/unset').set(H).send({}).expect(200)).body.status).toBe('unset');
         expect((await agent.post('/admin/api/preferences/1/unset').set(H).send({}).expect(200)).body.status).toBe('unchanged');
         expect((await agent.get('/admin/api/preferences').expect(200)).body.preferences.map((p) => p.key)).toEqual(['allergy']);

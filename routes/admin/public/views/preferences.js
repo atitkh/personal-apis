@@ -4,10 +4,10 @@
 //   #/preferences/12             that preference's drawer: edit, history (restore), remove
 //   #/preferences?new=1          the Add preference drawer (the palette uses it)
 // Only plain facts live here: the hub refuses anything that looks like a password, a long number or a key, and the
-// reason is shown next to the field. Remove hides a preference and keeps its history; nothing is ever deleted.
+// reason is shown next to the field. Remove hides a preference and keeps its history; Delete permanently removes it for good.
 // Server text goes in as text.
 import {
-    h, icon, button, plural, ago, when, emptyState, errorState, toast, confirmDialog, openDrawer, actorName,
+    h, icon, button, plural, ago, when, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, actorName,
 } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
@@ -130,6 +130,20 @@ async function unsetIt(ctx, p) {
     }
 }
 
+// Permanent delete (works on removed and live rows). Resolves the answer, or null when cancelled.
+async function deleteIt(ctx, p) {
+    let pre;
+    try { pre = await ctx.api(`/preferences/${p.id}/delete-preview`); } catch (err) { if (err.status !== 401) toast(`Could not check what a delete would take. ${err.message}`, { kind: 'bad' }); return null; }
+    const out = await deleteDialog({
+        title: `Delete ${words(pre.key)}?`,
+        goes: [`The preference ${words(pre.key)} in ${AREA[pre.area] || pre.area}${pre.removed ? ' (it is already removed)' : ''}`, plural(pre.counts.revisions, 'revision'), 'What agents read for it, if it was live'],
+        stays: ['Anything outside this hub'],
+        run: (o) => ctx.api(`/preferences/${p.id}`, { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+    });
+    if (out) toast(`Deleted ${cap(words(pre.key))}`);
+    return out;
+}
+
 async function bringBack(ctx, p) {
     try {
         await ctx.api(`/preferences/${p.id}/restore`, { method: 'POST', body: {} });
@@ -243,15 +257,27 @@ function prefDrawer(ctx, id, fromList, mark) {
                         h('p', { class: 'rev-when' }, h('time', { datetime: r.at, text: when(r.at) }), ` (${ago(r.at)})`)),
                     r.current ? null : h('div', { class: 'rev-actions' },
                         button({ text: 'Restore', variant: 'quiet', size: 'small', label: `Restore revision ${r.rev}`, onClick: () => restore(r.rev) })))))),
-            item.removed ? null : h('section', { class: 'drawer-section danger-zone' },
-                h('p', { class: 'note', text: 'Removing hides it and keeps its history. Nothing is deleted.' }),
-                h('div', { class: 'row' }, button({
-                    text: 'Remove this preference', variant: 'danger', iconName: 'close', 'data-key': 'drawer-remove',
-                    onClick: async () => {
-                        if (form && form.dirty() && !(await confirmDialog({ title: 'Discard your changes?', body: 'You are removing this preference. What you typed and did not save is lost.', confirm: 'Continue', danger: true }))) return;
-                        if (await unsetIt(ctx, item)) { form = null; changed(); }
-                    },
-                }))),
+            h('section', { class: 'drawer-section danger-zone' },
+                h('p', { class: 'note', text: item.removed ? 'This preference is removed and hidden. Deleting it erases it and its history for good.' : 'Removing hides it and keeps its history. Deleting erases it and its history for good.' }),
+                h('div', { class: 'row' },
+                    item.removed ? null : button({
+                        text: 'Remove this preference', variant: 'danger', iconName: 'close', 'data-key': 'drawer-remove',
+                        onClick: async () => {
+                            if (form && form.dirty() && !(await confirmDialog({ title: 'Discard your changes?', body: 'You are removing this preference. What you typed and did not save is lost.', confirm: 'Continue', danger: true }))) return;
+                            if (await unsetIt(ctx, item)) { form = null; changed(); }
+                        },
+                    }),
+                    button({
+                        text: 'Delete permanently', variant: 'quiet-danger', iconName: 'trash', 'data-key': 'drawer-delete',
+                        onClick: async () => {
+                            if (!(await deleteIt(ctx, item))) return;
+                            form = null;
+                            drawer = null;
+                            handle.close(true);
+                            closeDrawerTo(fromList);
+                            ctx.rerender();
+                        },
+                    }))),
         ];
     }
 
@@ -327,7 +353,9 @@ function prefRow(ctx, p, { removed }) {
         h('div', { class: 'row-actions' }, removed
             ? [button({ text: 'Restore', variant: 'quiet', size: 'small', iconName: 'retry', label: `Restore ${words(p.key)}`, 'data-key': `restore:${p.id}`,
                 onClick: async () => { if (await bringBack(ctx, p)) { focusAfter = 'removed-toggle'; ctx.rerender(); } } }),
-                h('a', { class: 'btn quiet small', href: prefHref(p.id), 'aria-label': `Open ${words(p.key)}`, text: 'Open' })]
+                h('a', { class: 'btn quiet small', href: prefHref(p.id), 'aria-label': `Open ${words(p.key)}`, text: 'Open' }),
+                button({ text: 'Delete', variant: 'quiet-danger', size: 'small', iconName: 'trash', label: `Delete ${words(p.key)} permanently`, 'data-key': `delete:${p.id}`,
+                    onClick: async () => { if (await deleteIt(ctx, p)) { focusAfter = 'removed-toggle'; ctx.rerender(); } } })]
             : [h('a', { class: 'btn quiet small', href: prefHref(p.id), 'aria-label': `Edit ${words(p.key)}`, text: 'Edit' })]));
 }
 
