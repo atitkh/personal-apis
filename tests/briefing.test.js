@@ -300,7 +300,10 @@ const jsonOf = (result) => JSON.parse(result.content[0].text.replace(/^NOTE:[^\n
 const bearer = (k) => ({ Authorization: `Bearer ${k}` });
 
 describe('hub_briefing, GET /hub/briefing, GET /admin/api/briefing', () => {
+    // These tests go through the real routes, which read the clock. A missing digest only counts from 6 AM in Chicago,
+    // so run them at a fixed daytime instant (only Date is faked; timers and promises stay real).
     beforeAll(() => {
+        jest.useFakeTimers({ now: NOW, doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'clearImmediate', 'queueMicrotask', 'hrtime', 'performance'] });
         const conn = db.get();
         const make = (name, scopes) => { keys[name] = apiKeys.create(conn, { name, scopes }).key; };
         make('everything', '*');
@@ -422,4 +425,6 @@ describe('hub_briefing, GET /hub/briefing, GET /admin/api/briefing', () => {
         expect(briefing.visibleDomainsFor(db.get(), { scopes: ['deadlines:read'] })).toEqual(['deadlines']);
         expect(briefing.visibleDomainsFor(db.get(), { scopes: ['deadlines:agent-write'] })).toEqual([]);
     });
+
+    afterAll(() => { jest.useRealTimers(); });
 });
