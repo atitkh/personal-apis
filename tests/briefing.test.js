@@ -9,6 +9,7 @@ const domains = require('../services/domains');
 const digests = require('../services/digests');
 const flights = require('../services/flights');
 const places = require('../services/places');
+const deadlines = require('../services/deadlines');
 const briefing = require('../services/briefing');
 const registry = require('../services/mcp/registry');
 const audit = require('../services/audit');
@@ -200,6 +201,93 @@ describe('briefing.collect', () => {
     });
 });
 
+describe('briefing: deadlines hook', () => {
+    let conn;
+    beforeEach(() => { conn = db.open(':memory:'); });
+    afterEach(() => conn.close());
+
+    const collect = (o = {}) => briefing.collect(conn, { now: NOW, ...o });
+    // Today in Chicago is 2026-11-11.
+    const add = (extra) => deadlines.create(conn, { title: 'Passport renewal', kind: 'document', due_date: '2026-12-30', ...extra }, 'tester').id;
+    const all = (out) => [...out.attention, ...out.upcoming];
+
+    test('windows are per item: urgent, attention, and upcoming only inside the horizon', () => {
+        const urgent = add({ title: 'Urgent one', due_date: '2026-11-13', lead_days: 30, urgent_days: 3 });
+        const attn = add({ title: 'Attention one', due_date: '2026-11-25', lead_days: 30, urgent_days: 3 });
+        const near = add({ title: 'Near later', due_date: '2026-11-20', lead_days: 5, urgent_days: 1 });
+        const far = add({ title: 'Far later', due_date: '2026-12-30', lead_days: 5, urgent_days: 1 });
+        const out = collect();
+        expect(out.attention.map((i) => [i.id, i.severity])).toEqual([
+            [`deadlines:${urgent}:due-2026-11-13`, 'urgent'], [`deadlines:${attn}:due-2026-11-25`, 'attention'],
+        ]);
+        expect(out.attention[0]).toMatchObject({ domain: 'deadlines', text: 'Urgent one due in 2 days (2026-11-13)', date: '2026-11-13', ref: { domain: 'deadlines', id: urgent } });
+        expect(out.attention[1].text).toBe('Attention one due in 14 days (2026-11-25)');
+        // Inside the 14-day horizon but outside its own lead window: info under upcoming.
+        expect(out.upcoming).toHaveLength(1);
+        expect(out.upcoming[0]).toMatchObject({ id: `deadlines:${near}:due-2026-11-20`, severity: 'info', text: 'Near later due in 9 days (2026-11-20)' });
+        expect(all(out).some((i) => i.ref.id === far)).toBe(false);
+        expect(collect({ days: 60 }).upcoming.map((i) => i.ref.id)).toEqual([near, far]);
+    });
+
+    test('a lead window longer than the horizon still raises attention', () => {
+        const id = add({ title: 'Passport', due_date: '2027-02-01', lead_days: 90, urgent_days: 14 });
+        expect(collect({ days: 7 }).attention.map((i) => i.id)).toEqual([`deadlines:${id}:due-2027-02-01`]);
+    });
+
+    test('due today, one day, and overdue', () => {
+        const today = add({ title: 'Today thing', due_date: '2026-11-11' });
+        const one = add({ title: 'Tomorrow thing', due_date: '2026-11-12' });
+        const late = add({ title: 'Late thing', due_date: '2026-11-01' });
+        const out = collect();
+        const byId = Object.fromEntries(out.attention.map((i) => [i.ref.id, i]));
+        expect(byId[today]).toMatchObject({ severity: 'urgent', text: 'Today thing due today (2026-11-11)' });
+        expect(byId[one].text).toBe('Tomorrow thing due in 1 day (2026-11-12)');
+        expect(byId[late]).toMatchObject({ id: `deadlines:${late}:due-2026-11-01:overdue`, severity: 'urgent', text: 'Overdue: Late thing (was due 2026-11-01)', date: '2026-11-01' });
+        expect(out.attention[0].ref.id).toBe(late); // oldest date first within a severity
+    });
+
+    test('done, ended and one-off finished items are silent; a rolled item follows its new date', () => {
+        const done = add({ title: 'Finished', due_date: '2026-11-12' });
+        const ended = add({ title: 'Cancelled', due_date: '2026-11-12' });
+        const rolling = add({ title: 'Yearly', due_date: '2026-11-12', repeat_kind: 'yearly' });
+        deadlines.done(conn, done, 'tester', { now: NOW });
+        deadlines.end(conn, ended, 'tester');
+        deadlines.done(conn, rolling, 'tester', { now: NOW });
+        expect(collect().attention).toEqual([]);
+        expect(collect({ days: 90 }).upcoming).toEqual([]);
+        expect(collect({ days: 90 }).attention).toEqual([]);
+        expect(deadlines.get(conn, rolling, { now: NOW }).due_date).toBe('2027-11-12');
+    });
+
+    test('a changed due date gives a new id, the same date gives the same id', () => {
+        const id = add({ title: 'Move me', due_date: '2026-11-13' });
+        const first = collect().attention[0].id;
+        expect(collect().attention[0].id).toBe(first);
+        deadlines.update(conn, id, { due_date: '2026-11-14' }, 'tester');
+        expect(collect().attention[0].id).toBe(`deadlines:${id}:due-2026-11-14`);
+        expect(first).not.toBe(`deadlines:${id}:due-2026-11-14`);
+    });
+
+    test('privacy: reference, amount and notes appear nowhere in the briefing', () => {
+        add({ title: 'Car insurance', kind: 'insurance', due_date: '2026-11-12', reference: 'POL-8841-ZETA', notes: 'call agent Bob on 555-0142' });
+        add({ title: 'Streaming', kind: 'subscription', due_date: '2026-11-01', amount_cents: 123456, currency: 'USD', cycle: 'monthly', reference: 'ACCT-7777-OMEGA', notes: 'family plan secret' });
+        add({ title: 'Gym', kind: 'membership', due_date: '2026-12-01', amount_cents: 98765, currency: 'EUR', issuer: 'Iron Works Ltd', reference: 'MEM-5150-SIGMA' });
+        const out = collect({ days: 90 });
+        expect(all(out).length).toBe(3);
+        const json = JSON.stringify(out);
+        for (const secret of ['POL-8841', 'ACCT-7777', 'MEM-5150', '555-0142', 'Bob', 'family plan', 'Iron Works', '123456', '98765', 'USD', 'EUR', 'amount', 'reference', 'notes']) {
+            expect(json).not.toContain(secret);
+        }
+    });
+
+    test('the briefing only includes deadlines for a key that can read them', () => {
+        add({ due_date: '2026-11-12' });
+        expect(collect({ visibleDomains: ['places'] }).attention).toEqual([]);
+        expect(collect({ visibleDomains: ['deadlines'] }).attention).toHaveLength(1);
+        expect(collect({ domains: ['flights'] }).attention).toEqual([]);
+    });
+});
+
 /* ---------- MCP tool, REST route, admin endpoint ---------- */
 
 const keys = {};
@@ -313,5 +401,7 @@ describe('hub_briefing, GET /hub/briefing, GET /admin/api/briefing', () => {
     test('registry exposes the same visibility rule the briefing uses', () => {
         expect(briefing.visibleDomainsFor(db.get(), { scopes: ['places:read'] })).toEqual(['places']);
         expect(registry.visibleTools(db.get(), { scopes: ['places:read'] }).map((t) => t.def.domain)).toEqual(['places']);
+        expect(briefing.visibleDomainsFor(db.get(), { scopes: ['deadlines:read'] })).toEqual(['deadlines']);
+        expect(briefing.visibleDomainsFor(db.get(), { scopes: ['deadlines:edit'] })).toEqual([]);
     });
 });
