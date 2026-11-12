@@ -155,3 +155,36 @@ What needs the user now (`attention`) and what is coming (`upcoming`), collected
   - Fallback: while the briefing has not arrived, or when it fails (card shows its error with Retry), the panel builds the three lines from the overview counts (`sharedFromOverview`), so none disappears. The headline sentence counts the panel's lines, so it counts every old line. The all-clear "Checked: ..." text is unchanged (all six areas are still checked).
   - Known differences: the briefing skips a domain that is switched off (the old panel still showed its line), and its 20-item cap could in theory cut a shared item; the panel line wording now follows the briefing text (plus a full stop).
 - Test: `tests/briefing.test.js` "admin briefing carries the three shared ids ... agrees with /admin/api/overview" (498 tests). Browser: scratch hub `run-overview.mjs` (14 seeded + 5 empty checks), `run-briefing.mjs` updated (card no longer repeats the three ids; links tested from the panel).
+
+## Scope rename and audit by key id (2026-11-11, hardening run 1)
+
+### Scope names
+Same meaning, clearer names. `read`, `suggest`, `observe`, `publish`, `X:*` and `*` are unchanged.
+
+| Old | New | Meaning |
+|---|---|---|
+| `X:write` | `X:api-write` | Write through the API (jobs and scripts): the /hub REST routes (also `attendance:api-write`). |
+| `X:edit` | `X:agent-write` | Write through the agent tool (MCP). The domain must also be switched to Read and write on the Overview board. |
+
+- `services/apiKeys.js`: `parseScopes`, `hasScope`, `verify`, `list` and `get` accept the old names and return the new ones
+  (`normaliseScope`, `storedScopes`); `hasScope(granted, 'flights:write')` is the same as `'flights:api-write'`. The two
+  writes stay separate (`api-write` never grants `agent-write`). Other entries (for example `digest:*`, `weird:thing`) are left as they are.
+- Migration `013_scope_names_key_id.sql` rewrites stored scopes (order kept, a scope held under both names becomes one,
+  idempotent). New keys and edits store only the new names.
+- Labels: `routes/admin/public/scopes.js` ("API write", "Agent write" with the plain-words sentences), Agent access verbs
+  (`agents.js`), Overview write warnings. `explain()` also explains an old name (old `key_created` audit rows).
+- Production keys carrying old names when this was built (checked on a copy of hub.db): only `openclaw` (`deadlines:edit`).
+  The revoked `digest-job` has `digests:write`. `flights-job` (`flights:suggest`), `places-job`, `flights-status-job` and
+  `digest-job-mcp` use unchanged names. After deploy the migration rewrites `openclaw` to `deadlines:agent-write`; its config needs no change.
+
+### Audit by key id
+- `audit.recordKey(db, key, action, detail, ip)` writes `detail.key_id` (and the key's name as `actor`; `mcp_call` also keeps
+  `detail.key`) for every row made by a key: `mcp_call`, `flight_*`, `trip_*`, `place_*`, `deadline_*`, `preference_*` over /hub.
+- Readers match by `key_id` first and fall back to the name for old rows (no `key_id`): Keys drawer calls
+  (`/admin/api/keys/:id/calls`), 30-day call counts and last call (Agent access, Keys, `agents.summary`). The activity feed and
+  the recent calls list show the key's current name, so a rename does not split history.
+- Migration 013 backfills `key_id` into old rows whose actor is a name held by exactly one key (live or revoked); a name held by
+  two keys (for example a revoked `foo` and a live `foo`) is skipped and those rows keep matching by name.
+- Also fixed: `adminStats.series` stepped back in 24-hour steps and lost a day when the clocks changed inside the window
+  (13 days returned); it now steps calendar days.
+- Tests: `tests/scopeRename.test.js` (aliases, migration, idempotence, ambiguous names, rename-and-count-by-id, labels).
