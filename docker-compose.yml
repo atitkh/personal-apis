@@ -18,6 +18,8 @@ services:
     volumes:
       - ./:/home/node/app
       - node_modules:/home/node/app/node_modules
+      # NAS folder for hub backups (Settings > Backups folder = /backups-nas)
+      - /media/voltex/nasbackups/personal-hub:/backups-nas
     command: sh -c "cd /home/node/app && npm install --production && npm start"
     networks:
       - akapi-network
