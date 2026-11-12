@@ -120,6 +120,23 @@ Plan: `memory/projects/personal-hub-admin-design.md` in the OpenClaw workspace (
   back-out, legacy scope kept, cell drawer + focus trap + Esc, cell edit touches one domain, `*` key in a cell, New key shortcut,
   revoked key, Activity sentence, dark, 390 px, no console errors). Run `sh reset.sh empty && node run-keys.mjs`.
 
+## Briefing framework (2026-11-11)
+
+What needs the user now (`attention`) and what is coming (`upcoming`), collected from the domains. Deterministic, no model, stateless (no "seen" tracking). No `recent` section.
+
+- **Code**: `services/briefing.js` (`collect(db, { now, days, domains, visibleDomains })`), first hooks in `services/briefingHooks.js` (flights, places, digests; portfolio has none).
+- **Output**: `{ generated_at, days, attention: [...], upcoming: [...], more: N }`. `days` default 14, clamped 1..90. About 20 items kept (attention first), ordered by severity (urgent, attention, info), then date, then id; `more` counts the dropped.
+- **Item**: `{ id, domain, severity: 'info'|'attention'|'urgent', text, date?, ref?: { domain, id } }`.
+  - `id` is stable and built from the thing and its state: `flights:candidates:pending`, `flights:42:departs-2026-12-17`, `flights:42:source-cancelled-2026-12-17`, `places:suggestions:pending`, `digests:missing:2026-11-10`. A later webhook can fire once per id.
+  - `text` is one plain line. Privacy rule: never a booking reference, address, street, document or account number, passenger name or note. Flights say airline code + number, airport codes and dates; places and digests say counts and dates only. `ref` is the record, never its content. Tests seed a booking ref and a street and grep the JSON.
+- **Hook**: a domain adds an optional `briefing: (db, { now, days }) => ({ attention: [], upcoming: [] })` to its entry in `services/domains.js` REGISTRY (a flat list is accepted and goes to `upcoming`). Rules: items inside the horizon go to `upcoming`; anything that needs action goes to `attention`; use `severity: 'urgent'` only for something breaking now. The collector wraps every hook (a throw is logged and the hook skipped), drops malformed items, de-duplicates ids, and skips a domain that is off, not visible to the key, or not in the `domains` filter (its hook does not run). A new domain (deadlines) adds only its own hook.
+- **Hooks now**: flights (departures within `days`, by airport-local date, "today" = America/Chicago, wording `CX 891 DFW to HKG departs in 36 days (2026-12-17)`; pending found flights: attention; an upcoming flight a source says is cancelled: urgent, any horizon, not repeated under upcoming), places (pending suggestions: attention), digests (reuses `adminStats.digestWatch`: yesterday's daily missing after 6 AM Chicago once any daily exists: attention).
+- **Access**: `briefing.visibleDomainsFor(conn, key)` is `registry.visibleTools` (the exact rule `hub_overview` uses: domain on, MCP mode not off, key has the read scope). A key with no readable domain gets an empty briefing, not an error.
+- **Endpoints**: MCP tool `hub_briefing` (`{ days?, domains? }`, read-only, DATA_NOTE preamble, audited as `mcp_call` / `hub_briefing`, listed for every key); `GET /hub/briefing?days=&domains=a,b` (any live key); `GET /admin/api/briefing?days=` (admin session, every domain that is on).
+- **Dashboard**: a "Today" card at the top of Overview (`views/overview.js`): Needs you (severity chips: Urgent red, Attention amber) then Coming up with dates, each row linking to the record (`#/flights/<id>`, `#/flights?tab=found`, `#/places?tab=queue`, `#/digests`), empty state "Nothing needs you right now.", segmented Next 14 / 30 / 60 days kept in localStorage `hub-briefing-days`, skeleton while loading, error state with Retry, refreshed with the page's 60 s refresh. The existing "Needs attention" panel stays: it also covers the database, backups and portfolio files, which the briefing does not (merging would lose those lines).
+- **Verified**: suite 390 pass (365 + 25 new in `tests/briefing.test.js`; six tool-list expectations in `tests/mcp.test.js` now include `hub_briefing`). Browser checks on the scratch hub (`workspace/tmp/hub-flights-e2e/run-briefing.mjs`, seed `briefing-seed.js`): seeded 16/16, empty hub 6/6 (empty state, skeleton, error + Retry, no console errors). Screenshots in `workspace/tmp/hub-flights-shots/briefing-*.jpg`.
+- **Open**: `hub_overview` text unchanged; the morning-briefing cron job still reads the digest (stage 5); flights departing today that are already in the air are not listed.
+
 ## Open
 
 - Key scope editing: a rename does not move earlier agent calls (logged by key name); the 30-day count and recent calls restart under the new name.
