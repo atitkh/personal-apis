@@ -80,4 +80,29 @@ function digests(db, { now }) {
     };
 }
 
-module.exports = { flights, places, digests };
+// Active deadlines. Each item has its own windows (lead_days, urgent_days): overdue or inside the urgent window is
+// urgent, inside the lead window is attention (both go to `attention`), and an item due inside the briefing
+// horizon but outside its lead window is info under `upcoming`. Text has the title (written by Atit) and dates
+// only: never the reference, amount or notes.
+function deadlines(db, { now, days }) {
+    const svc = require('./deadlines');
+    const attention = [];
+    const upcoming = [];
+    // 730 is the largest lead_days, so this reaches every item that could be in a window.
+    for (const d of svc.upcoming(db, { days: 730, limit: svc.LIST_MAX, now })) {
+        const ref = { domain: 'deadlines', id: d.id };
+        const base = `deadlines:${d.id}:due-${d.due_date}`;
+        if (d.overdue) {
+            attention.push({ id: `${base}:overdue`, severity: 'urgent', text: `Overdue: ${d.title} (was due ${d.due_date})`, date: d.due_date, ref });
+            continue;
+        }
+        const left = d.days_left;
+        const text = `${d.title} due ${left === 0 ? 'today' : `in ${plural(left, 'day')}`} (${d.due_date})`;
+        if (d.window === 'urgent') attention.push({ id: base, severity: 'urgent', text, date: d.due_date, ref });
+        else if (d.window === 'attention') attention.push({ id: base, severity: 'attention', text, date: d.due_date, ref });
+        else if (left <= days) upcoming.push({ id: base, severity: 'info', text, date: d.due_date, ref });
+    }
+    return { attention, upcoming };
+}
+
+module.exports = { flights, places, digests, deadlines };

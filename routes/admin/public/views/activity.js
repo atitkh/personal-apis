@@ -16,11 +16,12 @@ const TYPES = [
     ['digests', 'Digests'],
     ['places', 'Places'],
     ['flights', 'Flights'],
+    ['deadlines', 'Deadlines'],
     ['signins', 'Sign-ins'],
 ];
 // Empty-state titles per chip, in words that fit the events ("No agents events" read badly).
-const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', signins: 'No sign-ins yet.' };
-const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights' };
+const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', signins: 'No sign-ins yet.' };
+const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
     key_created: 'keys', key_updated: 'keys', key_revoked: 'keys',
@@ -33,6 +34,7 @@ const ICON = {
     flight_created: 'calendar', flight_updated: 'calendar', flight_restored: 'calendar',
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
     flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
+    deadline_created: 'calendar', deadline_updated: 'calendar', deadline_done: 'calendar', deadline_ended: 'calendar', deadline_restored: 'calendar',
 };
 const RULE_NAME = { street: 'street', zone: 'zone', radius: 'circle' };
 
@@ -90,6 +92,11 @@ function sentence(e) {
     case 'flight_restored': return [who, ' restored an older version of the flight ', strong(d.flight || 'a flight')];
     case 'trip_created': return [who, ' added the trip ', strong(d.title || 'a trip')];
     case 'trip_updated': return [who, ' changed the trip ', strong(d.title || 'a trip')];
+    case 'deadline_created': return [who, ' added the deadline ', strong(d.title || 'a deadline')];
+    case 'deadline_updated': return [who, ' changed the deadline ', strong(d.title || 'a deadline')];
+    case 'deadline_done': return [who, ' marked the deadline ', strong(d.title || 'a deadline'), d.next_due ? ` done, next due ${d.next_due}` : ' done'];
+    case 'deadline_ended': return [who, ' ended the deadline ', strong(d.title || 'a deadline')];
+    case 'deadline_restored': return [who, ' restored an older version of the deadline ', strong(d.title || 'a deadline')];
     case 'flight_settings_changed': return [who, ' changed the flights settings'];
     case 'flight_candidate_filed': return [who, ' found the flight ', strong(d.flight || 'a flight'), ' for review'];
     case 'flight_candidate_accepted': return [who, ' accepted the found flight ', strong(d.flight || 'a flight')];

@@ -45,6 +45,7 @@ const ACTIVITY_TYPES = {
         'place_suggestion_accepted', 'place_suggestion_dismissed'],
     flights: ['flight_created', 'flight_updated', 'flight_restored', 'trip_created', 'trip_updated', 'flight_settings_changed',
         'flight_candidate_filed', 'flight_candidate_accepted', 'flight_candidate_dismissed', 'flight_refreshed', 'flight_observed', 'flight_sources_changed'],
+    deadlines: ['deadline_created', 'deadline_updated', 'deadline_done', 'deadline_ended', 'deadline_restored'],
     signins: ['login', 'logout', 'login_failed'],
 };
 
