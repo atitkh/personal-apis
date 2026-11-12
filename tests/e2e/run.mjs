@@ -6,6 +6,8 @@ import { createRequire } from 'module';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import lib from './lib.js';
+import dates from './dates.js';
+const { rel } = dates;
 
 const require = createRequire(import.meta.url);
 
@@ -94,7 +96,7 @@ if (phase === 'empty') {
 
 /* ---------- main phase ---------- */
 await signIn();
-const expected = JSON.parse(fs.readFileSync(`file://${process.env.E2E_OUT}/expected.json`, 'utf8'));
+const expected = JSON.parse(fs.readFileSync(`${process.env.E2E_OUT}/expected.json`, 'utf8'));
 const FLOWN = [['LIT', 'DFW'], ['DFW', 'LHR'], ['JFK', 'KTM'], ['KTM', 'ORD'], ['DFW', 'LIT'], ['LIT', 'JFK'], ['JFK', 'LHR']];
 
 await check('Overview: Flights channel is teal with a power switch and the Off/Read/Read and write selector', async () => {
@@ -121,7 +123,7 @@ await check('Overview: the write-mode confirm for Flights has its own wording', 
     await page.waitForSelector('dialog[open]');
     const t = await text('dialog[open]');
     await page.locator('dialog[open] .dialog-actions .btn').first().click();
-    ok(/flights suggest key/.test(t), t.slice(0, 120));
+    ok(/flights suggest scope/.test(t), t.slice(0, 120));
     await page.waitForTimeout(250);
 });
 await check('Side menu has Flights (plane icon) with a badge of 2; g then f goes there', async () => {
@@ -280,10 +282,10 @@ await check('Add flight: validation error first, airport autocomplete, then it s
     await page.fill('dialog.drawer input[name="dest_iata"]', 'LIT');
     await page.locator('dialog.drawer input[name="dest_iata"]').blur();
     await page.waitForFunction(() => /Little Rock|Clinton/.test(document.querySelector('dialog.drawer .airport-field:nth-of-type(2) .airport-hint, dialog.drawer .airport-hint').innerText + [...document.querySelectorAll('dialog.drawer .airport-hint')].map((e) => e.innerText).join(' ')));
-    await page.fill('dialog.drawer input[name="sched_dep"]', '2027-01-20T18:00');
-    await page.fill('dialog.drawer input[name="sched_arr"]', '2027-01-20T19:25');
+    await page.fill('dialog.drawer input[name="sched_dep"]', `${rel('2027-01-20')}T18:00`);
+    await page.fill('dialog.drawer input[name="sched_arr"]', `${rel('2027-01-20')}T19:25`);
     await page.locator('[data-key="ff-save"]').click();
-    await waitToast(/Flight AA 500 DFW-LIT 2027-01-20 added/);
+    await waitToast(new RegExp(`Flight AA 500 DFW-LIT ${rel('2027-01-20')} added`));
     await page.waitForFunction(() => /#\/flights\/\d+/.test(location.hash));
     await page.waitForSelector('dialog.drawer input[name="origin_iata"]');
     eq(await page.locator('dialog.drawer input[name="origin_iata"]').inputValue(), 'DFW');
@@ -294,7 +296,7 @@ await check('Add flight twin: 409 shows "already in your flights" with a link', 
     await go('flights?tab=flights&new=1');
     await page.waitForSelector('dialog.drawer[open] form.flight-form');
     ok(!(await hashNow()).includes('new=1'), 'new=1 removed from the URL');
-    for (const [k, v] of [['airline_iata', 'AA'], ['flight_number', '500'], ['origin_iata', 'DFW'], ['dest_iata', 'LIT'], ['sched_dep', '2027-01-20T18:00']]) await page.fill(`dialog.drawer input[name="${k}"]`, v);
+    for (const [k, v] of [['airline_iata', 'AA'], ['flight_number', '500'], ['origin_iata', 'DFW'], ['dest_iata', 'LIT'], ['sched_dep', `${rel('2027-01-20')}T18:00`]]) await page.fill(`dialog.drawer input[name="${k}"]`, v);
     await page.locator('[data-key="ff-save"]').click();
     await page.waitForFunction(() => /already in your flights/.test(document.querySelector('dialog.drawer .error').innerText));
     ok(await page.locator('dialog.drawer .error a').count(), 'link');
@@ -340,11 +342,11 @@ await check('Edit and accept: drawer prefilled, change seat, flight created with
     await item.locator('[data-key$=":edit"]').click();
     await page.waitForSelector('dialog.drawer[open] form.flight-form');
     eq(await page.locator('dialog.drawer input[name="flight_number"]').inputValue(), '2210');
-    eq(await page.locator('dialog.drawer input[name="sched_dep"]').inputValue(), '2027-01-15T09:00');
+    eq(await page.locator('dialog.drawer input[name="sched_dep"]').inputValue(), `${rel('2027-01-15')}T09:00`);
     eq(await page.locator('dialog.drawer input[name="booking_ref"]').getAttribute('type'), 'password');
     await page.fill('dialog.drawer input[name="seat"]', '3c');
     await page.locator('[data-key="ff-save"]').click();
-    await waitToast(/Flight UA 2210 ORD-LIT 2027-01-15 added/);
+    await waitToast(new RegExp(`Flight UA 2210 ORD-LIT ${rel('2027-01-15')} added`));
     await page.waitForFunction(() => !document.querySelector('dialog.drawer[open]'));
     const all = (await api('/flights?limit=500')).flights;
     const f = all.find((x) => x.flight_number === '2210');
@@ -421,7 +423,7 @@ await check('Deep links: ?tab=found&show=dismissed, /flights/<id>, bad id', asyn
     await page.waitForSelector('dialog.drawer[open] input[name="flight_number"]');
     eq(await page.locator('dialog.drawer input[name="flight_number"]').inputValue(), '77');
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('dialog.drawer[open]'));
+    await page.waitForFunction(() => !document.querySelector('dialog.drawer[open]') && !/flights\/\d+/.test(location.hash));
     await go('flights/99999');
     await waitToast(/gone or never existed/);
     await page.waitForFunction(() => !/99999/.test(location.hash));
@@ -446,7 +448,7 @@ await check('Tablist: arrow keys move between Passport / Flights / Found flights
 });
 await check('Cancel a flight from the drawer: status Cancelled in the list, Passport count unchanged', async () => {
     const before = (await api('/flights/stats')).flights;
-    const id = (await api('/flights?q=')).flights.find((f) => f.flight_number === '1412' && f.dep_local_date === '2026-12-22').id;
+    const id = (await api('/flights?q=')).flights.find((f) => f.flight_number === '1412' && f.dep_local_date === rel('2026-12-22')).id;
     await go(`flights/${id}`);
     await page.waitForSelector('[data-key="cancel-flight"]');
     await page.locator('[data-key="cancel-flight"]').click();

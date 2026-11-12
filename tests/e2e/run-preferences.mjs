@@ -64,8 +64,8 @@ const todayChi = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chi
 const fmt = (iso) => page.evaluate((d) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }), iso);
 const quiet = async () => { await page.waitForLoadState('networkidle'); await page.waitForTimeout(250); };
 
-const keys = () => page.locator('.pref-row a.row-link').allInnerTexts();
-const areas = () => page.locator('.pref-group h2').allInnerTexts();
+const keys = async () => { await page.locator('.pref-row a.row-link').first().waitFor().catch(() => {}); return page.locator('.pref-row a.row-link').allInnerTexts(); };
+const areas = async () => { await page.locator('.pref-group h2').first().waitFor().catch(() => {}); return page.locator('.pref-group h2').allInnerTexts(); };
 const listApi = async (removed = false) => (await api(`/preferences?limit=200${removed ? '&removed=true' : ''}`)).preferences;
 const drawerOpen = () => page.waitForSelector('dialog.drawer[open]');
 const closeDrawer = async () => { await page.keyboard.press('Escape'); await page.waitForTimeout(300); };

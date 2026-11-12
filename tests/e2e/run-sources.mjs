@@ -58,7 +58,7 @@ async function signIn() {
     await page.waitForSelector('.rail-nav');
     await page.waitForLoadState('networkidle');
 }
-const ids = JSON.parse(fs.readFileSync(`file://${process.env.E2E_OUT}/sources-ids.json`, 'utf8'));
+const ids = JSON.parse(fs.readFileSync(`${process.env.E2E_OUT}/sources-ids.json`, 'utf8'));
 const drawer = 'dialog.drawer[open]';
 const openFlight = async (id) => { await go(`flights/${id}`); await page.waitForSelector(`${drawer} .live-details`); };
 const closeDrawer = async () => { await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('dialog.drawer[open]') && !/#\/flights\/\d+/.test(location.hash)); };
@@ -78,7 +78,7 @@ await check('Live details: estimated time, terminal, gate, belt, aircraft and re
 await check('Live details: no cancelled hint on a flight no source cancelled', async () => eq(await page.locator(`${drawer} .cancel-hint`).count(), 0));
 await check('Edit fields show the values the source filled and no lock chip yet', async () => {
     eq(await page.locator(`${drawer} input[name="dep_gate"]`).inputValue(), 'B12');
-    eq(await page.locator(`${drawer} input[name="est_dep"]`).inputValue(), '2026-12-24T08:35');
+    eq(await page.locator(`${drawer} input[name="est_dep"]`).inputValue(), ids.est_dep_input);
     eq(await page.locator(`${drawer} .lock-note`).count(), 0);
 });
 await shot('live-drawer');

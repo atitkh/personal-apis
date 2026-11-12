@@ -1,5 +1,6 @@
 // Seeds a SCRATCH hub with invented flights that carry ACTUAL times (for the Punctuality checks) and writes the
 // expected numbers, computed here by plain arithmetic, to $E2E_OUT/expected-passport.json. Never run against real data.
+const { rel } = require('/e2e/dates.js');
 const fs = require('fs');
 const db = require('/app/db');
 const flights = require('/app/services/flights');
@@ -27,7 +28,7 @@ for (const [al, name, no, o, d, dep, arr, act] of rows) {
     if (act) delays.push({ al, no, o, d, date: dep.slice(0, 10), delay: min(act) - min(arr) });
 }
 flights.create(c, { airline_iata: 'AA', airline_name: 'American', flight_number: '52', origin_iata: 'DFW', dest_iata: 'ORD', sched_dep: '2025-11-03T07:00', sched_arr: '2025-11-03T09:20', status: 'cancelled', source: 'manual' }, 'seed');
-flights.create(c, { airline_iata: 'AA', airline_name: 'American', flight_number: '1203', origin_iata: 'LIT', dest_iata: 'DFW', sched_dep: '2026-12-20T08:10', sched_arr: '2026-12-20T09:35', status: 'scheduled', source: 'manual' }, 'seed');
+flights.create(c, { airline_iata: 'AA', airline_name: 'American', flight_number: '1203', origin_iata: 'LIT', dest_iata: 'DFW', sched_dep: `${rel('2026-12-20')}T08:10`, sched_arr: `${rel('2026-12-20')}T09:35`, status: 'scheduled', source: 'manual' }, 'seed');
 flights.putSettings(c, { home_airport: 'LIT' }, 'seed');
 
 const sum = (a) => a.reduce((x, y) => x + y, 0);
