@@ -41,6 +41,7 @@ const { HubError } = require('./errors');
 const { toId } = require('./lib/validate');
 const { needRow, commitRevision, findRevision } = require('./lib/revisions');
 const { clampLimit } = require('./lib/listing');
+const { needConfirm, count } = require('./lib/remove');
 
 const KINDS = ['home', 'campus', 'family', 'friend', 'store', 'transit', 'other'];
 const SOURCES = ['manual', 'suggested'];
@@ -555,7 +556,58 @@ function suggestionAuditDetail(result) {
     return detail;
 }
 
+/* ---------- permanent delete from the dashboard (the older remove() above is what /hub still uses) ---------- */
+
+// What deleting a place takes with it: its rules (an exclude rule included) and every revision. Suggestions that
+// led to it stay, without the link. Digests already written keep the name they used.
+function placeRemovalPreview(db, id) {
+    const p = need(db, id);
+    return {
+        id: p.id, label: p.label,
+        counts: {
+            rules: count(db, 'SELECT COUNT(*) AS n FROM place_rules WHERE place_id = ?', p.id),
+            revisions: count(db, 'SELECT COUNT(*) AS n FROM place_revisions WHERE place_id = ?', p.id),
+            suggestions: count(db, 'SELECT COUNT(*) AS n FROM place_suggestions WHERE resolved_place_id = ?', p.id),
+        },
+    };
+}
+
+function removePlace(db, id, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const pre = placeRemovalPreview(db, id);
+        db.prepare('DELETE FROM places WHERE id = ?').run(pre.id);
+        return { status: 'deleted', ...pre };
+    })();
+}
+
+// Ids, label and counts only: never a rule value or a street.
+const removedAuditDetail = (r) => ({ id: r.id, label: r.label, ...r.counts });
+
+// One suggestion of any status. A street that is seen again is filed as a new one.
+function removeSuggestion(db, id, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const s = needSuggestion(db, id);
+        db.prepare('DELETE FROM place_suggestions WHERE id = ?').run(s.id);
+        return { status: 'deleted', id: s.id, label: `spot ${s.id}`, suggestion_status: s.status };
+    })();
+}
+
+function removeDismissedSuggestions(db, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const n = db.prepare("DELETE FROM place_suggestions WHERE status = 'dismissed'").run().changes;
+        return { status: 'deleted', count: n, suggestion_status: 'dismissed' };
+    })();
+}
+
+const suggestionRemovedAuditDetail = (r) => (r.count == null
+    ? { suggestion_id: r.id, status: r.suggestion_status }
+    : { count: r.count, status: r.suggestion_status });
+
 module.exports = {
+    placeRemovalPreview, removePlace, removedAuditDetail, removeSuggestion, removeDismissedSuggestions, suggestionRemovedAuditDetail,
     PlaceError, KINDS, RULE_TYPES, STATUSES,
     list, get, history, stats,
     create, update, restore, remove, addRule, updateRule, removeRule, auditDetail,

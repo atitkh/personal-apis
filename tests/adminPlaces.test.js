@@ -67,7 +67,8 @@ describe('admin places: places and rules', () => {
         expect(now).toMatchObject({ notes: 'The flat.', rules: [expect.objectContaining({ type: 'street' }), expect.objectContaining({ id: ruleId, type: 'zone' })] });
 
         const temp = (await agent.post('/admin/api/places').set(H).send({ label: 'Passing' }).expect(201)).body.id;
-        expect((await agent.delete(`/admin/api/places/${temp}`).set(H).expect(200)).body.status).toBe('deleted');
+        await agent.delete(`/admin/api/places/${temp}`).set(H).expect(400);
+        expect((await agent.delete(`/admin/api/places/${temp}`).set(H).send({ confirm: true }).expect(200)).body.status).toBe('deleted');
         await agent.get(`/admin/api/places/${temp}`).expect(404);
     });
 

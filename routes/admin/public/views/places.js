@@ -7,7 +7,7 @@
 // Private data: rule values (streets, zones, coordinates) appear only in the drawer and in the check result,
 // never in the table or in a toast. Everything from the server goes in as text.
 import {
-    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, openDrawer,
+    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer,
     chip, chipNav, fact, hidden, actorName, copyButton,
 } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
@@ -403,25 +403,24 @@ function placeDrawer(ctx, id, fromList, kinds) {
             const res = await ruleDialog(ctx, place, null);
             if (res) changed('add-rule');
         } });
-        const del = button({ text: 'Delete place', variant: 'danger', iconName: 'trash', 'data-key': 'delete-place', onClick: async () => {
-            const ok = await confirmDialog({
-                title: `Delete ${place.label}?`,
-                body: ['Its rules and every revision go with it. This cannot be undone.', 'Digests already written keep the name they used.'],
-                confirm: 'Delete place',
-                danger: true,
+        const del = button({ text: 'Delete permanently', variant: 'quiet-danger', iconName: 'trash', 'data-key': 'delete-place', onClick: async () => {
+            let pre;
+            try { pre = await ctx.api(`/places/${place.id}/delete-preview`); } catch (err) { toast(`Could not check what a delete would take. ${err.message}`, { kind: 'bad' }); return; }
+            const c = pre.counts;
+            const out = await deleteDialog({
+                title: `Delete ${pre.label}?`,
+                goes: [`The place ${pre.label}`, plural(c.rules, 'rule'), plural(c.revisions, 'revision')],
+                stays: ['Spots in the Needs a name queue (one that became this place just loses the link)', 'Digests already written, which keep the name they used'],
+                run: (o) => ctx.api(`/places/${place.id}`, { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
             });
-            if (!ok) return;
-            try {
-                await ctx.api(`/places/${place.id}`, { method: 'DELETE' });
-                toast(`Place ${place.label} deleted`);
-                draft = null;
-                const d = drawer;
-                drawer = null;
-                handle.close(true);
-                if (d) closeDrawerTo(d.fromList);
-            } catch (err) {
-                toast(`Could not delete the place. ${err.message}`, { kind: 'bad' });
-            }
+            if (!out) return;
+            toast(`Deleted ${out.label}`);
+            draft = null;
+            const d = drawer;
+            drawer = null;
+            handle.close(true);
+            if (d) closeDrawerTo(d.fromList);
+            ctx.rerender();
         } });
 
         return [
@@ -449,7 +448,7 @@ function placeDrawer(ctx, id, fromList, kinds) {
                         button({ text: 'Compare', variant: 'quiet', size: 'small', label: `Compare revision ${r.rev} with the current one`, onClick: () => compare(r.rev) }),
                         button({ text: 'Restore', variant: 'quiet', size: 'small', label: `Restore revision ${r.rev}`, onClick: () => restore(r.rev) })))))),
             h('section', { class: 'drawer-section danger-zone' },
-                h('p', { class: 'note', text: 'Deleting removes the place, its rules and its history.' }), del),
+                h('p', { class: 'note', text: 'Deleting removes the place, its rules and its history for good. Nothing else changes.' }), del),
         ];
     }
 
@@ -695,6 +694,18 @@ function queueItem(ctx, s, { places, kinds, next }) {
         }
     } });
 
+    const remove = button({ text: 'Delete', variant: 'quiet-danger', size: 'small', 'data-key': `q:${s.id}:delete`, label: `Delete the spot ${s.street} permanently`, onClick: async () => {
+        const out = await deleteDialog({
+            title: 'Delete this spot?',
+            goes: ['The spot from the Needs a name queue', s.status === 'accepted' ? 'Only the queue entry: the place it became stays' : null].filter(Boolean),
+            stays: ['Your places and their rules'],
+            run: (o) => ctx.api(`/places/suggestions/${s.id}`, { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+        });
+        if (!out) return;
+        toast('Deleted the spot');
+        after();
+    } });
+
     return h('li', { class: `queue-item is-${s.status}` },
         h('div', { class: 'q-main' },
             h('h3', { class: 'q-street', text: s.street }),
@@ -707,7 +718,19 @@ function queueItem(ctx, s, { places, kinds, next }) {
                 s.status === 'accepted'
                     ? ['Named ', s.decided_at ? ago(s.decided_at) : '', named ? [': ', h('a', { class: 'link', href: placeHref(named.id), text: named.label })] : '']
                     : `Dismissed ${s.decided_at ? ago(s.decided_at) : ''}`) : null),
-        s.status === 'accepted' ? null : h('div', { class: 'q-actions' }, nameIt, attach, dismiss));
+        h('div', { class: 'q-actions' }, ...(s.status === 'accepted' ? [remove] : [nameIt, attach, dismiss, remove])));
+}
+
+async function deleteAllDismissed(ctx, n) {
+    const out = await deleteDialog({
+        title: `Delete all ${n} dismissed ${n === 1 ? 'spot' : 'spots'}?`,
+        goes: [plural(n, 'dismissed spot'), 'A street seen again after this is filed as a new spot'],
+        stays: ['Your places and their rules', 'Spots waiting or already named'],
+        run: (o) => ctx.api('/places/suggestions/dismissed', { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+    });
+    if (!out) return;
+    toast(`Deleted ${plural(out.count, 'dismissed spot')}`);
+    ctx.rerender();
 }
 
 function queueTab(ctx, sug, places, kinds) {
@@ -749,7 +772,10 @@ function queueTab(ctx, sug, places, kinds) {
 
     return h('div', { class: 'tab-panel', id: 'panel-queue', role: 'tabpanel', 'aria-labelledby': 'tab-queue' },
         h('p', { class: 'note', text: 'Streets the nightly digest saw that no place claims, most recent first. Name one to turn it into a place, add it to a place you have, or dismiss it.' }),
-        h('div', { class: 'toolbar' }, nav),
+        h('div', { class: 'toolbar' }, nav,
+            (show === 'dismissed' || show === 'all') && counts.dismissed > 0
+                ? button({ text: `Delete all dismissed (${counts.dismissed})`, variant: 'quiet-danger', size: 'small', iconName: 'trash', 'data-key': 'delete-dismissed', onClick: () => deleteAllDismissed(ctx, counts.dismissed) })
+                : null),
         h('section', { 'aria-labelledby': 'q-count', class: 'queue' },
             h('h2', { id: 'q-count', class: 'section-title', text: show === 'pending' ? `${plural(list.length, 'spot')} waiting` : plural(list.length, 'spot') }),
             body));
