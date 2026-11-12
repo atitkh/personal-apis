@@ -198,7 +198,8 @@ before the split; the route-table test pins it):
 | Module (`routes/admin/api/`) | Routes |
 |---|---|
 | `overview.js` | overview, briefing, series |
-| `backups.js` | backups list, Back up now |
+| `backups.js` | backups list, Back up now, Verify newest |
+| `settings.js` | hub time zone and backup settings (GET/PUT), backup folder test |
 | `activity.js` | portfolio, activity feed (`ACTIVITY_TYPES`: the audit actions behind each filter chip) |
 | `keys.js` | keys list/create/edit/revoke, a key's recent calls |
 | `domains.js`, `agents.js` | domain switches and MCP mode; agent access summary |
@@ -266,3 +267,43 @@ checks that no MCP action is named delete/remove/destroy/purge/forget. Remove th
 
 Tests: `adminDeleteFlights`, `adminDeletePlaces`, `adminDeleteEntries`, `noRemoteDelete`, `backup` (pre-delete snapshot);
 route-table snapshot gained only the new admin routes. Browser: `run-delete.mjs` on a scratch hub (`SEED=delete-seed.js ./reset.sh`).
+
+## Settings: time zone and backups (hardening run 4, 2026-11-12)
+- **Storage**: table `hub_settings(key, value, updated_at)` (migration 014); `services/settings.js` has typed keys with defaults and
+  validation (`get`, `set`, `all`); a key without a row means the default. `last_backup_error` is internal (never settable over the API).
+- **Time zone**: key `timezone` (IANA, validated with `Intl.DateTimeFormat`; default `DIGEST_TZ`, else `America/Chicago`). One helper,
+  `services/lib/tz.js` (`hubTz(conn)`, `todayIn(tz, now)`, `hourIn`, `stampIn`), feeds `briefing.today(now, tz)` (so deadlines days-left /
+  overdue / done-roll, the flights briefing horizon), the digest-missing check, the digest coverage and the activity series, and the
+  time-of-day in backup file names. Flights keep their per-airport zones; only "today" is the hub zone.
+- **Backup settings**: `backup.enabled` (default true), `backup.dir` (absolute path; default `<data dir>/backups`), `backup.every_hours`
+  (1..168, default 24), `backup.keep` (1..90, default 7), `backup.verify_after` (default true).
+- **Scheduler** (`services/backup.js`): wakes 30 s after boot and every 5 minutes, reads the settings each time, and runs when the newest
+  scheduled file is at least `every_hours` old (`shouldRun`, pure). Names: `hub-YYYY-MM-DD.db` for 24 h and longer,
+  `hub-YYYY-MM-DD-HHmm.db` below (hub-zone clock); keep-N prunes the newest N across both forms. `hub-pre-delete-*` (newest 20) and
+  `hub-pre-migration-*` (newest 5) are never touched by it. Back up now and the pre-delete copy use the configured folder too.
+- **Failures are loud**: a configured folder that is missing, not a folder or unwritable is never replaced by another one and never
+  created by the scheduler (only the default folder is created on demand, so an unmounted volume cannot silently fill the container).
+  The failure is stored in `last_backup_error`, one `backup_failed` audit row per new message, shown as "Backups failing: <msg>" in
+  the Overview needs-attention panel and the Backups page, and as `backups: { status: 'failing', error }` in `/health` (status WARNING,
+  HTTP code unchanged). The next success clears it.
+- **Before a migration**: `db.open` takes a `hub-pre-migration-<stamp>.db` (VACUUM INTO, synchronous) when the file already exists and at
+  least one migration is pending. A failed copy does not stop the migration; it is recorded like any backup failure.
+- **Folder test** (`POST /admin/api/settings/backup-dir/test`): absolute paths only; refuses `/`, `/proc /sys /dev /etc /boot /bin /sbin
+  /lib* /usr /run /root` (also through symlinks); makes the folder if missing, writes and deletes a temp file, returns
+  `{ ok, writable, free_bytes, resolved, created }` (200 with `ok:false` and `error` when the write fails, 400 when the path is refused).
+- **Verify** (`POST /admin/api/backups/verify`): copies the newest scheduled backup to a temp folder, runs `PRAGMA integrity_check`, compares
+  row counts of the main tables with the live data (a live table ahead of the copy is normal), deletes the temp copy; the original is never opened for writing.
+- Audit: `setting_changed` (key, from, to; time zone and backup settings are not secrets), `backup_failed` (message), `backup_verified`.
+  Settings, backups and verify are admin-only: no `/hub` route and no MCP tool (pinned by `tests/noRemoteSettings.test.js`).
+
+### Keeping copies off this machine
+There is no second destination in the hub: point the backup folder at a mounted host folder (NAS share, USB drive). Add a volume to the
+service in `docker-compose.yml`, recreate the container, then enter the container-side path in Settings and press Test location:
+
+    services:
+      nodejs:
+        volumes:
+          - /mnt/nas/hub-backups:/backups      # host path : path inside the container
+
+Then set the backup folder to `/backups`. If the share is unmounted later, the next scheduled backup fails loudly (see above) instead of
+writing somewhere else.

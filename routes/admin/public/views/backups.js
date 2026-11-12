@@ -32,7 +32,7 @@ export async function render(ctx) {
                 const res = await ctx.api('/backups', { method: 'POST' });
                 toast(res.created === false ? 'Backup finished. Today\'s copy was already up to date.' : 'Backup finished');
             } catch (err) {
-                toast(`The backup failed. ${err.message} Check the container logs.`, { kind: 'bad' });
+                toast(`${err.message} Check the container logs.`, { kind: 'bad' });
             }
             ctx.rerender();
         },
@@ -78,7 +78,7 @@ export async function render(ctx) {
                     newest ? `${plural(list.length, 'file')}, ${bytes(total)} in total.${stale ? ' That is later than the schedule expects; use Back up now and check the logs.' : ''}` : (status.enabled ? 'The first one is made shortly after the service starts, or use Back up now.' : '')),
             h('dl', { class: 'facts' },
                 fact('Folder', h('code', { text: status.dir || 'none (in-memory database)' }), status.dirIsDefault ? ' (the default, next to the database)' : ''),
-                fact('Schedule', status.enabled ? `${everyWords(status.everyHours)}, keep ${status.keep} (${status.schedule})` : 'off', status.enabled && status.verifyAfter ? ', each copy is checked' : ''),
+                fact('Schedule', status.enabled ? `${everyWords(status.everyHours)}, keep the newest ${status.keep}` : 'off', status.enabled && status.verifyAfter ? ', each copy is checked' : ''),
                 fact('Free space', status.freeBytes == null ? 'unknown' : bytes(status.freeBytes)),
                 fact('Last error', failing ? [dot('bad'), ` ${status.lastError.message} (${when(status.lastError.at)})`] : 'none')),
             report)),

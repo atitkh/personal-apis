@@ -202,7 +202,7 @@ addSource(() => [
                 if (current && ['backups', 'overview'].includes(current.name)) renderRoute(router.parse(), { soft: true });
             } catch (err) {
                 done();
-                toast(`The backup failed. ${err.message}`, { kind: 'bad' });
+                toast(err.message, { kind: 'bad' });
             }
         },
     },
