@@ -631,7 +631,7 @@ function deadlineRow(ctx, d, { showStatus }) {
     const link = h('a', { class: 'row-link', href: deadlineHref(d.id), 'data-key': `deadline:${d.id}` }, d.title);
     const active = d.status === 'active';
     return h('tr', { class: active && d.overdue ? 'is-overdue' : '', 'data-id': String(d.id), onclick: (event) => { if (!event.target.closest('a, button')) link.click(); } },
-        h('td', { class: 'cell-main' }, link, d.issuer ? h('span', { class: 'muted', text: ` ${d.issuer}` }) : null),
+        h('td', { class: 'cell-main' }, link, d.issuer ? h('span', { class: 'muted row-issuer', text: d.issuer }) : null),
         h('td', { 'data-label': 'Kind' }, kindChip(d.kind)),
         h('td', { 'data-label': 'Due' }, active ? [h('strong', { text: day(d.due_date) }), d.due_time ? h('span', { class: 'muted', text: ` ${d.due_time}` }) : null, h('span', { class: 'muted due-rel', text: ` ${dueText(d)}` })]
             : [h('span', { text: day(d.due_date) }), h('span', { class: 'muted due-rel', text: ` ${dueText(d)}` })]),

@@ -12,11 +12,8 @@ Dates Atit must not miss: documents, insurance, licences, subscriptions, members
   (`briefingHooks.deadlines`), scope text, audit actions and Activity lists (dashboard Activity chip "Deadlines").
 - Tests: deadlines, deadlinesHub, adminDeadlines, mcpDeadlines, deadlines hook block in briefing.test.js.
 
-## Next (stage 3, dashboard; nothing here yet)
-- Deadlines view (Upcoming, All, Done), add/edit drawer, history and restore, subscriptions strip. Register in `public/app.js`.
-- Not done on purpose: icon in `ui.js`, `DOMAIN_HUES` (rose), `WRITE_WARNING.deadlines` in `views/overview.js`, `g r` shortcut,
-  command palette entries, Overview "Upcoming" text. Unknown domains already fall back to spare colours and generic text.
-- Overview Today card links: `views/overview.js` maps briefing item `ref` to a route; add `deadlines` there.
+## Next
+- Stage 4 (Preferences / renewals plan): see the plan card. The Deadlines dashboard is described below.
 
 ## API
 - Scopes: `deadlines:read` (list, upcoming, get, history), `deadlines:write` (REST create, patch, done, end, restore; also needs
@@ -51,3 +48,34 @@ Dates Atit must not miss: documents, insurance, licences, subscriptions, members
 
 ## Checks
 - Whole jest suite (26 suites): 454 tests green (baseline 390, +64 for deadlines). Run in /tmp/pa-flights with docker node:20, not on the NFS mount.
+
+## Deadlines dashboard (stage 3)
+- Files: `routes/admin/public/views/deadlines.js` (the view), registration in `app.js` (route, nav badge, palette), `shortcuts.js`,
+  `skeletons.js`, `ui.js` (icon `deadlines`, `DOMAIN_HUES.deadlines = 'rose'`), `style.css` (`--rose` light #C23B63, dark #F08AA6,
+  `.hue-rose`, the deadlines block at the end), `shell.js` (badge screen-reader word), `views/overview.js` (write warning, link).
+- Routes: `#/deadlines` (Upcoming), `?tab=all`, `?tab=done`, `#/deadlines/<id>` (drawer), `?new=1` (Add drawer; the palette uses it).
+  Filters in the URL: `kind`, `q`, `overdue=1` (Upcoming), `status` (All).
+- Shortcut is `g r` (not `g d`: that is Digests). Nav badge = active items whose window is urgent (overdue included).
+  Palette: actions "Add deadline", "Deadlines due soon", one entry per active deadline (title, kind and date only).
+- Data: three admin calls per render (active, done, ended; done and ended are `limit=1` on Upcoming, only the counts). Client-side
+  filtering. Active items cap at 200 (the API limit); a note shows when more exist.
+- Rows: title (+ issuer), kind chip, due date and "in 12 days / due today / overdue by 3 days", window chip (Later neutral, Soon
+  amber, Urgent red, Overdue solid red), repeat text, amount per cycle for items with money fields; Done and Edit (Reopen and Open
+  on done or ended items). Done on a repeating item toasts "Next due <date>", on a one-off it moves to the Done tab.
+- Drawer form: fields by kind (money group only for subscription, membership, bill), start warning and urgent days prefilled by
+  kind (document 90/14, licence 60/14, insurance 30/7, subscription 7/3, membership 14/3, bill 7/2, task 7/2, other 7/2) until
+  the person edits either number; live sentence under them. Reference is a password input with a Show toggle. Editing sends only
+  changed fields; fields that stop applying (repeat N, money fields after a kind change) are sent as null. API errors are shown
+  inline and the field named by the error code is focused. Drawer also has status chips, Done, End (confirm), Reopen, History with
+  Compare and Restore. There is no delete.
+- Subscriptions strip (Upcoming): active subscription, membership and bill items with amount and currency; per month = weekly
+  x 52/12, monthly, quarterly / 3, yearly / 12, one line per currency, next 3 renewals, "Planned amounts, not payments."; items
+  with an amount but no cycle are left out of the total and counted in a note.
+- Overview: the Deadlines channel row comes from the domain registry (rose, power switch, mode selector); briefing items with
+  `ref.domain` deadlines link to `#/deadlines/<id>`.
+- Browser checks: scratch hub (see FLIGHTS_PROGRESS.md), seed `tmp/hub-flights-e2e/deadlines-seed.js` (invented items relative to
+  today), `SEED=deadlines-seed.js ./reset.sh`, then `node run-deadlines.mjs`: 26 checks, 26 pass (tabs and counts, window chips,
+  relative dates, privacy of reference and notes in the list DOM, strip numbers, filters, Done rolling a yearly item, Done on a
+  one-off, Reopen, Add drawer fields and live sentence, validation, create, mask and reveal, edit, history restore and compare, End
+  and Reopen, no delete, overview channel and briefing link, palette, `g r`, dark rose, 390 px, no console errors).
+- Whole jest suite: 26 suites, 454 tests green (no new API behaviour, so no new tests; the admin-modules test picks up the new view).
