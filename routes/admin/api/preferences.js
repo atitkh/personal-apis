@@ -1,24 +1,13 @@
 const preferences = require('../../../services/preferences');
+const { adminHandler } = require('../../lib/handle');
+const { adminChanged } = require('../../lib/changed');
 
-module.exports = (api, ctx) => {
-    const { db, audit } = ctx;
-
+module.exports = (api) => {
     // ---- preferences: the dashboard's API. Works while the domain is switched off. Changes are audited as `admin` with
     // id, area and key (preferences.auditDetail), never the value or the notes. There is no delete: unset hides, restore
     // brings back. ----
-    const preferenceHandler = (fn) => (req, res) => {
-        try {
-            fn(req, res, db.get());
-        } catch (err) {
-            if (err instanceof preferences.PreferenceError) return res.status(err.status).json({ error: err.message, code: err.code, ...(err.extra || {}) });
-            console.error('admin preferences error:', err);
-            res.status(500).json({ error: 'Something went wrong.' });
-        }
-    };
-    const preferenceChanged = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.record(conn, 'admin', action, preferences.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const preferenceHandler = adminHandler(preferences.PreferenceError, 'admin preferences error:', { extra: true });
+    const preferenceChanged = adminChanged(preferences.auditDetail);
 
     api.get('/preferences', preferenceHandler((req, res, conn) => {
         const { area, q, removed, limit, offset } = req.query;

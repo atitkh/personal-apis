@@ -6,7 +6,7 @@
 // Changes are audited with preferences.auditDetail: id, area and key, never the value or the notes.
 const express = require('express');
 const preferences = require('../../services/preferences');
-const audit = require('../../services/audit');
+const { keyChanged } = require('../lib/changed');
 const apiKeys = require('../../services/apiKeys');
 const { requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
@@ -19,10 +19,7 @@ module.exports = (handle) => {
         : res.status(403).json({ error: 'Forbidden', message: 'This key lacks the "preferences:read" scope' }));
     const write = [requireScope('preferences:api-write'), alsoRead, requireDomain('preferences')];
 
-    const changed = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, action, preferences.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const changed = keyChanged(preferences.auditDetail);
 
     router.get('/', read, handle((req, res, conn) => {
         const { area, q, removed, limit, offset } = req.query;

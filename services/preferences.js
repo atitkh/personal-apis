@@ -13,6 +13,10 @@
 // PRIVACY: the hub holds facts, not secrets. Keys that name a password-like thing and values (and notes) that look like
 // a key, a token or a long number are refused with the same sentence. Audit rows carry id, area and key, never values.
 const { HubError } = require('./errors');
+const validate = require('./lib/validate');
+const { needRow, commitRevision, findRevision } = require('./lib/revisions');
+const { limitOrDefault, clampOffset } = require('./lib/listing');
+const { toId } = validate;
 
 const AREAS = ['travel', 'communication', 'work', 'food', 'health', 'devices', 'home', 'other'];
 const FIELDS = ['area', 'key', 'value', 'notes'];
@@ -29,24 +33,13 @@ class PreferenceError extends HubError {
 }
 
 const bad = (code, message, status = 400, extra) => new PreferenceError(status, code, message, extra);
+const REVISIONS = { table: 'preferences', revTable: 'preference_revisions', fk: 'preference_id' };
 const stamp = () => new Date().toISOString();
 const who = (actor) => String(actor || 'unknown');
 
 /* ---------- cleaning ---------- */
 
-function toId(v) {
-    const id = typeof v === 'number' ? v : /^\d+$/.test(String(v)) ? Number(v) : NaN;
-    return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
-function text(v, name, max) {
-    if (v == null) return null;
-    if (typeof v !== 'string' && typeof v !== 'number') throw bad('bad_request', `${name} must be text.`, 400, { field: name });
-    const s = String(v).normalize('NFKC').replace(/\s+/g, ' ').trim();
-    if (!s) return null;
-    if (s.length > max) throw bad('bad_request', `${name} is longer than ${max} characters.`, 400, { field: name });
-    return s;
-}
+const text = (v, name, max) => validate.text(bad, v, name, max, { collapse: true, field: true });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -91,11 +84,7 @@ function build(input, current = {}) {
 
 const editable = (row) => Object.fromEntries(FIELDS.map((k) => [k, row[k] == null ? null : row[k]]));
 
-function need(db, id) {
-    const row = toId(id) && db.prepare('SELECT * FROM preferences WHERE id = ?').get(toId(id));
-    if (!row) throw bad('not_found', `There is no preference ${String(id).slice(0, 20)}.`, 404);
-    return row;
-}
+const need = (db, id) => needRow(db, 'preferences', id, () => bad('not_found', `There is no preference ${String(id).slice(0, 20)}.`, 404));
 
 const findRow = (db, area, key) => db.prepare('SELECT * FROM preferences WHERE area = ? AND key = ?').get(area, key);
 
@@ -112,15 +101,7 @@ function write(db, id, f) {
 }
 
 // Stores the item as it is now as its next revision. Every change ends here.
-function commit(db, id, { source, actor, note }) {
-    const row = db.prepare('SELECT * FROM preferences WHERE id = ?').get(id);
-    const rev = row.current_rev + 1;
-    const at = stamp();
-    db.prepare('INSERT INTO preference_revisions (preference_id, rev, snapshot, source, actor, note, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(id, rev, JSON.stringify(editable(row)), source, who(actor), note || null, at);
-    db.prepare('UPDATE preferences SET current_rev = ?, updated_at = ?, updated_by = ? WHERE id = ?').run(rev, at, who(actor), id);
-    return rev;
-}
+const commit = (db, id, meta) => commitRevision(db, REVISIONS, id, meta, editable);
 
 /* ---------- shape and reads ---------- */
 
@@ -140,10 +121,7 @@ function shape(row) {
     };
 }
 
-function cleanLimit(v, def) {
-    const n = parseInt(v, 10);
-    return Number.isFinite(n) ? Math.min(Math.max(n, 1), LIST_MAX) : def;
-}
+const cleanLimit = (v, def) => limitOrDefault(v, def, LIST_MAX);
 
 // Filters: area, q (a piece of the key, value or notes), removed (true = only removed items; default only live ones).
 function list(db, { area, q, removed, limit, offset } = {}) {
@@ -164,7 +142,7 @@ function list(db, { area, q, removed, limit, offset } = {}) {
     }
     const clause = `WHERE ${where.join(' AND ')}`;
     const total = db.prepare(`SELECT COUNT(*) AS n FROM preferences ${clause}`).get(args).n;
-    const off = Math.max(parseInt(offset, 10) || 0, 0);
+    const off = clampOffset(offset);
     const lim = cleanLimit(limit, LIST_MAX);
     const order = `CASE area ${AREAS.map((a, i) => `WHEN '${a}' THEN ${i}`).join(' ')} END`;
     const rows = db.prepare(`SELECT * FROM preferences ${clause} ORDER BY ${order}, key ASC, id ASC LIMIT @lim OFFSET @off`).all({ ...args, lim, off });
@@ -175,7 +153,7 @@ function list(db, { area, q, removed, limit, offset } = {}) {
 function get(db, id, { rev } = {}) {
     const row = need(db, id);
     if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row), revisions: row.current_rev };
-    const r = db.prepare('SELECT * FROM preference_revisions WHERE preference_id = ? AND rev = ?').get(row.id, toId(rev));
+    const r = findRevision(db, REVISIONS, row.id, rev);
     if (!r) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
     return { ...shape({ ...row, ...JSON.parse(r.snapshot), current_rev: r.rev, updated_at: r.at, updated_by: r.actor }), revisions: row.current_rev };
 }
@@ -284,7 +262,7 @@ function restore(db, id, rev, actor) {
     return db.transaction(() => {
         const row = need(db, id);
         const target = rev == null || rev === '' ? row.current_rev : toId(rev);
-        const old = target && db.prepare('SELECT * FROM preference_revisions WHERE preference_id = ? AND rev = ?').get(row.id, target);
+        const old = target && findRevision(db, REVISIONS, row.id, target);
         if (!old) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
         const was = build(JSON.parse(old.snapshot));
         const now = editable(row);
