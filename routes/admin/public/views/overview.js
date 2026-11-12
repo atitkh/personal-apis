@@ -173,19 +173,48 @@ function board(api) {
 
 /* ---------- attention, activity, system ---------- */
 
-function issues(o) {
+// The three conditions the briefing also reports. One source: the panel takes them from the briefing (so the Today
+// card and the panel never drift), and only falls back to the overview counts while the briefing is not there.
+const isShared = (id) => id === 'flights:candidates:pending' || id === 'places:suggestions:pending' || id.startsWith('digests:missing:');
+
+// Hub health: only what the overview data alone knows.
+function healthIssues(o) {
     const out = [];
     if (o.database.status !== 'healthy') out.push({ kind: 'bad', text: 'The database is not responding.', hint: 'Check the container logs (docker logs nodejs).' });
     const newest = o.backups.newest;
     if (!newest) out.push({ kind: 'warn', text: 'No backup has been made yet.', link: ['backups', 'Open backups'] });
     else if (Date.now() - Date.parse(newest.modifiedAt) > 36 * 3600 * 1000) out.push({ kind: 'warn', text: `The last backup is ${ago(newest.modifiedAt).replace(' ago', '')} old.`, link: ['backups', 'Open backups'] });
-    if (o.digests && o.digests.missing) out.push({ kind: 'warn', text: `The daily digest for ${o.digests.expectedDaily} has not arrived.`, hint: 'The nightly job runs at 11 PM.', link: ['digests', 'Open digests'] });
-    const waiting = o.places && o.places.suggestions ? o.places.suggestions.pending : 0;
-    if (waiting) out.push({ kind: 'warn', text: `${plural(waiting, 'spot')} ${waiting === 1 ? 'needs' : 'need'} a name.`, hint: 'Streets the nightly digest saw that no place claims yet.', link: ['places', waiting === 1 ? 'Name it' : 'Name them', { tab: 'queue' }] });
-    const found = o.flights && o.flights.candidates ? o.flights.candidates.pending : 0;
-    if (found) out.push({ kind: 'warn', text: `${plural(found, 'found flight')} ${found === 1 ? 'waits' : 'wait'} for review.`, hint: 'Flights a job or an agent found; accept or dismiss them.', link: ['flights', found === 1 ? 'Review it' : 'Review them', { tab: 'found' }] });
     if (o.portfolio.problems) out.push({ kind: 'warn', text: `${plural(o.portfolio.problems, 'portfolio file')} ${o.portfolio.problems === 1 ? 'needs' : 'need'} a look.`, link: ['portfolio', 'Open portfolio'] });
     return out;
+}
+
+const DIGEST_LINE = { hint: 'The nightly job runs at 11 PM.', link: ['digests', 'Open digests'] };
+const PLACES_LINE = (one) => ({ hint: 'Streets the nightly digest saw that no place claims yet.', link: ['places', one ? 'Name it' : 'Name them', { tab: 'queue' }] });
+const FLIGHTS_LINE = (one) => ({ hint: 'Flights a job or an agent found; accept or dismiss them.', link: ['flights', one ? 'Review it' : 'Review them', { tab: 'found' }] });
+
+// The shared lines as the briefing words them (its text has no full stop; the panel's lines do).
+function sharedFromBriefing(items) {
+    return items.filter((i) => isShared(i.id)).map((i) => {
+        const one = /^1 /.test(i.text);
+        const extra = i.id.startsWith('digests:') ? DIGEST_LINE : i.id.startsWith('places:') ? PLACES_LINE(one) : FLIGHTS_LINE(one);
+        return { kind: 'warn', id: i.id, text: `${i.text}.`, ...extra };
+    });
+}
+
+// The same three lines from /admin/api/overview: used while the briefing loads or when it fails.
+function sharedFromOverview(o) {
+    const out = [];
+    if (o.digests && o.digests.missing) out.push({ kind: 'warn', id: `digests:missing:${o.digests.expectedDaily}`, text: `The daily digest for ${o.digests.expectedDaily} has not arrived.`, ...DIGEST_LINE });
+    const waiting = o.places && o.places.suggestions ? o.places.suggestions.pending : 0;
+    if (waiting) out.push({ kind: 'warn', id: 'places:suggestions:pending', text: `${plural(waiting, 'spot')} ${waiting === 1 ? 'needs' : 'need'} a name.`, ...PLACES_LINE(waiting === 1) });
+    const found = o.flights && o.flights.candidates ? o.flights.candidates.pending : 0;
+    if (found) out.push({ kind: 'warn', id: 'flights:candidates:pending', text: `${plural(found, 'found flight')} ${found === 1 ? 'waits' : 'wait'} for review.`, ...FLIGHTS_LINE(found === 1) });
+    return out;
+}
+
+// Hub health first, then the shared conditions (briefing when it arrived, overview counts otherwise).
+function issues(o, briefingItems) {
+    return [...healthIssues(o), ...(briefingItems ? sharedFromBriefing(briefingItems) : sharedFromOverview(o))];
 }
 
 function attention(list) {
@@ -298,9 +327,14 @@ function todayItem(i, showSeverity) {
         i.date ? h('span', { class: 'today-date muted', text: dayLabel(i.date) }) : null);
 }
 
-function todayBody(b) {
+// The panel shows the three shared conditions, so the card leaves them out (one line per condition on the page).
+function todayBody(full) {
+    const b = { ...full, attention: full.attention.filter((i) => !isShared(i.id)) };
+    const moved = full.attention.length - b.attention.length;
     if (!b.attention.length && !b.upcoming.length) {
-        return emptyState({ title: 'Nothing needs you right now.', text: `Nothing is coming up in the next ${b.days} days either.`, iconName: 'good' });
+        return moved
+            ? emptyState({ title: 'Nothing else needs you.', text: `Nothing else is coming up in the next ${b.days} days. The rest is under Needs attention below.`, iconName: 'good' })
+            : emptyState({ title: 'Nothing needs you right now.', text: `Nothing is coming up in the next ${b.days} days either.`, iconName: 'good' });
     }
     return h('div', { class: 'today-lists' },
         b.attention.length ? h('section', { 'aria-label': 'Needs you' },
@@ -312,7 +346,8 @@ function todayBody(b) {
         b.more ? h('p', { class: 'today-more muted', text: `${plural(b.more, 'more item')} not shown.` }) : null);
 }
 
-function todayCard(api, ctx) {
+// onData(briefing) after each load, onData(null) when it failed: the panel shares this one response.
+function todayCard(api, ctx, onData) {
     let days = savedDays();
     const body = h('div', { class: 'today-body', 'aria-live': 'polite' });
     const seg = segmented({
@@ -336,9 +371,9 @@ function todayCard(api, ctx) {
         body.replaceChildren(skeleton());
         try {
             const b = await api(`/briefing?days=${days}`);
-            if (mine === ticket && ctx.isCurrent()) body.replaceChildren(todayBody(b));
+            if (mine === ticket && ctx.isCurrent()) { body.replaceChildren(todayBody(b)); onData(b); }
         } catch (err) {
-            if (mine === ticket && ctx.isCurrent()) body.replaceChildren(errorState({ err, what: 'The briefing', retry: load }));
+            if (mine === ticket && ctx.isCurrent()) { body.replaceChildren(errorState({ err, what: 'The briefing', retry: load })); onData(null); }
         }
     }
     load();
@@ -361,11 +396,12 @@ export async function render(ctx) {
     const sub = h('p', { class: 'updated', 'aria-live': 'polite' });
     const b = board(api);
     const lower = h('div', { class: 'overview-lower' });
-    const today = todayCard(api, ctx);
+    let briefing = null; // the one briefing response, shared by the Today card and the Needs attention panel
+    const today = todayCard(api, ctx, (b) => { briefing = b; paint(); });
     let fetchedAt = Date.now();
 
     function paint() {
-        const list = issues(o);
+        const list = issues(o, briefing ? briefing.attention : null);
         const [first, second] = headline(o, s, list);
         lead.replaceChildren(h('span', { class: `lead-state ${list.length ? 'warn' : 'good'}` }, icon(list.length ? 'warn' : 'good')), h('span', { text: `${first} ` }), h('span', { class: 'lead-second', text: second }));
         b.update(o.domains || []);
