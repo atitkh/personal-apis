@@ -16,6 +16,7 @@ const express = require('express');
 const flights = require('../../services/flights');
 const enrich = require('../../services/enrich');
 const audit = require('../../services/audit');
+const { keyChanged } = require('../lib/changed');
 const apiKeys = require('../../services/apiKeys');
 const { requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
@@ -29,10 +30,7 @@ module.exports = (handle) => {
         : res.status(403).json({ error: 'Forbidden', message: 'This key lacks the "flights:read" scope' }));
     const write = [requireScope('flights:api-write'), alsoRead, requireDomain('flights')];
 
-    const changed = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, action, flights.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const changed = keyChanged(flights.auditDetail);
 
     router.get('/', read, handle((req, res, conn) => {
         const { year, airport, airline, trip, status, limit, offset } = req.query;

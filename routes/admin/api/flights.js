@@ -1,28 +1,16 @@
 // Flights: the found-flights queue, the list/Passport/airports/trips/settings and data sources (fixed words before /flights/:id).
 const flights = require('../../../services/flights');
 const enrich = require('../../../services/enrich');
+const { adminHandler } = require('../../lib/handle');
+const { adminChanged } = require('../../lib/changed');
 
 module.exports = (api, ctx) => {
-    const { db, audit } = ctx;
+    const { audit } = ctx;
 
     // ---- flights: the found-flights queue (works while the domain is switched off). Accepting and dismissing
     // are for a person only, so they live here and not on /hub. Audited as `admin` with the candidate id, the
     // flight label and the flight it became; never the booking reference. ----
-    const flightHandler = (fn) => (req, res) => {
-        const fail = (err) => {
-            if (err instanceof flights.FlightError) {
-                return res.status(err.status).json({ error: err.message, code: err.code, ...(err.extra || {}) });
-            }
-            console.error('admin flights error:', err);
-            res.status(500).json({ error: 'Something went wrong.' });
-        };
-        try {
-            const out = fn(req, res, db.get());
-            if (out && typeof out.then === 'function') out.catch(fail);
-        } catch (err) {
-            fail(err);
-        }
-    };
+    const flightHandler = adminHandler(flights.FlightError, 'admin flights error:', { extra: true, async: true });
 
     api.get('/flights/candidates', flightHandler((req, res, conn) => {
         const status = req.query.status || 'pending';
@@ -54,10 +42,7 @@ module.exports = (api, ctx) => {
     // ---- flights: the list, one flight, the Passport, airports, trips and settings for the dashboard. Fixed words
     // come before /flights/:id. The list leaves booking references out (has_booking_ref instead); one flight
     // carries it. Changes are audited as `admin` with id, flight label and revision only. ----
-    const flightChanged = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.record(conn, 'admin', action, flights.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const flightChanged = adminChanged(flights.auditDetail);
 
     api.get('/flights', flightHandler((req, res, conn) => {
         const { year, airport, airline, trip, status, limit, offset } = req.query;

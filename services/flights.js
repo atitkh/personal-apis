@@ -19,6 +19,10 @@
 // PRIVACY: booking_ref is stored, but only ever appears in answers to keys with flights:read. It is never in
 // audit rows (auditDetail), error messages, stats() or overview(), and no error message echoes a value.
 const { HubError } = require('./errors');
+const validate = require('./lib/validate');
+const { needRow, commitRevision, findRevision } = require('./lib/revisions');
+const { clampLimit, clampOffset } = require('./lib/listing');
+const { toId } = validate;
 
 // Stored `status` has three values, but 'scheduled' means AUTOMATIC: the effective status (what every answer
 // shows as `status`) is cancelled if stored cancelled; completed if stored completed or the flight has landed
@@ -48,6 +52,7 @@ class FlightError extends HubError {
 }
 
 const bad = (code, message, status = 400, extra) => new FlightError(status, code, message, extra);
+const REVISIONS = { table: 'flights', revTable: 'flight_revisions', fk: 'flight_id' };
 const now = () => new Date().toISOString();
 const who = (actor) => String(actor || 'unknown');
 
@@ -117,19 +122,7 @@ function cleanTime(v, name, tz, { required = false } = {}) {
 
 /* ---------- cleaning ---------- */
 
-function toId(v) {
-    const id = typeof v === 'number' ? v : /^\d+$/.test(String(v)) ? Number(v) : NaN;
-    return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
-function text(v, name, max, { upper = false } = {}) {
-    if (v == null) return null;
-    if (typeof v !== 'string' && typeof v !== 'number') throw bad('bad_request', `${name} must be text.`);
-    const s = String(v).normalize('NFKC').trim();
-    if (!s) return null;
-    if (s.length > max) throw bad('bad_request', `${name} is longer than ${max} characters.`);
-    return upper ? s.toUpperCase() : s;
-}
+const text = (v, name, max, opts) => validate.text(bad, v, name, max, opts);
 
 function cleanAirline(v) {
     const s = text(v, 'airline_iata', 3, { upper: true });
@@ -158,10 +151,7 @@ function cleanBookingRef(v) {
     return v.trim().toUpperCase();
 }
 
-function oneOf(v, name, list) {
-    if (!list.includes(v)) throw bad(`bad_${name}`, `${name} must be one of: ${list.join(', ')}.`);
-    return v;
-}
+const oneOf = (v, name, list) => validate.oneOf(bad, v, name, list);
 
 function cleanDelay(v) {
     if (v == null || v === '') return null;
@@ -256,11 +246,7 @@ function build(db, input, current = {}) {
 const editable = (row) => Object.fromEntries(FIELDS.map((k) => [k, row[k] == null ? null : row[k]]));
 const label = (f) => `${f.airline_iata} ${f.flight_number} ${f.origin_iata}-${f.dest_iata} ${f.dep_local_date}`;
 
-function need(db, id) {
-    const row = toId(id) && db.prepare('SELECT * FROM flights WHERE id = ?').get(toId(id));
-    if (!row) throw bad('not_found', `There is no flight ${String(id).slice(0, 20)}.`, 404);
-    return row;
-}
+const need = (db, id) => needRow(db, 'flights', id, () => bad('not_found', `There is no flight ${String(id).slice(0, 20)}.`, 404));
 
 // Another flight that is this one (same key or same source key), or null.
 function twin(db, f, derived, exceptId = 0) {
@@ -286,15 +272,7 @@ function write(db, id, f, d) {
 }
 
 // Stores the flight as it is now as its next revision. Every change ends here.
-function commit(db, id, { source, actor, note }) {
-    const row = db.prepare('SELECT * FROM flights WHERE id = ?').get(id);
-    const rev = row.current_rev + 1;
-    const at = now();
-    db.prepare('INSERT INTO flight_revisions (flight_id, rev, snapshot, source, actor, note, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(id, rev, JSON.stringify(editable(row)), source, who(actor), note || null, at);
-    db.prepare('UPDATE flights SET current_rev = ?, updated_at = ?, updated_by = ? WHERE id = ?').run(rev, at, who(actor), id);
-    return rev;
-}
+const commit = (db, id, meta) => commitRevision(db, REVISIONS, id, meta, editable);
 
 const lockedOf = (row) => {
     try {
@@ -361,8 +339,8 @@ function list(db, { year, airport: ap, airline, trip, status, limit, offset, now
         where.push('trip_id = ?'); args.push(t);
     }
     if (status != null && status !== '') { where.push(`${effectiveSql('?')} = ?`); args.push(nowIso, oneOf(status, 'status', STATUSES)); }
-    const n = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
-    const skip = Math.max(parseInt(offset, 10) || 0, 0);
+    const n = clampLimit(limit, 100, 500);
+    const skip = clampOffset(offset);
     const cond = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const total = db.prepare(`SELECT COUNT(*) AS n FROM flights ${cond}`).get(...args).n;
     const names = airlineNames(db);
@@ -377,7 +355,7 @@ function get(db, id, { rev, now: at = new Date() } = {}) {
     const names = airlineNames(db);
     const cancelled = sourceCancelled(db, row.id);
     if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, names, at, cancelled), revisions: row.current_rev };
-    const r = db.prepare('SELECT * FROM flight_revisions WHERE flight_id = ? AND rev = ?').get(row.id, toId(rev));
+    const r = findRevision(db, REVISIONS, row.id, rev);
     if (!r) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
     // Revisions from before migration 010 have no enrichment fields: they were empty then.
     const old = { ...Object.fromEntries(FIELDS.map((k) => [k, null])), ...JSON.parse(r.snapshot) };
@@ -394,7 +372,7 @@ function history(db, id) {
 // Flights whose effective status is scheduled (not cancelled, not completed, not landed; in the air counts), soonest first.
 function upcoming(db, { now: at = new Date(), limit } = {}) {
     const iso = new Date(at).toISOString();
-    const n = Math.min(Math.max(parseInt(limit, 10) || 5, 1), 50);
+    const n = clampLimit(limit, 5, 50);
     const names = airlineNames(db);
     const cancelled = sourceCancelled(db);
     return db.prepare(`SELECT * FROM flights WHERE ${effectiveSql('@iso')} = 'scheduled'
@@ -564,7 +542,7 @@ function stats(db, { year, now: at = new Date() } = {}) {
 function searchAirports(db, q, { limit } = {}) {
     const term = String(q == null ? '' : q).trim().slice(0, 40);
     if (!term) return [];
-    const n = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 20);
+    const n = clampLimit(limit, 20, 20);
     const esc = term.replace(/[\\%_]/g, (c) => `\\${c}`);
     return db.prepare(`SELECT iata, icao, name, city, country, lat, lon, tz FROM airports
         WHERE iata = @u OR iata LIKE @p ESCAPE '\\' OR icao LIKE @p ESCAPE '\\' OR city LIKE @p ESCAPE '\\' OR name LIKE @c ESCAPE '\\'
@@ -662,7 +640,7 @@ function update(db, id, input, actor) {
 function restore(db, id, rev, actor) {
     return db.transaction(() => {
         const row = need(db, id);
-        const old = toId(rev) && db.prepare('SELECT * FROM flight_revisions WHERE flight_id = ? AND rev = ?').get(row.id, toId(rev));
+        const old = findRevision(db, REVISIONS, row.id, rev);
         if (!old) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
         const was = { ...Object.fromEntries(FIELDS.map((k) => [k, null])), ...JSON.parse(old.snapshot) };
         if (JSON.stringify(editable(was)) === JSON.stringify(editable(row))) return { status: 'unchanged', id: row.id, label: label(row), rev: row.current_rev };
@@ -695,11 +673,7 @@ function cleanDate(v, name) {
     return String(v);
 }
 
-function needTrip(db, id) {
-    const t = toId(id) && db.prepare('SELECT * FROM trips WHERE id = ?').get(toId(id));
-    if (!t) throw bad('no_trip', `There is no trip ${String(id).slice(0, 20)}.`, 404);
-    return t;
-}
+const needTrip = (db, id) => needRow(db, 'trips', id, () => bad('no_trip', `There is no trip ${String(id).slice(0, 20)}.`, 404));
 
 function buildTrip(input, current = {}) {
     const given = input || {};
@@ -826,11 +800,7 @@ function shapeCandidate(row) {
     };
 }
 
-function needCandidate(db, id) {
-    const row = toId(id) && db.prepare('SELECT * FROM flight_candidates WHERE id = ?').get(toId(id));
-    if (!row) throw bad('not_found', `There is no flight candidate ${String(id).slice(0, 20)}.`, 404);
-    return row;
-}
+const needCandidate = (db, id) => needRow(db, 'flight_candidates', id, () => bad('not_found', `There is no flight candidate ${String(id).slice(0, 20)}.`, 404));
 
 // A suggest answer goes to keys that may lack flights:read, so it never carries a booking reference.
 const withoutRef = ({ booking_ref: _ref, ...rest }) => rest;
@@ -868,7 +838,7 @@ function suggest(db, input, actor) {
 function listCandidates(db, { status = 'pending', limit } = {}) {
     const s = status == null || status === '' ? 'pending' : status;
     if (s !== 'all') oneOf(s, 'status', CANDIDATE_STATUSES);
-    const n = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+    const n = clampLimit(limit, 100, 500);
     const rows = s === 'all'
         ? db.prepare('SELECT * FROM flight_candidates ORDER BY sched_dep DESC, id DESC LIMIT ?').all(n)
         : db.prepare('SELECT * FROM flight_candidates WHERE status = ? ORDER BY sched_dep DESC, id DESC LIMIT ?').all(s, n);
