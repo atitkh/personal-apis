@@ -17,11 +17,12 @@ const TYPES = [
     ['places', 'Places'],
     ['flights', 'Flights'],
     ['deadlines', 'Deadlines'],
+    ['preferences', 'Preferences'],
     ['signins', 'Sign-ins'],
 ];
 // Empty-state titles per chip, in words that fit the events ("No agents events" read badly).
-const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', signins: 'No sign-ins yet.' };
-const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines' };
+const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', preferences: 'No preference changes yet.', signins: 'No sign-ins yet.' };
+const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines', preferences: 'Preferences' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
     key_created: 'keys', key_updated: 'keys', key_revoked: 'keys',
@@ -34,12 +35,14 @@ const ICON = {
     flight_created: 'calendar', flight_updated: 'calendar', flight_restored: 'calendar',
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
     flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
+    preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences',
     deadline_created: 'calendar', deadline_updated: 'calendar', deadline_done: 'calendar', deadline_ended: 'calendar', deadline_restored: 'calendar',
 };
 const RULE_NAME = { street: 'street', zone: 'zone', radius: 'circle' };
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 const strong = (text) => h('strong', { text });
+const prefName = (d) => (d.key ? `${d.key.replace(/_/g, ' ')}${d.area ? ` (${d.area})` : ''}` : 'a preference');
 const domainName = (n) => DOMAIN_TITLE[n] || n || 'a domain';
 const readableScope = (s) => { const e = explain(s); return e.domain === '*' ? 'everything' : `${e.title} ${e.label.toLowerCase()}`; };
 
@@ -92,6 +95,10 @@ function sentence(e) {
     case 'flight_restored': return [who, ' restored an older version of the flight ', strong(d.flight || 'a flight')];
     case 'trip_created': return [who, ' added the trip ', strong(d.title || 'a trip')];
     case 'trip_updated': return [who, ' changed the trip ', strong(d.title || 'a trip')];
+    case 'preference_set': return [who, ' set the preference ', strong(prefName(d))];
+    case 'preference_updated': return [who, ' changed the preference ', strong(prefName(d))];
+    case 'preference_unset': return [who, ' removed the preference ', strong(prefName(d))];
+    case 'preference_restored': return [who, ' restored an older version of the preference ', strong(prefName(d))];
     case 'deadline_created': return [who, ' added the deadline ', strong(d.title || 'a deadline')];
     case 'deadline_updated': return [who, ' changed the deadline ', strong(d.title || 'a deadline')];
     case 'deadline_done': return [who, ' marked the deadline ', strong(d.title || 'a deadline'), d.next_due ? ` done, next due ${d.next_due}` : ' done'];

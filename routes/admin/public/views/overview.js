@@ -17,6 +17,7 @@ const WRITE_WARNING = {
 };
 WRITE_WARNING.flights = 'Agents holding a flights suggest key can file found flights into the review queue, and a flights edit key can add flights and change existing ones. Every earlier version is kept; accepting, dismissing and cancelling stay with you.';
 WRITE_WARNING.deadlines = 'Agents holding a deadlines edit key can add deadlines, change them and mark them done (a repeating one moves to its next date) or ended. Every earlier version is kept; restoring and anything private, like the reference, stay with you.';
+WRITE_WARNING.preferences = 'Agents holding a preferences edit key can set preferences (create or change them by area and key) and unset them. Unset only hides a preference; every earlier version is kept and you can restore it here. Text that looks like a password, a long number or a key is refused.';
 const writeWarning = (name) => WRITE_WARNING[name] || MCP_WRITE_WARNING;
 const REFRESH_MS = 60 * 1000;
 const UPCOMING = [{ name: 'flights', title: 'Flights', text: 'Next domain. Past and upcoming trips.' }];

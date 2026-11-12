@@ -16,6 +16,7 @@ router.register('digests', { title: 'Digests', icon: 'digests', nav: true, mobil
 router.register('places', { title: 'Places', icon: 'places', nav: true, load: () => import('./views/places.js') });
 router.register('flights', { title: 'Flights', icon: 'flights', nav: true, load: () => import('./views/flights.js') });
 router.register('deadlines', { title: 'Deadlines', icon: 'deadlines', nav: true, load: () => import('./views/deadlines.js') });
+router.register('preferences', { title: 'Preferences', icon: 'preferences', nav: true, load: () => import('./views/preferences.js') });
 router.register('keys', { title: 'API keys', short: 'Keys', icon: 'keys', nav: true, mobile: true, load: () => import('./views/keys.js') });
 router.register('agents', { title: 'Agent access', short: 'Agents', icon: 'agents', nav: true, mobile: true, load: () => import('./views/agents.js') });
 router.register('backups', { title: 'Backups', icon: 'backups', nav: true, load: () => import('./views/backups.js') });
@@ -224,6 +225,10 @@ addSource(() => [
     {
         id: 'act:deadline', group: 'Actions', icon: 'plus', label: 'Add deadline', keywords: 'new deadline renewal expiry due date subscription document insurance', order: 7,
         run: () => router.navigate(router.href('deadlines', [], { new: '1' })),
+    },
+    {
+        id: 'act:preference', group: 'Actions', icon: 'plus', label: 'Add preference', keywords: 'new preference seat airline call hours food habit likes', order: 9,
+        run: () => router.navigate(router.href('preferences', [], { new: '1' })),
     },
     {
         id: 'act:due-soon', group: 'Actions', icon: 'deadlines', label: 'Deadlines due soon', keywords: 'deadlines upcoming overdue urgent renewals expiring', order: 8,

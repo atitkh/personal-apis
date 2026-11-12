@@ -92,6 +92,11 @@ const SHAPES = {
             h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
             h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(5, 5)))),
 
+    preferences: () => wrap('view preferences',
+        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
+        h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(3, 3), bar('sk-title w-20'), tableRows(2, 3))),
+
     keys: () => wrap('view keys',
         h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
         h('section', {}, bar('sk-title w-20'), tableRows(3)),
