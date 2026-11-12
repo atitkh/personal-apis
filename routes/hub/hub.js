@@ -96,6 +96,7 @@ router.get('/briefing', requireKey(), handle((req, res, conn) => {
 router.use('/places', require('./places')(handle));
 router.use('/flights', require('./flights')(handle));
 router.use('/deadlines', require('./deadlines')(handle));
+router.use('/preferences', require('./preferences')(handle));
 
 router.use((req, res) => res.status(404).json({ error: 'not_found', message: 'No such hub route.' }));
 

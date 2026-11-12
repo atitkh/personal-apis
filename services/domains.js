@@ -48,6 +48,14 @@ const REGISTRY = {
         stats: (db) => require('./deadlines').stats(db),
         briefing: (db, o) => require('./briefingHooks').deadlines(db, o),
     },
+    // No briefing hook: preferences are context for agents, not something that needs attention.
+    preferences: {
+        title: 'Preferences',
+        sensitivity: 'private',   // how Atit likes things; plain facts, never secrets
+        storage: 'db',
+        defaultEnabled: true,
+        stats: (db) => require('./preferences').stats(db),
+    },
 };
 
 const names = () => Object.keys(REGISTRY);
