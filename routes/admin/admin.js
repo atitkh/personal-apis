@@ -136,6 +136,7 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
     const ctx = { db, audit };
     require('./api/overview')(api, ctx);
     require('./api/backups')(api, ctx);
+    require('./api/settings')(api, ctx);
     require('./api/activity')(api, ctx);
     require('./api/keys')(api, ctx);
     require('./api/domains')(api, ctx);

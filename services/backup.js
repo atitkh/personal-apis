@@ -299,9 +299,8 @@ function realish(p) {
     }
 }
 
-// Writes and deletes a temp file in `input` (created if missing). Resolves { ok, writable, free_bytes, resolved, created }
-// or throws DirError (status 400) for a path that must not be used: not text, not absolute, or in a system area.
-function checkDir(input) {
+// The resolved path of a folder that may be used, or a DirError (status 400): not text, not absolute, or in a system area.
+function allowedDir(input) {
     if (typeof input !== 'string' || !input.trim()) throw new DirError('Enter a folder path.');
     const raw = input.trim();
     if (raw.includes('\0') || raw.length > 500) throw new DirError('That is not a usable path.');
@@ -311,6 +310,13 @@ function checkDir(input) {
     for (const root of FORBIDDEN) {
         if (under(resolved, root) || under(realish(resolved), root)) throw new DirError(`${root} is a system folder; backups cannot go there.`);
     }
+    return resolved;
+}
+
+// Writes and deletes a temp file in `input` (created if missing). Resolves { ok, writable, free_bytes, resolved, created }
+// or throws DirError (status 400) for a path that must not be used (see allowedDir).
+function checkDir(input) {
+    const resolved = allowedDir(input);
     const out = { ok: false, writable: false, free_bytes: null, resolved, created: false };
     try {
         if (!fs.existsSync(resolved)) { fs.mkdirSync(resolved, { recursive: true }); out.created = true; }
@@ -378,6 +384,6 @@ async function verifyNewest(conn = db.get()) {
 
 module.exports = {
     runOnce, backupNow, tick, start, shouldRun, scheduledName, config, status, list, lastError, recordFailure, clearFailure,
-    snapshotBeforeDelete, snapshotBeforeMigration, checkDir, DirError, verifyFile, verifyNewest, prune,
+    snapshotBeforeDelete, snapshotBeforeMigration, checkDir, allowedDir, DirError, verifyFile, verifyNewest, prune,
     FILE_RE, PRE_DELETE_RE, PRE_MIGRATION_RE, isBackupName, kindOf,
 };
