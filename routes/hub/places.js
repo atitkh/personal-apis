@@ -8,6 +8,7 @@
 const express = require('express');
 const places = require('../../services/places');
 const audit = require('../../services/audit');
+const { keyChanged } = require('../lib/changed');
 const apiKeys = require('../../services/apiKeys');
 const { requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
@@ -18,10 +19,7 @@ module.exports = (handle) => {
     const write = [requireScope('places:api-write'), requireDomain('places')];
 
     // Answers with the result and records what changed (nothing when the change was a no-op).
-    const changed = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, action, places.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const changed = keyChanged(places.auditDetail);
 
     router.get('/', read, handle((req, res, conn) => {
         res.json({ places: places.list(conn, { kind: req.query.kind }) });

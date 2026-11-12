@@ -1,23 +1,14 @@
 const places = require('../../../services/places');
+const { adminHandler } = require('../../lib/handle');
+const { adminChanged } = require('../../lib/changed');
 
 module.exports = (api, ctx) => {
-    const { db, audit } = ctx;
+    const { audit } = ctx;
 
     // ---- places (works while the domain is switched off, like digests). Changes are audited as by
     // `admin` with ids, labels and rule types only, never rule values or streets. ----
-    const placeHandler = (fn) => (req, res) => {
-        try {
-            fn(req, res, db.get());
-        } catch (err) {
-            if (err instanceof places.PlaceError) return res.status(err.status).json({ error: err.message, code: err.code });
-            console.error('admin places error:', err);
-            res.status(500).json({ error: 'Something went wrong.' });
-        }
-    };
-    const placeChanged = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.record(conn, 'admin', action, places.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const placeHandler = adminHandler(places.PlaceError, 'admin places error:');
+    const placeChanged = adminChanged(places.auditDetail);
 
     api.get('/places', placeHandler((req, res, conn) => {
         const list = places.list(conn, { kind: req.query.kind }).map((p) => ({

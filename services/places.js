@@ -38,6 +38,9 @@
 // JSON uses the column names (updated_at, radius_m, matched_rule). Audit entries carry ids and labels only,
 // never rule values: a rule value can be the home address. Use auditDetail() for them.
 const { HubError } = require('./errors');
+const { toId } = require('./lib/validate');
+const { needRow, commitRevision, findRevision } = require('./lib/revisions');
+const { clampLimit } = require('./lib/listing');
 
 const KINDS = ['home', 'campus', 'family', 'friend', 'store', 'transit', 'other'];
 const SOURCES = ['manual', 'suggested'];
@@ -59,6 +62,7 @@ const NO_ZONE = new Set(['', 'not_home', 'unknown', 'unavailable', 'none']);
 class PlaceError extends HubError {}
 
 const bad = (code, message, status = 400) => new PlaceError(status, code, message);
+const REVISIONS = { table: 'places', revTable: 'place_revisions', fk: 'place_id' };
 const now = () => new Date().toISOString();
 const who = (actor) => String(actor || 'unknown');
 
@@ -172,21 +176,12 @@ function cleanRules(list) {
     });
 }
 
-function toId(v) {
-    const id = typeof v === 'number' ? v : /^\d+$/.test(String(v)) ? Number(v) : NaN;
-    return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
 /* ---------- rows ---------- */
 
 const shapeRule = (r) => ({ id: r.id, type: r.type, value: r.value, lat: r.lat, lon: r.lon, radius_m: r.radius_m, exclude: r.exclude === 1 || r.exclude === true, priority: r.priority });
 const rulesOf = (db, placeId) => db.prepare('SELECT * FROM place_rules WHERE place_id = ? ORDER BY id').all(placeId).map(shapeRule);
 
-function need(db, id) {
-    const place = toId(id) && db.prepare('SELECT * FROM places WHERE id = ?').get(toId(id));
-    if (!place) throw bad('not_found', `There is no place ${id}.`, 404);
-    return place;
-}
+const need = (db, id) => needRow(db, 'places', id, () => bad('not_found', `There is no place ${id}.`, 404));
 
 function needRule(db, place, ruleId) {
     const rule = toId(ruleId) && db.prepare('SELECT * FROM place_rules WHERE id = ? AND place_id = ?').get(toId(ruleId), place.id);
@@ -208,15 +203,7 @@ function insertRule(db, placeId, r, at, id = null) {
 const snapshot = (db, p) => ({ label: p.label, kind: p.kind, notes: p.notes, rules: rulesOf(db, p.id) });
 
 // Stores the place as it is now as its next revision. Every change ends here.
-function commit(db, id, { source, actor, note }) {
-    const p = db.prepare('SELECT * FROM places WHERE id = ?').get(id);
-    const rev = p.current_rev + 1;
-    const at = now();
-    db.prepare('INSERT INTO place_revisions (place_id, rev, snapshot, source, actor, note, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(id, rev, JSON.stringify(snapshot(db, p)), source, who(actor), note || null, at);
-    db.prepare('UPDATE places SET current_rev = ?, updated_at = ?, updated_by = ? WHERE id = ?').run(rev, at, who(actor), id);
-    return rev;
-}
+const commit = (db, id, meta) => commitRevision(db, REVISIONS, id, meta, (p) => snapshot(db, p));
 
 function shape(p, rules) {
     return {
@@ -253,7 +240,7 @@ function list(db, { kind } = {}) {
 function get(db, id, { rev } = {}) {
     const p = need(db, id);
     if (rev == null || rev === '' || Number(rev) === p.current_rev) return { ...shape(p, rulesOf(db, p.id)), revisions: p.current_rev };
-    const r = db.prepare('SELECT * FROM place_revisions WHERE place_id = ? AND rev = ?').get(p.id, toId(rev));
+    const r = findRevision(db, REVISIONS, p.id, rev);
     if (!r) throw bad('no_revision', `Revision ${rev} does not exist.`, 404);
     const old = JSON.parse(r.snapshot);
     return { ...shape({ ...p, ...old, current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, old.rules), revisions: p.current_rev };
@@ -322,7 +309,7 @@ function update(db, id, input, actor, { source = 'edit' } = {}) {
 function restore(db, id, rev, actor) {
     return db.transaction(() => {
         const p = need(db, id);
-        const old = db.prepare('SELECT * FROM place_revisions WHERE place_id = ? AND rev = ?').get(p.id, toId(rev));
+        const old = findRevision(db, REVISIONS, p.id, rev);
         if (!old) throw bad('no_revision', `Revision ${rev} does not exist.`, 404);
         const was = JSON.parse(old.snapshot);
         if (JSON.stringify(was) === JSON.stringify(snapshot(db, p))) return { status: 'unchanged', id: p.id, label: p.label, rev: p.current_rev };
@@ -510,7 +497,7 @@ function resolve(db, input) {
 // The queue of unnamed streets, most recently seen first.
 function suggestions(db, { status = 'pending', limit = 100 } = {}) {
     if (status !== 'all' && !STATUSES.includes(status)) throw bad('bad_status', `status must be one of: ${STATUSES.join(', ')}, all.`);
-    const n = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 500);
+    const n = clampLimit(limit, 100, 500);
     return status === 'all'
         ? db.prepare('SELECT * FROM place_suggestions ORDER BY last_seen DESC, id DESC LIMIT ?').all(n)
         : db.prepare('SELECT * FROM place_suggestions WHERE status = ? ORDER BY last_seen DESC, id DESC LIMIT ?').all(status, n);
@@ -523,11 +510,7 @@ function suggestionCounts(db) {
     return counts;
 }
 
-function needSuggestion(db, id) {
-    const s = toId(id) && db.prepare('SELECT * FROM place_suggestions WHERE id = ?').get(toId(id));
-    if (!s) throw bad('not_found', `There is no suggestion ${id}.`, 404);
-    return s;
-}
+const needSuggestion = (db, id) => needRow(db, 'place_suggestions', id, () => bad('not_found', `There is no suggestion ${id}.`, 404));
 
 function decide(db, s, status, placeId, actor) {
     db.prepare('UPDATE place_suggestions SET status = ?, resolved_place_id = ?, decided_at = ?, decided_by = ? WHERE id = ?')
