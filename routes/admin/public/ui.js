@@ -295,6 +295,41 @@ export function formDialog({ title, intro, fields, submit = 'Save', danger = fal
     });
 }
 
+// "Delete permanently": a red confirm that says what goes (`goes`), what does not (`stays`) and that it cannot be undone,
+// with a "Back up the database first" box (on by default) and any `options` ({ name, label, help, checked }).
+// `run({ backup, ...options })` makes the request; its error stays in the dialog (a 409 explains itself). Resolves the
+// result of `run`, or null when cancelled.
+export function deleteDialog({ title, goes = [], stays = [], options = [], run }) {
+    const boxes = [
+        { name: 'backup', label: 'Back up the database first', help: 'Saves a copy named hub-pre-delete-<time>.db next to the daily backups. If the copy fails, nothing is deleted.', checked: true },
+        ...options,
+    ];
+    const fields = boxes.map((o) => {
+        const id = nextId('del');
+        const input = h('input', { type: 'checkbox', name: o.name, id });
+        input.checked = Boolean(o.checked);
+        return h('div', { class: 'check-field' },
+            h('label', { class: 'check', for: id }, input, h('span', { text: o.label })),
+            o.help ? h('p', { class: 'help', text: o.help }) : null);
+    });
+    const list = (items) => h('ul', { class: 'delete-list' }, items.map((t) => h('li', { text: t })));
+    return formDialog({
+        title,
+        cls: 'delete-dialog',
+        intro: [
+            h('p', { class: 'dialog-intro' }, h('strong', { text: 'This deletes' })),
+            list(goes),
+            stays.length ? h('p', { class: 'dialog-intro' }, h('strong', { text: 'This does not delete' })) : null,
+            stays.length ? list(stays) : null,
+            h('p', { class: 'dialog-intro' }, h('strong', { text: 'This cannot be undone.' })),
+        ],
+        fields,
+        submit: 'Delete permanently',
+        danger: true,
+        onSubmit: (form) => run(Object.fromEntries(boxes.map((o) => [o.name, form.elements[o.name].checked]))),
+    });
+}
+
 // A dialog that only shows something (the shortcut list); a Close button, Esc and the backdrop close it.
 export function infoDialog({ title, content, cls = '' }) {
     const id = nextId('dlg');

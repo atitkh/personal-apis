@@ -3,6 +3,8 @@ const flights = require('../../../services/flights');
 const enrich = require('../../../services/enrich');
 const { adminHandler } = require('../../lib/handle');
 const { adminChanged } = require('../../lib/changed');
+const { removal } = require('../../lib/remove');
+const { needConfirm } = require('../../../services/lib/remove');
 
 module.exports = (api, ctx) => {
     const { audit } = ctx;
@@ -39,6 +41,23 @@ module.exports = (api, ctx) => {
         res.json(result);
     }));
 
+    // ---- permanent delete: a person at the dashboard only. Body { confirm: true, backup?: true }. Fixed words first. ----
+    const bad = (code, message, status) => new flights.FlightError(status || 400, code, message);
+    const gone = (action, svc, detail) => flightHandler((req, res, conn) => removal(req, res, conn, action, {
+        plan: () => { needConfirm(bad, req.body); },
+        run: () => svc(conn, req),
+        detail,
+    }));
+
+    api.delete('/flights/candidates/dismissed', gone('flight_candidate_deleted',
+        (conn, req) => flights.removeDismissedCandidates(conn, req.body), flights.candidateRemovedAuditDetail));
+
+    api.delete('/flights/candidates/:id', flightHandler((req, res, conn) => removal(req, res, conn, 'flight_candidate_deleted', {
+        plan: () => { needConfirm(bad, req.body); },
+        run: () => flights.removeCandidate(conn, req.params.id, req.body),
+        detail: flights.candidateRemovedAuditDetail,
+    })));
+
     // ---- flights: the list, one flight, the Passport, airports, trips and settings for the dashboard. Fixed words
     // come before /flights/:id. The list leaves booking references out (has_booking_ref instead); one flight
     // carries it. Changes are audited as `admin` with id, flight label and revision only. ----
@@ -73,6 +92,16 @@ module.exports = (api, ctx) => {
         audit.record(conn, 'admin', 'trip_created', { id: result.id, title: result.title }, req.ip);
         res.status(201).json(result);
     }));
+
+    api.get('/flights/trips/:id/delete-preview', flightHandler((req, res, conn) => {
+        res.json(flights.tripRemovalPreview(conn, req.params.id));
+    }));
+
+    api.delete('/flights/trips/:id', flightHandler((req, res, conn) => removal(req, res, conn, 'trip_deleted', {
+        plan: () => { needConfirm(bad, req.body); flights.tripRemovalPreview(conn, req.params.id); },
+        run: () => flights.removeTrip(conn, req.params.id, req.body),
+        detail: flights.tripRemovedAuditDetail,
+    })));
 
     api.get('/flights/settings', flightHandler((req, res, conn) => {
         res.json(flights.getSettings(conn));
@@ -118,4 +147,14 @@ module.exports = (api, ctx) => {
     api.post('/flights/:id/restore', flightHandler((req, res, conn) => {
         flightChanged(req, res, conn, 'flight_restored', flights.restore(conn, req.params.id, (req.body || {}).rev, 'admin'));
     }));
+
+    api.get('/flights/:id/delete-preview', flightHandler((req, res, conn) => {
+        res.json(flights.flightRemovalPreview(conn, req.params.id, { forget_candidate: req.query.forget_candidate !== 'false' }));
+    }));
+
+    api.delete('/flights/:id', flightHandler((req, res, conn) => removal(req, res, conn, 'flight_deleted', {
+        plan: () => { needConfirm(bad, req.body); flights.flightRemovalPreview(conn, req.params.id, req.body); },
+        run: () => flights.removeFlight(conn, req.params.id, req.body),
+        detail: flights.removedAuditDetail,
+    })));
 };

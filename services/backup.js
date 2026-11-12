@@ -31,6 +31,32 @@ async function runOnce(conn = db.get(), { keep = KEEP, force = false } = {}) {
     return dest;
 }
 
+// A one-off copy taken just before a permanent delete: hub-pre-delete-<timestamp>.db next to the daily ones. The daily
+// pruning never touches these; the newest KEEP_PRE_DELETE are kept. Resolves to the file name; rejects if the copy fails.
+const PRE_DELETE_RE = /^hub-pre-delete-\d{8}-\d{6}(-\d+)?\.db$/;
+const KEEP_PRE_DELETE = 20;
+
+async function snapshotBeforeDelete(conn = db.get(), { keep = KEEP_PRE_DELETE, at = new Date() } = {}) {
+    if (conn.memory) return null;
+    const dir = path.join(path.dirname(conn.name), 'backups');
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = at.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, '').replace('T', '-');
+    let name = `hub-pre-delete-${stamp}.db`;
+    for (let n = 2; fs.existsSync(path.join(dir, name)); n++) name = `hub-pre-delete-${stamp}-${n}.db`;
+    const dest = path.join(dir, name);
+    const tmp = `${dest}.tmp`;
+    try {
+        await conn.backup(tmp);
+        fs.renameSync(tmp, dest);
+    } catch (err) {
+        try { fs.unlinkSync(tmp); } catch (e) { /* nothing to clean */ }
+        throw err;
+    }
+    const old = fs.readdirSync(dir).filter((f) => PRE_DELETE_RE.test(f)).sort();
+    for (const f of old.slice(0, Math.max(0, old.length - keep))) fs.unlinkSync(path.join(dir, f));
+    return name;
+}
+
 // Checks shortly after boot and then hourly, so a restart never skips a day and never makes a second copy.
 function start() {
     const tick = () => runOnce().catch((err) => console.error('Hub backup failed:', err.message));
@@ -38,4 +64,4 @@ function start() {
     setInterval(tick, 60 * 60 * 1000).unref();
 }
 
-module.exports = { runOnce, start, prune };
+module.exports = { runOnce, snapshotBeforeDelete, start, prune, PRE_DELETE_RE };

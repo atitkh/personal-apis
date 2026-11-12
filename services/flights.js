@@ -22,6 +22,7 @@ const { HubError } = require('./errors');
 const validate = require('./lib/validate');
 const { needRow, commitRevision, findRevision } = require('./lib/revisions');
 const { clampLimit, clampOffset } = require('./lib/listing');
+const { needConfirm, count } = require('./lib/remove');
 const { toId } = validate;
 
 // Stored `status` has three values, but 'scheduled' means AUTOMATIC: the effective status (what every answer
@@ -910,7 +911,94 @@ const candidateAuditDetail = (c, flight) => {
     return out;
 };
 
+/* ---------- permanent delete (admin only: never on /hub or MCP) ---------- */
+
+// What deleting a flight takes with it. Revisions and observations go; the candidates that became this flight
+// either go too (forget_candidate, the default, so a Gmail scan may find the flight again) or stay as history
+// with no flight. The booking stays in Gmail whatever happens here.
+const forgetOf = (input) => (input || {}).forget_candidate !== false;
+
+function flightRemovalPreview(db, id, input) {
+    const f = need(db, id);
+    return {
+        id: f.id, label: label(f), forget_candidate: forgetOf(input),
+        counts: {
+            revisions: count(db, 'SELECT COUNT(*) AS n FROM flight_revisions WHERE flight_id = ?', f.id),
+            observations: count(db, 'SELECT COUNT(*) AS n FROM flight_observations WHERE flight_id = ?', f.id),
+            candidates: count(db, 'SELECT COUNT(*) AS n FROM flight_candidates WHERE accepted_flight_id = ?', f.id),
+        },
+    };
+}
+
+function removeFlight(db, id, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const p = flightRemovalPreview(db, id, input);
+        if (p.forget_candidate) db.prepare('DELETE FROM flight_candidates WHERE accepted_flight_id = ?').run(p.id);
+        else db.prepare('UPDATE flight_candidates SET accepted_flight_id = NULL WHERE accepted_flight_id = ?').run(p.id);
+        db.prepare('DELETE FROM flights WHERE id = ?').run(p.id);
+        return { status: 'deleted', ...p };
+    })();
+}
+
+const removedAuditDetail = (r) => ({ id: r.id, flight: r.label, ...r.counts, forget_candidate: r.forget_candidate });
+
+function tripRemovalPreview(db, id) {
+    const t = needTrip(db, id);
+    return {
+        id: t.id, label: t.title,
+        counts: {
+            flights: count(db, 'SELECT COUNT(*) AS n FROM flights WHERE trip_id = ?', t.id),
+            deadlines: count(db, 'SELECT COUNT(*) AS n FROM deadlines WHERE trip_id = ?', t.id),
+        },
+    };
+}
+
+// Flights that still use the trip block the delete (409 with the count) unless `unassign: true` frees them; the
+// flights stay. Deadlines carry the trip as a plain number, so their link is cleared as well.
+function removeTrip(db, id, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const p = tripRemovalPreview(db, id);
+        if (p.counts.flights > 0 && input.unassign !== true) {
+            throw bad('trip_in_use', `Trip ${p.label.slice(0, 60)} still has ${p.counts.flights} flight${p.counts.flights === 1 ? '' : 's'}. Unassign them first, or delete with unassign: true.`, 409, { flights: p.counts.flights });
+        }
+        db.prepare('UPDATE flights SET trip_id = NULL WHERE trip_id = ?').run(p.id);
+        db.prepare('UPDATE deadlines SET trip_id = NULL WHERE trip_id = ?').run(p.id);
+        db.prepare('DELETE FROM trips WHERE id = ?').run(p.id);
+        return { status: 'deleted', ...p, unassigned: input.unassign === true };
+    })();
+}
+
+const tripRemovedAuditDetail = (r) => ({ id: r.id, trip: r.label, ...r.counts, unassigned: r.unassigned });
+
+// A candidate row of any status. An accepted one leaves its flight alone (only the found-flight record goes).
+function removeCandidate(db, id, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const c = needCandidate(db, id);
+        const lbl = shapeCandidate(c).label;
+        db.prepare('DELETE FROM flight_candidates WHERE id = ?').run(c.id);
+        return { status: 'deleted', id: c.id, label: lbl, candidate_status: c.status };
+    })();
+}
+
+const candidateRemovedAuditDetail = (r) => (r.count == null
+    ? { id: r.id, flight: r.label, status: r.candidate_status }
+    : { count: r.count, status: r.candidate_status });
+
+// "Delete all dismissed": every dismissed candidate in one go; the answer says how many.
+function removeDismissedCandidates(db, input) {
+    needConfirm(bad, input);
+    return db.transaction(() => {
+        const n = db.prepare("DELETE FROM flight_candidates WHERE status = 'dismissed'").run().changes;
+        return { status: 'deleted', count: n, candidate_status: 'dismissed' };
+    })();
+}
+
 module.exports = {
+    removeFlight, flightRemovalPreview, removedAuditDetail, tripRemovalPreview, removeTrip, tripRemovedAuditDetail,
+    removeCandidate, removeDismissedCandidates, candidateRemovedAuditDetail,
     STATUSES, STATUS_INPUTS, SOURCES, FIELDS, ENRICHABLE, SETTINGS, FlightError, effectiveStatus,
     build, need, write, commit, label, editable, lockedOf, now,
     CANDIDATE_STATUSES, CANDIDATE_SOURCES, CANDIDATE_FIELDS, CANDIDATE_FLIGHT_STATUSES, ACCEPT_ALL_MAX,

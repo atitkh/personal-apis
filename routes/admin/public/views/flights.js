@@ -7,7 +7,7 @@
 // Times are shown and typed as the clock at each airport. The booking reference is masked until you press Show and
 // appears only in the drawer and the forms, never in a table, a toast or the palette. Server text goes in as text.
 import {
-    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, openDrawer,
+    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer,
     chip, chipNav, fact, hidden, actorName, dayLabel,
 } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
@@ -560,7 +560,49 @@ function flightDrawer(ctx, id, fromList, mark) {
         }
     }
 
+    // Permanent delete (the confirm says what goes and offers a backup first); after it the drawer closes and the list reloads.
+    async function removeFlight() {
+        let pre;
+        try { pre = await ctx.api(`/flights/${flight.id}/delete-preview`); } catch (err) { toast(`Could not check what a delete would take. ${err.message}`, { kind: 'bad' }); return; }
+        const c = pre.counts;
+        const out = await deleteDialog({
+            title: `Delete ${pre.label}?`,
+            goes: [`The flight ${pre.label} itself`, plural(c.revisions, 'revision'), plural(c.observations, 'live-data lookup'),
+                c.candidates ? `${plural(c.candidates, 'found-flight record')} for it, if the box below is ticked` : null, 'Its share of the Passport totals, the map and the stats'].filter(Boolean),
+            stays: ['The booking and the email in Gmail', flight.trip_id ? `The trip ${tripName(flight.trip_id)} (it just has one flight fewer)` : null].filter(Boolean),
+            options: [{ name: 'forget_candidate', label: 'Allow the Gmail scan to find this flight again', checked: true,
+                help: 'Removes the found-flight record that became this flight. Unticked, it stays as history and the scan will not file the flight again.' }],
+            run: (o) => ctx.api(`/flights/${flight.id}`, { method: 'DELETE', body: { confirm: true, backup: o.backup, forget_candidate: o.forget_candidate } }),
+        });
+        if (!out) return;
+        toast(`Deleted ${out.label}`);
+        form = null;
+        drawer = null;
+        handle.close(true);
+        closeDrawerTo(fromList);
+        ctx.rerender();
+    }
+
+    async function removeTrip() {
+        let pre;
+        try { pre = await ctx.api(`/flights/trips/${flight.trip_id}/delete-preview`); } catch (err) { toast(`Could not check the trip. ${err.message}`, { kind: 'bad' }); return; }
+        const c = pre.counts;
+        const out = await deleteDialog({
+            title: `Delete the trip ${pre.label}?`,
+            goes: [`The trip ${pre.label}`, c.deadlines ? `Its link on ${plural(c.deadlines, 'deadline')} (the deadlines stay)` : null].filter(Boolean),
+            stays: [c.flights ? `The ${plural(c.flights, 'flight')} on it, if you unassign them below (they stay in your flights and the Passport)` : 'Your flights'],
+            options: c.flights ? [{ name: 'unassign', label: `Unassign ${plural(c.flights, 'flight')} and delete the trip`, checked: false,
+                help: `Without this the delete is refused while flights use the trip.` }] : [],
+            run: (o) => ctx.api(`/flights/trips/${flight.trip_id}`, { method: 'DELETE', body: { confirm: true, backup: o.backup, unassign: o.unassign === true } }),
+        });
+        if (!out) return;
+        toast(`Deleted the trip ${out.label}`);
+        changed('history');
+    }
+
     function content() {
+        const del = button({ text: 'Delete permanently', variant: 'quiet-danger', iconName: 'trash', 'data-key': 'delete-flight', onClick: removeFlight });
+        const delTrip = flight.trip_id ? button({ text: `Delete the trip ${tripName(flight.trip_id)}`, variant: 'quiet-danger', size: 'small', 'data-key': 'delete-trip', onClick: removeTrip }) : null;
         const cancel = flight.status === 'cancelled' ? null : button({ text: 'Cancel this flight', variant: 'danger', iconName: 'close', 'data-key': 'cancel-flight', onClick: async () => {
             const ok = await confirmDialog({
                 title: `Cancel ${flightName(flight)}?`,
@@ -605,8 +647,10 @@ function flightDrawer(ctx, id, fromList, mark) {
                         button({ text: 'Compare', variant: 'quiet', size: 'small', label: `Compare revision ${r.rev} with the current one`, onClick: () => compare(r.rev) }),
                         button({ text: 'Restore', variant: 'quiet', size: 'small', label: `Restore revision ${r.rev}`, onClick: () => restore(r.rev) })))))),
             h('section', { class: 'drawer-section danger-zone' },
-                h('p', { class: 'note', text: flight.status === 'cancelled' ? 'This flight is cancelled. Set the status above to bring it back.' : 'A flight is never deleted. Cancelling keeps it and its history but takes it out of the Passport.' }),
-                cancel),
+                h('p', { class: 'note', text: flight.status === 'cancelled' ? 'This flight is cancelled. Set the status above to bring it back.' : 'Cancelling keeps the flight and its history but takes it out of the Passport.' }),
+                cancel,
+                h('p', { class: 'note', text: 'A wrong entry can be deleted for good, with its history. Nothing in Gmail changes.' }),
+                del, delTrip),
         ];
     }
 
@@ -887,6 +931,18 @@ function queueItem(ctx, c, { next }) {
         }
     } });
 
+    const remove = button({ text: 'Delete', variant: 'quiet-danger', size: 'small', 'data-key': `q:${c.id}:delete`, label: `Delete ${c.label} permanently`, onClick: async () => {
+        const out = await deleteDialog({
+            title: `Delete the found flight ${c.label}?`,
+            goes: [`The found-flight record for ${c.label}`, c.status === 'accepted' ? 'Only the record: the flight it became stays in your flights' : null].filter(Boolean),
+            stays: ['The email in Gmail', 'Your flights'],
+            run: (o) => ctx.api(`/flights/candidates/${c.id}`, { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+        });
+        if (!out) return;
+        toast(`Deleted ${c.label}`);
+        after();
+    } });
+
     const times = [c.dep_local ? `Departs ${localDay(c.dep_local)} ${clock(c.dep_local)}` : null, c.arr_local ? `arrives ${clock(c.arr_local)}` : null].filter(Boolean).join(', ');
     return h('li', { class: `queue-item is-${c.status}`, 'data-id': String(c.id) },
         h('div', { class: 'q-main' },
@@ -906,7 +962,7 @@ function queueItem(ctx, c, { next }) {
                 c.status === 'accepted'
                     ? ['Added ', c.decided_at ? ago(c.decided_at) : '', c.accepted_flight_id ? [': ', h('a', { class: 'link', href: flightHref(c.accepted_flight_id), text: 'open the flight' })] : '']
                     : `Dismissed ${c.decided_at ? ago(c.decided_at) : ''}`) : null),
-        c.status === 'accepted' ? null : h('div', { class: 'q-actions' }, accept, edit, dismiss));
+        h('div', { class: 'q-actions' }, ...(c.status === 'accepted' ? [remove] : [accept, edit, dismiss, remove])));
 }
 
 async function acceptAllShown(ctx, shown) {
@@ -934,6 +990,19 @@ async function acceptAllShown(ctx, shown) {
     } catch (err) {
         toast(`Could not accept them. ${err.message}`, { kind: 'bad' });
     }
+}
+
+async function deleteAllDismissed(ctx, n) {
+    const out = await deleteDialog({
+        title: `Delete all ${n} dismissed found ${n === 1 ? 'flight' : 'flights'}?`,
+        goes: [`${plural(n, 'dismissed found-flight record')}`, 'Once gone, a scan that finds one again files it as new'],
+        stays: ['The emails in Gmail', 'Your flights, and found flights waiting or already added'],
+        run: (o) => ctx.api('/flights/candidates/dismissed', { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+    });
+    if (!out) return;
+    toast(`Deleted ${plural(out.count, 'dismissed found flight')}`);
+    focusAfter = 'tab:found';
+    ctx.rerender();
 }
 
 function foundTab(ctx, cand, show) {
@@ -978,6 +1047,9 @@ function foundTab(ctx, cand, show) {
         h('div', { class: 'toolbar' }, nav,
             show === 'pending' && pendingShown.length > 1
                 ? button({ text: `Accept all shown (${pendingShown.length})`, variant: 'quiet', size: 'small', iconName: 'check', 'data-key': 'accept-all', onClick: () => acceptAllShown(ctx, pendingShown) })
+                : null,
+            (show === 'dismissed' || show === 'all') && counts.dismissed > 0
+                ? button({ text: `Delete all dismissed (${counts.dismissed})`, variant: 'quiet-danger', size: 'small', iconName: 'trash', 'data-key': 'delete-dismissed', onClick: () => deleteAllDismissed(ctx, counts.dismissed) })
                 : null),
         h('section', { 'aria-labelledby': 'q-count', class: 'queue' },
             h('h2', { id: 'q-count', class: 'section-title', text: show === 'pending' ? `${plural(list.length, 'found flight')} waiting` : plural(list.length, 'found flight') }),

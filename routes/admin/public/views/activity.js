@@ -1,6 +1,6 @@
 // Activity: the audit log as sentences, grouped by day, newest first. The filter lives in the URL
 // (#/activity?type=keys); older events load on demand. Agent calls show tool and action, never content.
-import { h, icon, button, emptyState, chipNav, dayLabel, keepFocus, toast, hidden, actorName } from '../ui.js';
+import { h, icon, button, emptyState, chipNav, dayLabel, keepFocus, toast, hidden, actorName, plural } from '../ui.js';
 import { isoDay } from '../charts.js';
 import { href } from '../router.js';
 import { MCP_LABEL } from './overview.js';
@@ -27,15 +27,16 @@ const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
     key_created: 'keys', key_updated: 'keys', key_revoked: 'keys',
     domain_enabled: 'overview', domain_disabled: 'overview', domain_mcp_changed: 'agents',
-    digest_edited: 'digests', digest_restored: 'digests',
+    digest_edited: 'digests', digest_restored: 'digests', digest_deleted: 'digests',
     backup_run: 'backup', mcp_call: 'agents',
     place_created: 'places', place_updated: 'places', place_restored: 'places', place_deleted: 'places',
     place_rule_added: 'places', place_rule_updated: 'places', place_rule_removed: 'places',
-    place_suggestion_accepted: 'places', place_suggestion_dismissed: 'places',
+    place_suggestion_accepted: 'places', place_suggestion_dismissed: 'places', place_suggestion_deleted: 'places',
     flight_created: 'calendar', flight_updated: 'calendar', flight_restored: 'calendar',
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
     flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
-    preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences',
+    flight_deleted: 'calendar', trip_deleted: 'calendar', flight_candidate_deleted: 'calendar', deadline_deleted: 'calendar',
+    preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences', preference_deleted: 'preferences',
     deadline_created: 'calendar', deadline_updated: 'calendar', deadline_done: 'calendar', deadline_ended: 'calendar', deadline_restored: 'calendar',
 };
 const RULE_NAME = { street: 'street', zone: 'zone', radius: 'circle' };
@@ -104,6 +105,17 @@ function sentence(e) {
     case 'deadline_done': return [who, ' marked the deadline ', strong(d.title || 'a deadline'), d.next_due ? ` done, next due ${d.next_due}` : ' done'];
     case 'deadline_ended': return [who, ' ended the deadline ', strong(d.title || 'a deadline')];
     case 'deadline_restored': return [who, ' restored an older version of the deadline ', strong(d.title || 'a deadline')];
+    case 'flight_deleted': return [who, ' deleted the flight ', strong(d.flight || 'a flight')];
+    case 'trip_deleted': return [who, ' deleted the trip ', strong(d.trip || 'a trip')];
+    case 'flight_candidate_deleted': return d.count != null
+        ? [who, ` deleted ${plural(d.count, 'dismissed found flight')}`]
+        : [who, ' deleted the found flight ', strong(d.flight || 'a flight')];
+    case 'deadline_deleted': return [who, ' deleted the deadline ', strong(d.title || 'a deadline')];
+    case 'preference_deleted': return [who, ' deleted the preference ', strong(prefName(d))];
+    case 'digest_deleted': return [who, ' deleted ', d.kind === 'daily' ? `the daily digest for ${dayLabel(d.period, { month: 'short', day: 'numeric' })}` : `the weekly review for ${d.period}`];
+    case 'place_suggestion_deleted': return d.count != null
+        ? [who, ` deleted ${plural(d.count, 'dismissed spot')} from the places queue`]
+        : [who, ' deleted a spot from the places queue'];
     case 'flight_settings_changed': return [who, ' changed the flights settings'];
     case 'flight_candidate_filed': return [who, ' found the flight ', strong(d.flight || 'a flight'), ' for review'];
     case 'flight_candidate_accepted': return [who, ' accepted the found flight ', strong(d.flight || 'a flight')];

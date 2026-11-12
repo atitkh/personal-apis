@@ -10,7 +10,7 @@ const flights = require('./flights');
 const { readJson } = require('../routes/portfolio/freshJson');
 
 const ATIT_DIR = path.join(__dirname, '..', 'routes', 'portfolio', 'atit');
-const BACKUP_RE = /^hub-\d{4}-\d{2}-\d{2}\.db$/;
+const BACKUP_RE = /^hub-(\d{4}-\d{2}-\d{2}|pre-delete-\d{8}-\d{6}(-\d+)?)\.db$/;
 
 const size = (file) => {
     try { return fs.statSync(file).size; } catch (e) { return 0; }
