@@ -1334,3 +1334,31 @@ td .chip { margin-left: 8px; }
 @media (max-width: 640px) {
     .access-btn { border-color: var(--line); padding-right: 32px; }
 }
+
+/* ---------- deadlines ---------- */
+
+/* The Deadlines view uses its channel colour (rose) for the selected tab. */
+.view.deadlines .vtab[aria-selected="true"] { box-shadow: inset 0 3px 0 var(--rose); }
+.vtab .vcount { margin-left: 8px; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.deadlines-table tbody tr { cursor: pointer; }
+.deadlines-table tbody tr:hover td { background: var(--surface-2); }
+.deadlines-table tr.is-overdue td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+.deadlines-table .due-rel { white-space: nowrap; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.win-chip.win-later { color: var(--muted); }
+.win-chip.win-soon { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.win-chip.win-urgent { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.win-chip.win-overdue { background: var(--bad); border-color: var(--bad); color: var(--surface); font-weight: 700; }
+.kind-chip { color: var(--muted); }
+.status-chip.is-active { background: var(--accent-soft); }
+.status-chip.is-done { background: var(--good-soft); }
+.status-chip.is-ended { border-style: dashed; color: var(--muted); }
+.subs-strip { display: grid; gap: 8px; border-left: 4px solid var(--rose); }
+.subs-strip .section-title { margin: 0; }
+.subs-totals, .subs-next { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.subs-totals li { font-size: var(--fs-lg); }
+.subs-next { font-size: var(--fs-sm); }
+.window-sentence { margin: 0; font-size: var(--fs-sm); color: var(--ink); }
+.window-sentence.is-bad { color: var(--bad); }
+.deadline-state { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.filter-bar .chip-nav + .chip-nav, .filter-bar .chip-link[data-key="only-overdue"] { margin-left: 0; }
