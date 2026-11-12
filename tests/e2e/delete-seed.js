@@ -15,7 +15,7 @@ const t = today(new Date());
 flights.putSettings(c, { home_airport: 'LIT' }, 'seed');
 const f1 = flights.create(c, { airline_iata: 'AA', airline_name: 'American', flight_number: '500', origin_iata: 'DFW', dest_iata: 'LIT', sched_dep: `${rel('2027-02-10')}T18:00`, sched_arr: `${rel('2027-02-10')}T19:25`, status: 'scheduled', booking_ref: 'SECRETREF1' }, 'seed');
 flights.update(c, f1.id, { seat: '14A' }, 'seed');
-c.prepare("INSERT INTO flight_observations (flight_id, source, fetched_at, ok, fields, actor) VALUES (?, 'aerodatabox', `${rel('2027-02-09')}T00:00:00Z`, 1, '{}', 'seed')").run(f1.id);
+c.prepare("INSERT INTO flight_observations (flight_id, source, fetched_at, ok, fields, actor) VALUES (?, 'aerodatabox', ?, 1, '{}', 'seed')").run(f1.id, `${rel('2027-02-09')}T00:00:00Z`);
 const cg = flights.suggest(c, { airline_iata: 'UA', airline_name: 'United', flight_number: '2210', origin_iata: 'ORD', dest_iata: 'LIT', sched_dep: `${rel('2027-03-15')}T09:00`, sched_arr: `${rel('2027-03-15')}T11:05`, source: 'gmail', source_key: 'g:del1', confidence: 0.9 }, 'job').candidate;
 flights.acceptCandidate(c, cg.id, null, 'admin');
 const trip = flights.createTrip(c, { title: 'Spring break' }, 'seed');

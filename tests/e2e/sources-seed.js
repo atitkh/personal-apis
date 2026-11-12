@@ -6,7 +6,7 @@ const flights = require('/app/services/flights');
 const enrich = require('/app/services/enrich');
 
 const c = db.get();
-// Dates are relative to today so the flights stay in the future (the Live details block only shows for upcoming flights).
+// Dates are relative to today so the flights stay in the future.
 // Wall-clock times are America/Chicago (the airports LIT, DFW, ORD all sit in it); the estimate is stored as UTC.
 const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
 const chicagoUtc = (date, hhmm) => {
@@ -18,7 +18,8 @@ const chicagoUtc = (date, hhmm) => {
     return new Date(utc).toISOString().replace('.000Z', 'Z');
 };
 const mk = (n, o, d, dep, arr) => flights.create(c, { airline_iata: 'AA', airline_name: 'American', flight_number: String(n), origin_iata: o, dest_iata: d, sched_dep: dep, sched_arr: arr, status: 'scheduled', source: 'manual' }, 'seed').id;
-const d1 = day(30); const d2 = day(32); const d3 = day(34);
+// The hub only trusts estimated times and delay within 72 h of departure (services/enrich.js FAR_OUT_MS), so the live flight is 2 days out.
+const d1 = day(2); const d2 = day(4); const d3 = day(6);
 const live = mk(8801, 'LIT', 'DFW', `${d1}T08:10`, `${d1}T09:35`);
 const cancelled = mk(8802, 'DFW', 'LIT', `${d2}T18:00`, `${d2}T19:25`);
 const plain = mk(8803, 'LIT', 'ORD', `${d3}T09:00`, `${d3}T10:55`);

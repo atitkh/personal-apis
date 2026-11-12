@@ -88,7 +88,11 @@ async function startHub(opts = {}) {
     if (opts.seed) hub.seed(opts.seed);
     execFileSync('docker', ['run', '-d', '--name', cname, ...idArgs(), '-p', `127.0.0.1:${port}:3000`, ...mounts, ...env, '-w', '/app', 'node:20', 'node', 'app.js'], { stdio: 'ignore' });
     for (let i = 0; i < 60; i++) {
-        try { const r = await fetch(`http://localhost:${port}/health`); if (r.ok) return hub; } catch (e) { /* not up yet */ }
+        try {
+            const r = await fetch(`http://localhost:${port}/health`);
+            // also warm the dashboard shell: the first page load right after start can be slow
+            if (r.ok && (await fetch(`http://localhost:${port}/admin/`)).ok) return hub;
+        } catch (e) { /* not up yet */ }
         await new Promise((r) => setTimeout(r, 500));
     }
     hub.stop();

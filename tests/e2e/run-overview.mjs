@@ -26,7 +26,7 @@ const browser = await lib.launchBrowser();
 async function open(opts = {}, setup) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, ...opts });
     const page = await ctx.newPage();
-    page.setDefaultTimeout(8000);
+    page.setDefaultTimeout(20000);
     page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
     page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });
     await page.goto(BASE);

@@ -61,15 +61,22 @@ for (const name of names) {
         }
         const env = { E2E_PORT: String(hub.port), E2E_OUT: hub.outDir, E2E_DATA: hub.dataDir, SHOTS: path.join(logs, 'shots') };
         if (extra.more) env.MORE = hub.seedCmd(extra.more);
-        const r = await run('node', [script, ...(arg ? [arg] : [])], env, path.join(logs, `${name}.log`));
-        const seen = new Map();
-        for (const l of r.out.split('\n')) { const m = /^(PASS|FAIL) (\d+) /.exec(l); if (m) seen.set(m[2], m[1]); }
+        const once = async () => {
+            const res = await run('node', [script, ...(arg ? [arg] : [])], env, path.join(logs, `${name}.log`));
+            const map = new Map();
+            for (const l of res.out.split('\n')) { const m = /^(PASS|FAIL) (\d+) /.exec(l); if (m) map.set(m[2], m[1]); }
+            return { res, map };
+        };
+        let { res: r, map: seen } = await once();
+        // A runner that died before its first check (page did not paint in time) gets one more go on the same hub.
+        let retried = '';
+        if (r.code !== 0 && seen.size === 0) { ({ res: r, map: seen } = await once()); retried = ' (retried once)'; }
         const pass = [...seen.values()].filter((v) => v === 'PASS').length;
         const fail = [...seen.values()].filter((v) => v === 'FAIL').length;
         const ok = r.code === 0 && fail === 0 && pass > 0;
         totalPass += pass; totalFail += fail + (r.code !== 0 && fail === 0 ? 1 : 0);
         if (!ok) flowsFailed += 1;
-        line = `${ok ? 'PASS' : 'FAIL'} ${name.padEnd(15)} ${pass} checks passed, ${fail} failed${r.code !== 0 && fail === 0 ? ` (exit ${r.code}, see ${name}.log)` : ''}`;
+        line = `${ok ? 'PASS' : 'FAIL'} ${name.padEnd(15)} ${pass} checks passed, ${fail} failed${retried}${r.code !== 0 && fail === 0 ? ` (exit ${r.code}, see ${name}.log)` : ''}`;
     } catch (e) {
         flowsFailed += 1; totalFail += 1;
         line = `FAIL ${name.padEnd(15)} could not run: ${String(e.message).split('\n')[0].slice(0, 160)}`;

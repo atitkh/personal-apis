@@ -38,7 +38,14 @@ const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });
 
-const go = async (hash) => { await page.goto(`${BASE}#/${hash}`); await page.waitForLoadState('networkidle'); await page.waitForSelector('.content .view, .content .overview, .content h2', { timeout: 8000 }).catch(() => {}); await page.waitForTimeout(250); };
+// Closing a drawer navigates back asynchronously; navigating before that settles can re-open it.
+const settleDrawer = async () => {
+    if (!(await page.locator('dialog.drawer[open]').count())) return;
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('dialog.drawer[open]'), null, { timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(400);
+};
+const go = async (hash) => { await settleDrawer(); await page.goto(`${BASE}#/${hash}`); await page.waitForLoadState('networkidle'); await page.waitForSelector('.content .view, .content .overview, .content h2', { timeout: 8000 }).catch(() => {}); await page.waitForTimeout(250); };
 const hashNow = () => page.evaluate(() => location.hash);
 const text = (sel) => page.locator(sel).first().innerText();
 const toasts = () => page.locator('.toast-stack').innerText().catch(() => '');
