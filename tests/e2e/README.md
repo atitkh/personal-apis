@@ -78,4 +78,6 @@ Adding CI later means: a runner that has docker and a browser, and the `run-all.
 
 * Checks are time-sensitive (8 s waits). On a loaded host a flow can fail once on a slow first paint; rerun that flow
   alone before treating it as a regression.
+* The `keys` flow flaked twice in four runs (a rename/activity check) and passed on rerun; `run-all.mjs` retries only a runner that died before its first check, not a failed check, so rerun a flow by name before calling it a regression.
+* The hub only trusts estimated times and delay within 72 h of departure (`services/enrich.js`), so `sources-seed.js` puts its live flight 2 days out.
 * The hub container runs as your uid so the data dir is removable without root.
