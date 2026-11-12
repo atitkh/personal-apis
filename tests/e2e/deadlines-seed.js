@@ -1,0 +1,23 @@
+// Seeds a SCRATCH hub with invented deadlines relative to today (America/Chicago date). Never use on real data.
+const db = require('/app/db');
+const deadlines = require('/app/services/deadlines');
+const { today } = require('/app/services/briefing');
+const c = db.get();
+const t = today(new Date());
+const d = (n) => deadlines.addDays(t, n);
+const add = (o) => deadlines.create(c, o, 'seed');
+add({ title: 'Passport renewal', kind: 'document', due_date: d(-12), lead_days: 90, urgent_days: 14, issuer: 'Example Passport Office', reference: 'P-INVENTED-123' });
+add({ title: 'Car insurance policy', kind: 'insurance', due_date: d(5), repeat_kind: 'yearly', lead_days: 30, urgent_days: 7, issuer: 'Example Mutual', reference: 'POL-0001-X' });
+add({ title: 'Streamvid subscription', kind: 'subscription', due_date: d(20), repeat_kind: 'monthly', amount_cents: 1299, currency: 'USD', cycle: 'monthly', auto_renew: true, cancel_by: d(17), lead_days: 7, urgent_days: 3 });
+add({ title: 'Cloudstore storage', kind: 'subscription', due_date: d(6), repeat_kind: 'yearly', amount_cents: 11988, currency: 'USD', cycle: 'yearly', auto_renew: true, lead_days: 7, urgent_days: 3 });
+add({ title: 'Gym membership', kind: 'membership', due_date: d(10), repeat_kind: 'monthly', amount_cents: 3000, currency: 'EUR', cycle: 'monthly', lead_days: 14, urgent_days: 3 });
+add({ title: 'Water bill', kind: 'bill', due_date: d(2), repeat_kind: 'monthly', amount_cents: 4500, currency: 'USD', cycle: 'monthly', lead_days: 7, urgent_days: 2 });
+add({ title: 'Driver licence', kind: 'license', due_date: d(400), repeat_kind: 'every_n_months', repeat_n: 48, lead_days: 60, urgent_days: 14 });
+add({ title: 'Call the dentist', kind: 'task', due_date: d(25), lead_days: 7, urgent_days: 2, notes: 'Ask about the crown.' });
+add({ title: 'Property tax', kind: 'other', due_date: d(40), repeat_kind: 'yearly', lead_days: 30, urgent_days: 7 });
+const w = add({ title: 'Washer warranty claim', kind: 'task', due_date: d(-30), lead_days: 7, urgent_days: 2 });
+deadlines.done(c, w.id, 'seed');
+const o = add({ title: 'Old magazine', kind: 'subscription', due_date: d(-60), amount_cents: 500, currency: 'USD', cycle: 'monthly' });
+deadlines.end(c, o.id, 'seed');
+console.log('deadlines seeded', t);
+db.close();
