@@ -31,6 +31,8 @@
     "GET /admin/api/digests/:kind/:period",
     "PATCH /admin/api/digests/:kind/:period",
     "POST /admin/api/digests/:kind/:period/restore",
+    "GET /admin/api/digests/:kind/:period/delete-preview",
+    "DELETE /admin/api/digests/:kind/:period",
     "GET /admin/api/places",
     "POST /admin/api/places/resolve",
     "GET /admin/api/places/suggestions",
@@ -80,6 +82,8 @@
     "POST /admin/api/deadlines/:id/done",
     "POST /admin/api/deadlines/:id/end",
     "POST /admin/api/deadlines/:id/restore",
+    "GET /admin/api/deadlines/:id/delete-preview",
+    "DELETE /admin/api/deadlines/:id",
     "GET /admin/api/preferences",
     "POST /admin/api/preferences",
     "GET /admin/api/preferences/:id",
@@ -87,6 +91,8 @@
     "PATCH /admin/api/preferences/:id",
     "POST /admin/api/preferences/:id/unset",
     "POST /admin/api/preferences/:id/restore",
+    "GET /admin/api/preferences/:id/delete-preview",
+    "DELETE /admin/api/preferences/:id",
     "USE /admin/api/ fn"
   ],
   "hub": [
