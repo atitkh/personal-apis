@@ -9,6 +9,8 @@ const REGISTRY = {
         storage: 'db',
         defaultEnabled: true,
         stats: (db) => require('./digests').stats(db),
+        // Optional: briefing(db, { now, days }) returns { attention, upcoming } (see services/briefing.js).
+        briefing: (db, o) => require('./briefingHooks').digests(db, o),
     },
     portfolio: {
         title: 'Portfolio',
@@ -28,6 +30,7 @@ const REGISTRY = {
         storage: 'db',
         defaultEnabled: true,
         stats: (db) => require('./places').stats(db),
+        briefing: (db, o) => require('./briefingHooks').places(db, o),
     },
     flights: {
         title: 'Flights',
@@ -35,6 +38,7 @@ const REGISTRY = {
         storage: 'db',
         defaultEnabled: true,
         stats: (db) => require('./flights').overview(db),
+        briefing: (db, o) => require('./briefingHooks').flights(db, o),
     },
 };
 
