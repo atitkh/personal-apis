@@ -43,6 +43,15 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'deadlines',
+        title: 'Deadlines',
+        scopes: [
+            { scope: 'deadlines:read', label: 'Read', text: 'Read your deadlines (documents, insurance, licences, subscriptions, bills and tasks) with days left, through the agent endpoint and /hub. Reference numbers are private: /hub answers one item with its number, and agents never see it unless they ask for one item and have this scope.' },
+            { scope: 'deadlines:edit', label: 'Edit', text: 'Lets an agent add deadlines, change them, mark them done (a repeating one moves to its next date) and end them, through the agent endpoint, when Deadlines is in write mode. It does not let an agent restore older versions. It needs Read as well to see anything.', write: true },
+            { scope: 'deadlines:write', label: 'Write', text: 'Add and change deadlines, mark them done or ended, and restore older versions, through the /hub REST API. It does not let an agent edit through the agent endpoint; that is Edit. It needs Read as well, because the answer is the deadline.', write: true },
+        ],
+    },
+    {
         domain: 'attendance',
         title: 'Attendance',
         scopes: [
