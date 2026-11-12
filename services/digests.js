@@ -2,6 +2,7 @@
 // touched, so a human edit can always be compared with what was generated.
 const { HubError } = require('./errors');
 const { clampLimit, clampOffset } = require('./lib/listing');
+const { count } = require('./lib/remove');
 
 const PERIOD_RE = {
     daily: /^\d{4}-\d{2}-\d{2}$/,   // 2026-11-08, the local (America/Chicago) date
@@ -210,4 +211,27 @@ function bounds(db, kind) {
     return { first: r.first || null, last: r.last || null, count: r.count };
 }
 
-module.exports = { DigestError, put, edit, restore, get, latest, revisions, list, recent, range, search, stats, bounds, PERIOD_RE };
+/* ---------- permanent delete (admin only: never on /hub or MCP) ---------- */
+
+// One day's (or week's) digest with all its revisions and its search row. The nightly job does not recreate a past day.
+function removalPreview(db, kind, period) {
+    check(kind, period);
+    const d = row(db, kind, period);
+    if (!d) throw new DigestError(404, 'not_found', `No ${kind} digest for ${period}.`);
+    return { id: d.id, kind, period, label: `${kind} ${period}`, counts: { revisions: count(db, 'SELECT COUNT(*) AS n FROM digest_revisions WHERE digest_id = ?', d.id) } };
+}
+
+function remove(db, kind, period, input) {
+    if (!input || input.confirm !== true) throw new DigestError(400, 'confirm_required', 'Send confirm: true to delete permanently.');
+    return db.transaction(() => {
+        const pre = removalPreview(db, kind, period);
+        db.prepare('DELETE FROM digest_search WHERE rowid = ?').run(pre.id);
+        db.prepare('DELETE FROM digests WHERE id = ?').run(pre.id);
+        return { status: 'deleted', ...pre };
+    })();
+}
+
+// kind, period and the revision count: never the text.
+const removedAuditDetail = (r) => ({ kind: r.kind, period: r.period, ...r.counts });
+
+module.exports = { removalPreview, remove, removedAuditDetail, DigestError, put, edit, restore, get, latest, revisions, list, recent, range, search, stats, bounds, PERIOD_RE };

@@ -6,7 +6,7 @@
 //   #/digests/weekly/2026-W45    the same for a week
 // History, compare and restore live in a right-hand drawer so the text keeps its place.
 import {
-    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, openDrawer, chipNav, dayLabel, hidden, actorName,
+    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, dayLabel, hidden, actorName,
 } from '../ui.js';
 import { monthCalendar, isoDay, parseDay, addDays, addMonths, monthLabel } from '../charts.js';
 import { href, navigate } from '../router.js';
@@ -371,6 +371,23 @@ function openHistory(ctx, kind, period, d, base) {
     });
 }
 
+// Permanent delete of this digest with all its revisions and its search entry; leaves for the list afterwards.
+async function deleteDigest(ctx, kind, period) {
+    let pre;
+    try { pre = await ctx.api(`/digests/${kind}/${period}/delete-preview`); } catch (err) { if (err.status !== 401) toast(`Could not check what a delete would take. ${err.message}`, { kind: 'bad' }); return; }
+    const what = periodTitle(kind, period);
+    const out = await deleteDialog({
+        title: `Delete ${what}?`,
+        goes: [`The ${kind === 'daily' ? 'digest' : 'weekly review'} for ${what}`, plural(pre.counts.revisions, 'revision'), 'Its entry in digest search'],
+        stays: ['The other days and weeks',
+            kind === 'daily' ? 'The nightly job will not write this day again: a past day is never recreated. The missing-digest warning only applies to yesterday.' : null].filter(Boolean),
+        run: (o) => ctx.api(`/digests/${kind}/${period}`, { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+    });
+    if (!out) return;
+    toast(`Deleted ${what}`);
+    navigate(listHref(kind, period), { replace: true });
+}
+
 async function reader(ctx, kind, period) {
     const valid = (kind === 'daily' && DAY_RE.test(period)) || (kind === 'weekly' && WEEK_RE.test(period));
     if (!valid) {
@@ -474,7 +491,8 @@ async function reader(ctx, kind, period) {
         button({ text: d.revisions > 1 ? `History, ${plural(d.revisions, 'revision')}` : 'History', variant: 'quiet', size: 'small', iconName: 'history', 'data-key': 'history', 'aria-haspopup': 'dialog', onClick: async () => {
             const full = viewingOld ? await ctx.api(base) : d;
             openHistory(ctx, kind, period, full, base);
-        } }));
+        } }),
+        button({ text: 'Delete permanently', variant: 'quiet-danger', size: 'small', iconName: 'trash', 'data-key': 'delete-digest', onClick: () => deleteDigest(ctx, kind, period) }));
 
     const src = d.meta && d.meta.sources && typeof d.meta.sources === 'object' ? Object.entries(d.meta.sources) : [];
     const sources = !st.editing && src.length ? h('section', { class: 'reader-sources', 'aria-labelledby': 'src-title' },
