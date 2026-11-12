@@ -1,5 +1,5 @@
 // Adds three future flights with data-source observations to the SCRATCH database (run after reset.sh, hub running).
-// Invented data only. Writes the ids to /e2e/sources-ids.json for run-sources.mjs.
+// Invented data only. Writes the ids to $E2E_OUT/sources-ids.json for run-sources.mjs.
 const fs = require('fs');
 const db = require('/app/db');
 const flights = require('/app/services/flights');
@@ -16,7 +16,7 @@ enrich.observe(c, live, 'aerodatabox', {
 }, { source_status: 'Expected', actor: 'seed' });
 enrich.observe(c, cancelled, 'gmail', {}, { source_status: 'cancelled', actor: 'seed' });
 for (const id of [live, cancelled]) console.log(id, JSON.stringify(enrich.applyObservations(c, id, 'seed')).slice(0, 200));
-fs.writeFileSync('/e2e/sources-ids.json', JSON.stringify({ live, cancelled, plain }));
+fs.writeFileSync(require('path').join(process.env.E2E_OUT || '/out', 'sources-ids.json'), JSON.stringify({ live, cancelled, plain }));
 const g = flights.get(c, live);
 console.log('live', g.delay_min, g.dep_gate, g.locked_fields.join(','), 'cancelled chip', flights.get(c, cancelled).source_says_cancelled);
 db.close();

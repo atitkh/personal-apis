@@ -1,6 +1,6 @@
 // Seeds a SCRATCH hub database with invented flights and candidates for the dashboard browser checks.
 // Run inside a throwaway node:20 container with the repo mounted at /app and HUB_DATA_DIR pointing at scratch:
-//   docker run --rm -v /tmp/pa-flights:/app -v <this dir>:/e2e -e HUB_DATA_DIR=/tmp/scratch-data -w /app node:20 node /e2e/seed.js
+//   run through run-all.mjs (it starts a scratch hub and executes this file inside a node:20 container, repo copy at /app).
 // Everything here is made up. Never point it at production data.
 const fs = require('fs');
 const db = require('/app/db');
@@ -26,6 +26,6 @@ flights.putSettings(c, { home_airport: 'LIT' }, 'seed');
 flights.suggest(c, { airline_iata: 'UA', airline_name: 'United', flight_number: '2210', origin_iata: 'ORD', dest_iata: 'LIT', sched_dep: '2027-01-15T09:00', sched_arr: '2027-01-15T11:05', source: 'gmail', source_key: 'g:seed1', confidence: 0.92, booking_ref: 'QW7ZXC' }, 'seed-job');
 flights.suggest(c, { airline_iata: 'AA', airline_name: 'American', flight_number: '500', origin_iata: 'DFW', dest_iata: 'LIT', sched_dep: '2027-01-20T18:00', sched_arr: '2027-01-20T19:25', source: 'calendar', source_key: 'c:seed2', confidence: 0.55 }, 'seed-job');
 
-fs.writeFileSync('/e2e/expected.json', JSON.stringify({ flights: 7, hours: Math.round(flown.reduce((a, b) => a + b, 0) * 10) / 10, airports: 6, countries: 3, airlines: 3, aircraft_types: 4 }));
+fs.writeFileSync(require('path').join(process.env.E2E_OUT || '/out', 'expected.json'), JSON.stringify({ flights: 7, hours: Math.round(flown.reduce((a, b) => a + b, 0) * 10) / 10, airports: 6, countries: 3, airlines: 3, aircraft_types: 4 }));
 console.log('seeded', c.prepare('SELECT COUNT(*) n FROM flights').get().n, 'flights,', c.prepare('SELECT COUNT(*) n FROM flight_candidates').get().n, 'candidates');
 db.close();

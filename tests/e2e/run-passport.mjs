@@ -3,14 +3,14 @@
 import { createRequire } from 'module';
 import { execSync } from 'child_process';
 import fs from 'fs';
+import lib from './lib.js';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('/home/voltex/.npm-global/lib/node_modules/openclaw/node_modules/playwright-core');
-const BASE = process.env.BASE || 'http://localhost:3999/admin/';
-const KEY = process.env.KEY || 'e'.repeat(40);
-const SHOTS = '/home/voltex/.openclaw/workspace/tmp/hub-flights-shots';
+const BASE = lib.assertScratchUrl(process.env.BASE || `http://localhost:${process.env.E2E_PORT || 3999}/admin/`);
+const KEY = process.env.KEY || lib.KEY;
+const SHOTS = lib.shotsDir();
 const phase = process.argv[2] || 'main';
-const E = phase === 'main' ? JSON.parse(fs.readFileSync('/home/voltex/.openclaw/workspace/tmp/hub-flights-e2e/expected-passport.json', 'utf8')) : null;
+const E = phase === 'main' ? JSON.parse(fs.readFileSync(`${process.env.E2E_OUT}/expected-passport.json`, 'utf8')) : null;
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const results = [];
@@ -24,7 +24,7 @@ const check = async (name, fn) => {
 const eq = (a, b, what) => { if (a !== b) throw new Error(`${what || 'value'}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); };
 const ok = (v, what) => { if (!v) throw new Error(what || 'not true'); };
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+const browser = await lib.launchBrowser();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -35,7 +35,7 @@ const api = (path) => page.evaluate(async (p) => (await fetch(`/admin/api${p}`, 
 const shot = async (name) => {
     const raw = `/tmp/${name}-raw.png`;
     await page.screenshot({ path: raw });
-    execSync(`python3 -I /home/voltex/.openclaw/workspace/tmp/hub-flights-e2e/shrink.py ${raw} ${SHOTS}/${name}.jpg && rm ${raw}`);
+    execSync(`python3 -I ${new URL('./shrink.py', import.meta.url).pathname} ${raw} ${SHOTS}/${name}.jpg && rm ${raw}`);
     return fs.statSync(`${SHOTS}/${name}.jpg`).size;
 };
 const tiles = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-testid="punctuality"] .stat-tile')].map((t) => [t.querySelector('.stat-label').textContent, { v: t.querySelector('.stat-value').textContent, s: t.querySelector('.stat-sub') ? t.querySelector('.stat-sub').textContent : '' }])));

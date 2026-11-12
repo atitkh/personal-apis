@@ -1,5 +1,5 @@
 // Seeds a SCRATCH hub with invented flights that carry ACTUAL times (for the Punctuality checks) and writes the
-// expected numbers, computed here by plain arithmetic, to /e2e/expected-passport.json. Never run against real data.
+// expected numbers, computed here by plain arithmetic, to $E2E_OUT/expected-passport.json. Never run against real data.
 const fs = require('fs');
 const db = require('/app/db');
 const flights = require('/app/services/flights');
@@ -40,7 +40,7 @@ const summarise = (list) => ({
 const worst = delays.reduce((a, b) => (b.delay > a.delay ? b : a));
 const aa = delays.filter((x) => x.al === 'AA');
 const y25 = delays.filter((x) => x.date.startsWith('2025'));
-fs.writeFileSync('/e2e/expected-passport.json', JSON.stringify({
+fs.writeFileSync(require('path').join(process.env.E2E_OUT || '/out', 'expected-passport.json'), JSON.stringify({
     all: { ...summarise(delays), of: 7, worst: { ...worst, id: ids[worst.no] }, aa: summarise(aa), cancelled: 1 },
     y2025: { ...summarise(y25), of: 3 },
     ids,

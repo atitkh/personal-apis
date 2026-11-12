@@ -3,12 +3,12 @@
 import { createRequire } from 'module';
 import { execSync } from 'child_process';
 import fs from 'fs';
+import lib from './lib.js';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('/home/voltex/.npm-global/lib/node_modules/openclaw/node_modules/playwright-core');
-const BASE = process.env.BASE || 'http://localhost:3999/admin/';
-const KEY = process.env.KEY || 'e'.repeat(40);
-const SHOTS = '/home/voltex/.openclaw/workspace/tmp/hub-flights-shots';
+const BASE = lib.assertScratchUrl(process.env.BASE || `http://localhost:${process.env.E2E_PORT || 3999}/admin/`);
+const KEY = process.env.KEY || lib.KEY;
+const SHOTS = lib.shotsDir();
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const results = [];
@@ -23,7 +23,7 @@ const eq = (a, b, what) => { if (a !== b) throw new Error(`${what || 'value'}: e
 const ok = (v, what) => { if (!v) throw new Error(what || 'not true'); };
 const near = (a, b, tol, what) => { if (Math.abs(a - b) > tol) throw new Error(`${what || 'value'}: expected ~${b}, got ${a}`); };
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+const browser = await lib.launchBrowser();
 const RAF = () => {
     window.__raf = 0;
     const orig = window.requestAnimationFrame.bind(window);
@@ -71,7 +71,7 @@ const drag = async (page, dx, dy, steps = 8, fast = false) => {
 const shot = async (page, name) => {
     const raw = `/tmp/${name}-raw.png`;
     await page.screenshot({ path: raw });
-    execSync(`python3 -I /home/voltex/.openclaw/workspace/tmp/hub-flights-e2e/shrink.py ${raw} ${SHOTS}/${name}.jpg && rm ${raw}`);
+    execSync(`python3 -I ${new URL('./shrink.py', import.meta.url).pathname} ${raw} ${SHOTS}/${name}.jpg && rm ${raw}`);
     return fs.statSync(`${SHOTS}/${name}.jpg`).size;
 };
 

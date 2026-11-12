@@ -4,13 +4,13 @@
 // The "no backup" health line is the scratch hub's own state (no backup has been made).
 import { createRequire } from 'module';
 import fs from 'fs';
+import lib from './lib.js';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('/home/voltex/.npm-global/lib/node_modules/openclaw/node_modules/playwright-core');
-const ORIGIN = process.env.ORIGIN || 'http://localhost:3999';
+const ORIGIN = lib.assertScratchUrl(process.env.ORIGIN || `http://localhost:${process.env.E2E_PORT || 3999}`);
 const BASE = `${ORIGIN}/admin/`;
-const KEY = 'e'.repeat(40);
-const SHOTS = '/home/voltex/.openclaw/workspace/tmp/hub-flights-shots';
+const KEY = lib.KEY;
+const SHOTS = lib.shotsDir();
 fs.mkdirSync(SHOTS, { recursive: true });
 const EMPTY = process.argv[2] === 'empty';
 const results = []; const errors = []; let n = 0;
@@ -22,7 +22,7 @@ const check = async (name, fn) => {
 };
 const eq = (a, b, w) => { if (a !== b) throw new Error(`${w || 'value'}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); };
 const ok = (v, w) => { if (!v) throw new Error(w || 'not true'); };
-const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+const browser = await lib.launchBrowser();
 async function open(opts = {}, setup) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, ...opts });
     const page = await ctx.newPage();

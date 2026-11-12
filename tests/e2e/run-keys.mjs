@@ -4,13 +4,13 @@
 import { createRequire } from 'module';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
+import lib from './lib.js';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('/home/voltex/.npm-global/lib/node_modules/openclaw/node_modules/playwright-core');
-const ORIGIN = process.env.ORIGIN || 'http://localhost:3999';
+const ORIGIN = lib.assertScratchUrl(process.env.ORIGIN || `http://localhost:${process.env.E2E_PORT || 3999}`);
 const BASE = `${ORIGIN}/admin/`;
-const KEY = process.env.KEY || 'e'.repeat(40);
-const SHOTS = '/home/voltex/.openclaw/workspace/tmp/hub-flights-shots';
+const KEY = process.env.KEY || lib.KEY;
+const SHOTS = lib.shotsDir();
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const results = [];
@@ -32,7 +32,7 @@ const status = (secret, path) => {
     } catch (e) { throw new Error('curl failed'); }
 };
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+const browser = await lib.launchBrowser();
 
 async function open(opts = {}) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1, ...opts });

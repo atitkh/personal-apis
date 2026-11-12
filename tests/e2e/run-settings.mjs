@@ -4,13 +4,13 @@
 import { createRequire } from 'module';
 import { execSync } from 'child_process';
 import fs from 'fs';
+import lib from './lib.js';
 
 const require = createRequire(import.meta.url);
-const { chromium } = require('/home/voltex/.npm-global/lib/node_modules/openclaw/node_modules/playwright-core');
 
-const BASE = process.env.BASE || 'http://localhost:3998/admin/';
-const KEY = process.env.KEY || 'e'.repeat(40);
-const SHOTS = process.env.SHOTS || '/home/voltex/.openclaw/workspace/tmp/hub-flights-shots';
+const BASE = lib.assertScratchUrl(process.env.BASE || `http://localhost:${process.env.E2E_PORT || 3999}/admin/`);
+const KEY = process.env.KEY || lib.KEY;
+const SHOTS = lib.shotsDir();
 const MORE = process.env.MORE || '';
 const phase = process.argv[2] || 'main';
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -32,7 +32,7 @@ async function check(name, fn) {
 const eq = (a, b, what) => { if (a !== b) throw new Error(`${what || 'value'}: expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); };
 const ok = (v, what) => { if (!v) throw new Error(what || 'not true'); };
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
+const browser = await lib.launchBrowser();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
 const page = await ctx.newPage();
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
@@ -48,7 +48,7 @@ const confirmYes = async () => { await page.locator('dialog[open] .dialog-action
 const shot = async (name) => {
     const raw = `/tmp/${name}-raw.png`;
     await page.screenshot({ path: raw, fullPage: false });
-    execSync(`python3 -I /home/voltex/.openclaw/workspace/tmp/hub-flights-e2e/shrink.py ${raw} ${SHOTS}/${name}.jpg && rm ${raw}`);
+    execSync(`python3 -I ${new URL('./shrink.py', import.meta.url).pathname} ${raw} ${SHOTS}/${name}.jpg && rm ${raw}`);
     return fs.statSync(`${SHOTS}/${name}.jpg`).size;
 };
 async function signIn() {
@@ -62,10 +62,10 @@ async function signIn() {
 
 
 
-const DATA = '/tmp/pa-run4-data';
+const DATA = process.env.E2E_DATA;
 const NAS = `${DATA}/nas`;
 const put = (body) => page.evaluate(async (b) => { const r = await fetch('/admin/api/settings', { method: 'PUT', headers: { 'X-Requested-With': 'hub-admin', 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return { status: r.status, body: await r.json() }; }, body);
-const health = () => fetch('http://localhost:3998/health').then((r) => r.json());
+const health = () => fetch(`${BASE.replace(/admin\/$/, '')}health`).then((r) => r.json());
 const quiet = async () => { await page.waitForLoadState('networkidle'); await page.waitForTimeout(300); };
 
 await signIn();
