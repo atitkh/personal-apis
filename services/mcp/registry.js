@@ -15,6 +15,7 @@ const z = require('zod');
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const db = require('../../db');
 const domains = require('../domains');
+const briefing = require('../briefing');
 const apiKeys = require('../apiKeys');
 const { version } = require('../../package.json');
 const { DATA_NOTE, MAX_RESULT_CHARS, ToolError, truncMarker } = require('./util');
@@ -125,6 +126,26 @@ function buildServer(conn, key, report = () => {}) {
             const result = overview(db.get(), key);
             report(extra.requestId, { ok: true });
             return result;
+        } catch (err) {
+            report(extra.requestId, { ok: false, error: 'server_error' });
+            return toError(err);
+        }
+    });
+
+    server.registerTool('hub_briefing', {
+        title: 'Hub briefing',
+        description: 'What needs attention now and what is coming up in the next days, from the domains you can read (flights, places, digests, ...). Items carry a stable id, a severity (urgent, attention, info) and a plain one-line text; never sensitive detail. Call it for a morning briefing.',
+        inputSchema: {
+            days: z.number().int().min(1).max(briefing.MAX_DAYS).optional().describe(`Look-ahead in days (default ${briefing.DEFAULT_DAYS}, at most ${briefing.MAX_DAYS})`),
+            domains: z.array(z.string().max(40)).max(20).optional().describe('Only these domains (default: all you can read)'),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+    }, async (args, extra) => {
+        try {
+            const live = db.get();
+            const out = briefing.collect(live, { days: args.days, domains: args.domains, visibleDomains: briefing.visibleDomainsFor(live, key) });
+            report(extra.requestId, { ok: true });
+            return textResult(out, true);
         } catch (err) {
             report(extra.requestId, { ok: false, error: 'server_error' });
             return toError(err);

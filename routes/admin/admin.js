@@ -9,6 +9,7 @@ const adminAuth = require('../../services/adminAuth');
 const apiKeys = require('../../services/apiKeys');
 const audit = require('../../services/audit');
 const stats = require('../../services/adminStats');
+const briefing = require('../../services/briefing');
 const domains = require('../../services/domains');
 const digests = require('../../services/digests');
 const places = require('../../services/places');
@@ -156,6 +157,8 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
     });
 
     api.get('/overview', (req, res) => res.json(stats.overview()));
+    // The Today card: every domain (the admin sees them all), `days` clamped 1..90.
+    api.get('/briefing', (req, res) => res.json(briefing.collect(db.get(), { days: req.query.days })));
     api.get('/series', (req, res) => res.json(stats.series(db.get(), { days: req.query.days })));
     api.get('/backups', (req, res) => res.json({ backups: stats.backups() }));
     api.post('/backups', async (req, res) => {

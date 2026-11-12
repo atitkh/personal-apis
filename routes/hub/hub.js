@@ -4,7 +4,8 @@ const express = require('express');
 const db = require('../../db');
 const digests = require('../../services/digests');
 const { HubError } = require('../../services/errors');
-const { requireScope } = require('../../middleware/apiKey');
+const briefing = require('../../services/briefing');
+const { requireKey, requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
 
 const rateLimit = require('express-rate-limit');
@@ -83,6 +84,12 @@ router.patch('/digests/:kind/:period', write, handle((req, res, conn) => {
 
 router.post('/digests/:kind/:period/restore', write, handle((req, res, conn) => {
     res.json(digests.restore(conn, req.params.kind, req.params.period, (req.body || {}).rev, req.apiKey.name));
+}));
+
+// Any live key; what it sees follows its scopes and each domain's MCP mode, exactly as hub_overview does.
+router.get('/briefing', requireKey(), handle((req, res, conn) => {
+    const only = typeof req.query.domains === 'string' ? req.query.domains.split(',').map((d) => d.trim()).filter(Boolean) : undefined;
+    res.json(briefing.collect(conn, { days: req.query.days, domains: only, visibleDomains: briefing.visibleDomainsFor(conn, req.apiKey) }));
 }));
 
 // Other domains keep their routes in their own file.
