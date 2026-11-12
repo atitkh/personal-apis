@@ -8,7 +8,8 @@ import { CATALOGUE } from '../scopes.js';
 import { scopeEditor, saveKey, saveBar, APPLIES } from '../scopeEditor.js';
 import { MCP_LABEL } from './overview.js';
 
-const VERB = { read: 'Read', suggest: 'Suggest', edit: 'Edit', publish: 'Publish', write: 'Write' };
+const VERB = { read: 'Read', suggest: 'Suggest', observe: 'Observe', 'agent-write': 'Agent write', 'api-write': 'API write', publish: 'Publish' };
+const verbLabel = (verb) => (VERB[verb] || verb).toLowerCase();
 const verbOf = (scope) => scope.split(':')[1];
 const hasScope = (granted, required) => {
     const domain = required.split(':')[0];
@@ -43,7 +44,7 @@ function accessCell(verbs) {
     const no = verbs.filter((v) => !v.yes);
     const reasons = [...new Set(no.map((v) => v.why))];
     return h('div', { class: 'access' },
-        h('ul', { class: 'caps' }, verbs.map((v) => h('li', { class: `cap ${v.yes ? 'yes' : 'no'}${v.yes && v.write ? ' write' : ''}`, title: v.yes ? `Can ${v.verb}` : `Cannot ${v.verb}: ${v.why}` },
+        h('ul', { class: 'caps' }, verbs.map((v) => h('li', { class: `cap ${v.yes ? 'yes' : 'no'}${v.yes && v.write ? ' write' : ''}`, title: v.yes ? `Can ${verbLabel(v.verb)}` : `Cannot ${verbLabel(v.verb)}: ${v.why}` },
             icon(v.yes ? 'check' : 'close'), h('span', { text: VERB[v.verb] || v.verb }), hidden(v.yes ? ': yes' : `: no, ${v.why}`)))),
         !yes.length && reasons.length ? h('p', { class: 'access-why', 'aria-hidden': 'true', text: `No access: ${reasons[0]}.` }) : null);
 }

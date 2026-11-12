@@ -1,7 +1,7 @@
 // /hub/preferences: the preferences domain over REST. Mounted by hub.js, which supplies the rate limit, the JSON
 // body parser, no-store and `handle` (turns a PreferenceError into a JSON error).
 //   preferences:read   list, get, history
-//   preferences:write  create, update, unset, restore (also needs preferences:read: the answer is the item)
+//   preferences:api-write  create, update, unset, restore (also needs preferences:read: the answer is the item)
 // There is no DELETE: `unset` hides an item and keeps its history, `restore` brings it back.
 // Changes are audited with preferences.auditDetail: id, area and key, never the value or the notes.
 const express = require('express');
@@ -17,10 +17,10 @@ module.exports = (handle) => {
     // One requireScope only: each one counts the call against the key's limit.
     const alsoRead = (req, res, next) => (apiKeys.hasScope(req.apiKey.scopes, 'preferences:read') ? next()
         : res.status(403).json({ error: 'Forbidden', message: 'This key lacks the "preferences:read" scope' }));
-    const write = [requireScope('preferences:write'), alsoRead, requireDomain('preferences')];
+    const write = [requireScope('preferences:api-write'), alsoRead, requireDomain('preferences')];
 
     const changed = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.record(conn, req.apiKey.name, action, preferences.auditDetail(result), req.ip);
+        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, action, preferences.auditDetail(result), req.ip);
         res.status(status).json(result);
     };
 

@@ -12,7 +12,7 @@ export function diffScopes(before, after) {
 
 const list = (items) => items.join(', ');
 
-// "Adds flights:observe. Removes places:edit."
+// "Adds flights:observe. Removes places:agent-write."
 export function diffSentence(added, removed) {
     const parts = [];
     if (added.length) parts.push(`Adds ${list(added)}.`);

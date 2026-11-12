@@ -45,7 +45,7 @@ router.post('/', async (req, res) => {
             const o = outcomes.get(c.id) || { ok: false, error: 'rejected' };
             const detail = { key: key.name, tool: c.tool, action: c.action, ok: o.ok === true };
             if (!detail.ok) detail.error = o.error;
-            try { audit.record(db.get(), key.name, 'mcp_call', detail, req.ip); } catch (err) { console.error('mcp audit failed:', err.message); }
+            try { audit.recordKey(db.get(), key, 'mcp_call', detail, req.ip); } catch (err) { console.error('mcp audit failed:', err.message); }
         }
         if (transport) transport.close().catch(() => {});
         if (server) server.close().catch(() => {});

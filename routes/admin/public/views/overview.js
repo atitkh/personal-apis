@@ -9,15 +9,15 @@ import { dayBars, coverageStrip, legend } from '../charts.js';
 import { href } from '../router.js';
 
 export const MCP_LABEL = { off: 'Off', read: 'Read', write: 'Read and write' };
-export const MCP_WRITE_WARNING = "Agents holding an edit or publish key will be able to change this domain's data.";
+export const MCP_WRITE_WARNING = "Agents holding an agent-write or publish scope will be able to change this domain's data.";
 // What write mode means for a domain, in its own words (the generic line for any other domain).
 const WRITE_WARNING = {
-    digests: "Agents holding a digests edit or publish key will be able to change digests. Every earlier version is kept.",
-    places: 'Agents holding a places suggest key can file streets into the Needs a name queue, and a places edit key can add and change places and their rules. Every earlier version is kept; deleting and naming the queue stay with you.',
+    digests: "Agents holding a digests agent-write or publish scope will be able to change digests. Every earlier version is kept.",
+    places: 'Agents holding a places suggest scope can file streets into the Needs a name queue, and a places agent-write scope can add and change places and their rules. Every earlier version is kept; deleting and naming the queue stay with you.',
 };
-WRITE_WARNING.flights = 'Agents holding a flights suggest key can file found flights into the review queue, and a flights edit key can add flights and change existing ones. Every earlier version is kept; accepting, dismissing and cancelling stay with you.';
-WRITE_WARNING.deadlines = 'Agents holding a deadlines edit key can add deadlines, change them and mark them done (a repeating one moves to its next date) or ended. Every earlier version is kept; restoring and anything private, like the reference, stay with you.';
-WRITE_WARNING.preferences = 'Agents holding a preferences edit key can set preferences (create or change them by area and key) and unset them. Unset only hides a preference; every earlier version is kept and you can restore it here. Text that looks like a password, a long number or a key is refused.';
+WRITE_WARNING.flights = 'Agents holding a flights suggest scope can file found flights into the review queue, and a flights agent-write scope can add flights and change existing ones. Every earlier version is kept; accepting, dismissing and cancelling stay with you.';
+WRITE_WARNING.deadlines = 'Agents holding a deadlines agent-write scope can add deadlines, change them and mark them done (a repeating one moves to its next date) or ended. Every earlier version is kept; restoring and anything private, like the reference, stay with you.';
+WRITE_WARNING.preferences = 'Agents holding a preferences agent-write scope can set preferences (create or change them by area and key) and unset them. Unset only hides a preference; every earlier version is kept and you can restore it here. Text that looks like a password, a long number or a key is refused.';
 const writeWarning = (name) => WRITE_WARNING[name] || MCP_WRITE_WARNING;
 const REFRESH_MS = 60 * 1000;
 const UPCOMING = [{ name: 'flights', title: 'Flights', text: 'Next domain. Past and upcoming trips.' }];

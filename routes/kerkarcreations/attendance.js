@@ -101,7 +101,7 @@ router.get('/get/:name', requireScope('attendance:read'), (req, res) => {
 });
 
 
-router.post('/add', requireScope('attendance:write'), (req, res) => {
+router.post('/add', requireScope('attendance:api-write'), (req, res) => {
     getClient().authorize(function (err, tokens) {
         if (err) {
             console.log(err);

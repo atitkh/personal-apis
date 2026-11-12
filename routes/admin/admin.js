@@ -184,7 +184,15 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
         }
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 199);
         const rows = audit.recent(db.get(), limit + 1, { before: req.query.before, actions: ACTIVITY_TYPES[type] });
-        res.json({ events: rows.slice(0, limit), more: rows.length > limit });
+        // Rows made by a key carry its id: show the key's current name, so a rename does not split the feed.
+        const names = new Map(apiKeys.list(db.get()).map((k) => [k.id, k.name]));
+        const events = rows.slice(0, limit).map((e) => {
+            const id = audit.keyIdOf(e.detail);
+            const current = id === null ? null : names.get(id);
+            if (!current || current === e.actor) return e;
+            return { ...e, actor: current, detail: e.action === 'mcp_call' ? { ...e.detail, key: current } : e.detail };
+        });
+        res.json({ events, more: rows.length > limit });
     });
 
     api.get('/keys', (req, res) => res.json({ keys: apiKeys.list(db.get()) }));

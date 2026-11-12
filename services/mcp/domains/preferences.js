@@ -1,6 +1,6 @@
 // MCP tool for the preferences domain. Reuses services/preferences.js, so validation (including the refusal of
 // secret-looking text), revisions and soft remove behave exactly as through /hub/preferences. Agents may read (list,
-// get) and, in write mode with preferences:edit, set (upsert by area and key) and unset. Restoring stays with a person
+// get) and, in write mode with preferences:agent-write, set (upsert by area and key) and unset. Restoring stays with a person
 // (admin API and REST). The audit row (mcp_call) never holds arguments or results.
 const preferences = require('../../preferences');
 const { ToolError } = require('../util');
@@ -20,8 +20,8 @@ module.exports = {
     actions: {
         list: { scope: 'preferences:read', describe: `list: preferences grouped by area then key (optional area, q = part of the key, value or notes; limit 1-${LIST_MAX})` },
         get: { scope: 'preferences:read', describe: 'get: one preference, by area and key, or by id' },
-        set: { scope: 'preferences:edit', write: true, describe: 'set: create or change a preference by area and key (value required, 1-500 characters of plain text; notes optional, up to 300; optional note = why). A removed one comes back. Text that looks like a password, number or key is refused' },
-        unset: { scope: 'preferences:edit', write: true, describe: 'unset: remove a preference by area and key (or id). It is hidden, not deleted; a person can restore it' },
+        set: { scope: 'preferences:agent-write', write: true, describe: 'set: create or change a preference by area and key (value required, 1-500 characters of plain text; notes optional, up to 300; optional note = why). A removed one comes back. Text that looks like a password, number or key is refused' },
+        unset: { scope: 'preferences:agent-write', write: true, describe: 'unset: remove a preference by area and key (or id). It is hidden, not deleted; a person can restore it' },
     },
 
     input(z, actions) {

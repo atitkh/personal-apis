@@ -1,7 +1,7 @@
 // /hub/deadlines: the deadlines domain over REST. Mounted by hub.js, which supplies the rate limit, the JSON
 // body parser, no-store and `handle` (turns a DeadlineError into a JSON error).
 //   deadlines:read   list, upcoming, get, history
-//   deadlines:write  create, update, done, end, restore (also needs deadlines:read: the answer is the item)
+//   deadlines:api-write  create, update, done, end, restore (also needs deadlines:read: the answer is the item)
 // There is no key with only a suggest scope: nothing here is found by a job for review.
 // Lists and /upcoming leave the private reference out (has_reference instead); GET /:id carries it.
 // Changes are audited with deadlines.auditDetail: id, title, revision and field NAMES, never values.
@@ -18,10 +18,10 @@ module.exports = (handle) => {
     // One requireScope only: each one counts the call against the key's limit.
     const alsoRead = (req, res, next) => (apiKeys.hasScope(req.apiKey.scopes, 'deadlines:read') ? next()
         : res.status(403).json({ error: 'Forbidden', message: 'This key lacks the "deadlines:read" scope' }));
-    const write = [requireScope('deadlines:write'), alsoRead, requireDomain('deadlines')];
+    const write = [requireScope('deadlines:api-write'), alsoRead, requireDomain('deadlines')];
 
     const changed = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.record(conn, req.apiKey.name, action, deadlines.auditDetail(result), req.ip);
+        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, action, deadlines.auditDetail(result), req.ip);
         res.status(status).json(result);
     };
 

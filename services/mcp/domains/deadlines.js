@@ -1,5 +1,5 @@
 // MCP tool for the deadlines domain. Reuses services/deadlines.js, so validation, roll-forward and revisions behave
-// exactly as through /hub/deadlines. Agents may read (list, get, upcoming) and, in write mode with deadlines:edit,
+// exactly as through /hub/deadlines. Agents may read (list, get, upcoming) and, in write mode with deadlines:agent-write,
 // add, edit, done and end. Restoring an older version stays with a person (admin API and REST).
 // reference (a document or policy number): left out of every answer; has_reference says one is stored. `get`
 // includes it only when the key has deadlines:read (the tool's read scope, checked by the registry) and passes
@@ -48,10 +48,10 @@ module.exports = {
         list: { scope: 'deadlines:read', describe: `list: items soonest first (default status active; optional kind, status (active, done, ended, all), due_before, due_after (inclusive dates), overdue=true, q (part of the title); limit 1-${LIST_MAX}, offset)` },
         get: { scope: 'deadlines:read', describe: 'get: one item (id); include_reference=true adds its reference number' },
         upcoming: { scope: 'deadlines:read', describe: `upcoming: active items that are overdue or due within days (default 60, 1-730), soonest first, with days_left and window (limit 1-${LIST_MAX})` },
-        add: { scope: 'deadlines:edit', write: true, describe: 'add: file an item (title and due_date required; optional kind, due_time, repeat_kind, repeat_n, lead_days (default 14), urgent_days (default 3, at most lead_days), reference, issuer, amount_cents, currency, cycle, auto_renew, cancel_by, trip_id, notes)' },
-        edit: { scope: 'deadlines:edit', write: true, describe: 'edit: change one item (id; only the fields sent change, null clears; status active reopens an ended item; optional note = why)' },
-        done: { scope: 'deadlines:edit', write: true, describe: 'done: mark one item done (id). A repeating item moves to its next due date and stays active; a one-off becomes done' },
-        end: { scope: 'deadlines:edit', write: true, describe: 'end: stop reminders for one item (id), for example a cancelled subscription. Nothing is deleted' },
+        add: { scope: 'deadlines:agent-write', write: true, describe: 'add: file an item (title and due_date required; optional kind, due_time, repeat_kind, repeat_n, lead_days (default 14), urgent_days (default 3, at most lead_days), reference, issuer, amount_cents, currency, cycle, auto_renew, cancel_by, trip_id, notes)' },
+        edit: { scope: 'deadlines:agent-write', write: true, describe: 'edit: change one item (id; only the fields sent change, null clears; status active reopens an ended item; optional note = why)' },
+        done: { scope: 'deadlines:agent-write', write: true, describe: 'done: mark one item done (id). A repeating item moves to its next due date and stays active; a one-off becomes done' },
+        end: { scope: 'deadlines:agent-write', write: true, describe: 'end: stop reminders for one item (id), for example a cancelled subscription. Nothing is deleted' },
     },
 
     input(z, actions) {

@@ -1,5 +1,5 @@
 // MCP tool for the places domain. Reuses services/places.js, so validation, revisions and matching behave
-// exactly as through /hub/places. Agents may read, resolve, file suggestions and (write mode, places:edit)
+// exactly as through /hub/places. Agents may read, resolve, file suggestions and (write mode, places:agent-write)
 // add and edit places; deleting, restoring and working off the suggestions queue stay with a person.
 // Rule values (streets, coordinates) are personal data: they are returned to a key with places:read, but
 // resolve answers with the TYPE of the rule that matched, and the audit row never holds arguments.
@@ -79,8 +79,8 @@ module.exports = {
         get: { scope: 'places:read', describe: 'get: one place with all its rules and notes (id)' },
         resolve: { scope: 'places:read', describe: 'resolve: which place a location is (geocode text and/or lat+lon and/or zone); returns label, kind, notes, confidence, the type of rule that matched and other candidates. Never files anything' },
         suggest: { scope: 'places:suggest', write: true, describe: 'suggest: resolve, and when no place matches file the street of the geocode in the "needs a name" queue for a person to name (same input as resolve)' },
-        add: { scope: 'places:edit', write: true, describe: `add: create a place (label, kind one of ${places.KINDS.join('/')}, optional notes, rules)` },
-        edit: { scope: 'places:edit', write: true, describe: 'edit: change one place (id; any of label, kind, notes, add_rules, update_rules [{id, fields to change}], remove_rule_ids; optional note = why). Every change is kept as a revision' },
+        add: { scope: 'places:agent-write', write: true, describe: `add: create a place (label, kind one of ${places.KINDS.join('/')}, optional notes, rules)` },
+        edit: { scope: 'places:agent-write', write: true, describe: 'edit: change one place (id; any of label, kind, notes, add_rules, update_rules [{id, fields to change}], remove_rule_ids; optional note = why). Every change is kept as a revision' },
     },
 
     // Fields for write actions are only offered to a key that can use them.

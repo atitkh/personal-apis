@@ -47,15 +47,33 @@ function keysWithTools(conn) {
     return apiKeys.list(conn).filter((k) => visibleFor(conn, k).length > 0).length;
 }
 
-function summary(conn, now = new Date()) {
-    const counts = new Map(conn.prepare(
-        "SELECT actor, COUNT(*) AS n FROM audit_log WHERE action = 'mcp_call' AND at >= ? GROUP BY actor",
-    ).all(since(now, 30)).map((r) => [r.actor, r.n]));
-    const last = new Map(conn.prepare(
-        "SELECT actor, MAX(at) AS at FROM audit_log WHERE action = 'mcp_call' GROUP BY actor",
-    ).all().map((r) => [r.actor, r.at]));
+// Calls are attributed by the key id in the row's detail (so a renamed key keeps its history); rows from before key_id
+// existed carry only the key's name and are matched by that name.
+const KEY_ID_SQL = "CASE WHEN json_valid(detail) THEN json_extract(detail, '$.key_id') END";
 
-    const keys = apiKeys.list(conn).map((k) => {
+function callTotals(conn, sinceIso) {
+    const where = sinceIso ? "action = 'mcp_call' AND at >= ?" : "action = 'mcp_call'";
+    const rows = conn.prepare(`SELECT ${KEY_ID_SQL} AS kid, actor, COUNT(*) AS n, MAX(at) AS at FROM audit_log WHERE ${where} GROUP BY kid, actor`)
+        .all(...(sinceIso ? [sinceIso] : []));
+    return (key) => {
+        let n = 0;
+        let at = null;
+        for (const r of rows) {
+            if (!(r.kid === key.id || (r.kid === null && r.actor === key.name))) continue;
+            n += r.n;
+            if (!at || r.at > at) at = r.at;
+        }
+        return { n, at };
+    };
+}
+
+function summary(conn, now = new Date()) {
+    const month = callTotals(conn, since(now, 30));
+    const ever = callTotals(conn, null);
+
+    const all = apiKeys.list(conn);
+    const names = new Map(all.map((k) => [k.id, k.name]));
+    const keys = all.map((k) => {
         const visible = visibleFor(conn, k);
         return {
             id: k.id,
@@ -65,32 +83,37 @@ function summary(conn, now = new Date()) {
             lastUsedAt: k.last_used_at || null,
             visibleTools: visible.map(({ tool, actions }) => ({ tool, actions })),
             canWrite: visible.some((t) => t.writes),
-            calls30d: counts.get(k.name) || 0,
-            lastCallAt: last.get(k.name) || null,
+            calls30d: month(k).n,
+            lastCallAt: ever(k).at,
         };
     });
 
     const recent = conn.prepare(
         "SELECT at, actor, detail FROM audit_log WHERE action = 'mcp_call' ORDER BY id DESC LIMIT 50",
-    ).all().map(callRow);
+    ).all().map((r) => callRow(r, names));
 
     return { endpoint: ENDPOINT, tools: tools(), keys, recent };
 }
 
-function callRow(r) {
+// names: key id -> the key's current name, so a renamed key shows under its new name (the row keeps the old one as a snapshot).
+function callRow(r, names = new Map()) {
     let d = {};
     try { d = JSON.parse(r.detail) || {}; } catch (err) { d = {}; }
-    return { at: r.at, key: d.key || r.actor, tool: d.tool || null, action: d.action || null, ok: d.ok === true };
+    return { at: r.at, key: names.get(d.key_id) || d.key || r.actor, tool: d.tool || null, action: d.action || null, ok: d.ok === true };
 }
 
-// One key's latest agent calls (tool, action, outcome; never content). Calls are logged by key name, so only
-// calls made while this key existed count, in case an older revoked key had the same name.
+// One key's latest agent calls (tool, action, outcome; never content). Rows carry the key id, so a renamed key keeps its
+// history. Older rows have only the name: those count when the key existed (created to revoked), in case an earlier
+// revoked key had the same name.
 function callsFor(conn, key, limit = 20) {
     const n = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const until = key.revoked_at || null;
     return conn.prepare(
-        "SELECT at, actor, detail FROM audit_log WHERE action = 'mcp_call' AND actor = ? AND at >= ? AND (? IS NULL OR at <= ?) ORDER BY id DESC LIMIT ?",
-    ).all(key.name, key.created_at, until, until, n).map(callRow);
+        `SELECT at, actor, detail FROM audit_log WHERE action = 'mcp_call' AND (
+            ${KEY_ID_SQL} = ?
+            OR (${KEY_ID_SQL} IS NULL AND actor = ? AND at >= ? AND (? IS NULL OR at <= ?))
+        ) ORDER BY id DESC LIMIT ?`,
+    ).all(key.id, key.name, key.created_at, until, until, n).map((r) => callRow(r, new Map([[key.id, key.name]])));
 }
 
 module.exports = { ENDPOINT, hasTool, domainsWithTools, tools, visibleFor, callCount, keysWithTools, summary, callsFor };

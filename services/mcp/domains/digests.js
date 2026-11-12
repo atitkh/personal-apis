@@ -38,7 +38,7 @@ module.exports = {
         recent: { scope: 'digests:read', describe: 'recent: the newest digests with their text (kind, count 1-7, default 3)' },
         get: { scope: 'digests:read', describe: 'get: one digest (kind, period, optional rev)' },
         search: { scope: 'digests:read', describe: 'search: full-text search, returns snippets (query, optional kind, limit 1-20)' },
-        edit: { scope: 'digests:edit', write: true, describe: 'edit: replace the text of an existing digest; adds a revision, the old text is kept (kind, period, body, optional note)' },
+        edit: { scope: 'digests:agent-write', write: true, describe: 'edit: replace the text of an existing digest; adds a revision, the old text is kept (kind, period, body, optional note)' },
         publish: {
             scope: 'digests:publish',
             write: true,

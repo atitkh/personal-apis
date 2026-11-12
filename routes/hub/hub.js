@@ -20,7 +20,7 @@ router.use((req, res, next) => {
 });
 
 const read = [requireScope('digests:read'), requireDomain('digests')];
-const write = [requireScope('digests:write'), requireDomain('digests')];
+const write = [requireScope('digests:api-write'), requireDomain('digests')];
 
 // Wraps a handler so an error meant for the caller (DigestError, PlaceError: any HubError) becomes a clean
 // JSON error and anything else a 500.

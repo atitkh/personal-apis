@@ -1,7 +1,7 @@
 // MCP tool for the flights domain. Reuses services/flights.js, so cleaning, dedupe and revisions behave exactly
-// as through /hub/flights. Agents may read, file found flights (suggest) and, in write mode with flights:edit,
+// as through /hub/flights. Agents may read, file found flights (suggest) and, in write mode with flights:agent-write,
 // add and edit flights; cancelling a flight is an edit (status cancelled). Deleting, restoring and accepting or
-// dismissing found flights stay with a person (admin API). refresh (write mode, flights:edit) asks the configured
+// dismissing found flights stay with a person (admin API). refresh (write mode, flights:agent-write) asks the configured
 // data sources (services/enrich.js); sources lists them with configured true/false and this month's calls.
 // booking_ref: left out of every answer by default. `get` includes it only for a key with flights:read that
 // passes include_booking_ref=true. The audit row (mcp_call) never holds arguments or results.
@@ -62,9 +62,9 @@ module.exports = {
         trips: { scope: 'flights:read', describe: 'trips: the trips with how many flights each has' },
         candidates: { scope: 'flights:read', describe: `candidates: found flights in the review queue (status pending (default), accepted, dismissed or all; limit 1-${LIST_MAX})` },
         suggest: { scope: 'flights:suggest', write: true, describe: 'suggest: file a found flight for Atit to review (airline_iata, flight_number, origin_iata, dest_iata, sched_dep; optional sched_arr, airline_name, cabin, seat, aircraft_type, booking_ref, notes, source gmail/calendar/manual, source_key, confidence 0-1, flight_status cancelled or completed if the source says so). Already a flight or already filed: says so and files nothing' },
-        add: { scope: 'flights:edit', write: true, describe: 'add: file a flight directly (same fields as suggest, plus trip_id, status). Prefer suggest for flights you found yourself' },
-        edit: { scope: 'flights:edit', write: true, describe: 'edit: change one flight (id; only the fields sent change, null clears; status cancelled for a flight that did not happen; optional note = why; unlock = field names to hand back to the data sources). Every change is kept as a revision' },
-        refresh: { scope: 'flights:edit', write: true, describe: 'refresh: ask the configured data sources for fresh data on one flight (id; force=true to look up again within 6 h or for a flight over 30 days old). Answers one result per source: updated, unchanged, skipped_recent, skipped_old, cap_reached, not_configured or error' },
+        add: { scope: 'flights:agent-write', write: true, describe: 'add: file a flight directly (same fields as suggest, plus trip_id, status). Prefer suggest for flights you found yourself' },
+        edit: { scope: 'flights:agent-write', write: true, describe: 'edit: change one flight (id; only the fields sent change, null clears; status cancelled for a flight that did not happen; optional note = why; unlock = field names to hand back to the data sources). Every change is kept as a revision' },
+        refresh: { scope: 'flights:agent-write', write: true, describe: 'refresh: ask the configured data sources for fresh data on one flight (id; force=true to look up again within 6 h or for a flight over 30 days old). Answers one result per source: updated, unchanged, skipped_recent, skipped_old, cap_reached, not_configured or error' },
         sources: { scope: 'flights:read', describe: 'sources: the flight data sources with enabled, priority (lower wins), monthly cap, calls this month and whether each is configured' },
     },
 

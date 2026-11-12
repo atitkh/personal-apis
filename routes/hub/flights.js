@@ -1,7 +1,7 @@
 // /hub/flights: the flights domain over REST. Mounted by hub.js, which supplies the rate limit, the JSON
 // body parser, no-store and `handle` (turns a FlightError into a JSON error).
 //   flights:read   list, get, history, upcoming, stats, trips, settings
-//   flights:write  create, update, restore, trips and settings changes
+//   flights:api-write  create, update, restore, trips and settings changes
 //   flights:suggest  POST /candidates only: file a found flight for a person to accept or dismiss (the answer
 //                    never carries a booking reference). Accepting and dismissing are admin-only
 //                    (/admin/api/flights/candidates), never over /hub.
@@ -27,10 +27,10 @@ module.exports = (handle) => {
     // requireScope only: each one counts the call against the key's limit.)
     const alsoRead = (req, res, next) => (apiKeys.hasScope(req.apiKey.scopes, 'flights:read') ? next()
         : res.status(403).json({ error: 'Forbidden', message: 'This key lacks the "flights:read" scope' }));
-    const write = [requireScope('flights:write'), alsoRead, requireDomain('flights')];
+    const write = [requireScope('flights:api-write'), alsoRead, requireDomain('flights')];
 
     const changed = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.record(conn, req.apiKey.name, action, flights.auditDetail(result), req.ip);
+        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, action, flights.auditDetail(result), req.ip);
         res.status(status).json(result);
     };
 
@@ -54,7 +54,7 @@ module.exports = (handle) => {
 
     router.put('/settings', write, handle((req, res, conn) => {
         const result = flights.putSettings(conn, req.body, req.apiKey.name);
-        audit.record(conn, req.apiKey.name, 'flight_settings_changed', { keys: Object.keys(req.body || {}) }, req.ip);
+        audit.recordKey(conn, req.apiKey, 'flight_settings_changed', { keys: Object.keys(req.body || {}) }, req.ip);
         res.json(result);
     }));
 
@@ -64,7 +64,7 @@ module.exports = (handle) => {
 
     router.put('/sources', write, handle((req, res, conn) => {
         const names = enrich.putSources(conn, req.body);
-        audit.record(conn, req.apiKey.name, 'flight_sources_changed', { sources: names }, req.ip);
+        audit.recordKey(conn, req.apiKey, 'flight_sources_changed', { sources: names }, req.ip);
         res.json(enrich.listSources(conn));
     }));
 
@@ -74,7 +74,7 @@ module.exports = (handle) => {
 
     router.post('/trips', write, handle((req, res, conn) => {
         const result = flights.createTrip(conn, req.body, req.apiKey.name);
-        audit.record(conn, req.apiKey.name, 'trip_created', { id: result.id, title: result.title }, req.ip);
+        audit.recordKey(conn, req.apiKey, 'trip_created', { id: result.id, title: result.title }, req.ip);
         res.status(201).json(result);
     }));
 
@@ -84,7 +84,7 @@ module.exports = (handle) => {
 
     router.patch('/trips/:id', write, handle((req, res, conn) => {
         const result = flights.updateTrip(conn, req.params.id, req.body, req.apiKey.name);
-        if (result.status !== 'unchanged') audit.record(conn, req.apiKey.name, 'trip_updated', { id: result.id, title: result.title }, req.ip);
+        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, 'trip_updated', { id: result.id, title: result.title }, req.ip);
         res.json(result);
     }));
 
@@ -98,7 +98,7 @@ module.exports = (handle) => {
     router.post('/candidates', [requireScope('flights:suggest'), requireDomain('flights')], handle((req, res, conn) => {
         const result = flights.suggest(conn, req.body, req.apiKey.name);
         if (result.status === 'filed') {
-            audit.record(conn, req.apiKey.name, 'flight_candidate_filed', flights.candidateAuditDetail(result.candidate), req.ip);
+            audit.recordKey(conn, req.apiKey, 'flight_candidate_filed', flights.candidateAuditDetail(result.candidate), req.ip);
             return res.status(201).json(result);
         }
         res.json(result);
@@ -123,7 +123,7 @@ module.exports = (handle) => {
     router.post('/:id/refresh', write, handle(async (req, res, conn) => {
         const result = await enrich.refresh(conn, req.params.id, { force: (req.body || {}).force === true, actor: req.apiKey.name });
         if (result.looked_up || result.status === 'updated') {
-            audit.record(conn, req.apiKey.name, 'flight_refreshed', { ...flights.auditDetail(result), results: result.results.map((r) => `${r.source}:${r.result}`) }, req.ip);
+            audit.recordKey(conn, req.apiKey, 'flight_refreshed', { ...flights.auditDetail(result), results: result.results.map((r) => `${r.source}:${r.result}`) }, req.ip);
         }
         res.json(result);
     }));
@@ -135,7 +135,7 @@ module.exports = (handle) => {
             { source_status: body.source_status, actor: req.apiKey.name, strict: true });
         const merged = enrich.applyObservations(conn, observation.flight_id, req.apiKey.name);
         const { from: _from, ...result } = merged;
-        audit.record(conn, req.apiKey.name, 'flight_observed', { ...flights.auditDetail(result), source: observation.source, observed: observation.fields }, req.ip);
+        audit.recordKey(conn, req.apiKey, 'flight_observed', { ...flights.auditDetail(result), source: observation.source, observed: observation.fields }, req.ip);
         res.status(201).json({ observation, result });
     }));
 

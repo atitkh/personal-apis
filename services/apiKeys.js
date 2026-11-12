@@ -7,6 +7,27 @@ const TOUCH_EVERY_MS = 60 * 1000; // do not write last_used_at on every request
 
 const hash = (key) => crypto.createHash('sha256').update(key).digest('hex');
 
+// Scope names changed for clarity (same meaning): X:write -> X:api-write (REST writes for jobs and scripts) and
+// X:edit -> X:agent-write (writes through the agent tool). The old names stay accepted as aliases everywhere a scope is
+// read or asked for, and are normalised to the new names, so an old key or an old config keeps working.
+const ACTION_ALIASES = { write: 'api-write', edit: 'agent-write' };
+
+function normaliseScope(scope) {
+    const s = String(scope).trim();
+    const i = s.indexOf(':');
+    if (i < 1) return s;
+    const action = ACTION_ALIASES[s.slice(i + 1)];
+    return action ? `${s.slice(0, i)}:${action}` : s;
+}
+
+// Order kept, duplicates (an old and a new name for one scope) dropped.
+const normaliseList = (list) => [...new Set(list.map(normaliseScope))];
+
+// Reads the JSON stored in api_keys.scopes; unknown or odd entries are left as they are.
+function storedScopes(json) {
+    return normaliseList(JSON.parse(json));
+}
+
 function parseScopes(scopes) {
     const list = Array.isArray(scopes) ? scopes : String(scopes || '').split(',');
     const clean = list.map((s) => String(s).trim()).filter(Boolean);
@@ -14,13 +35,14 @@ function parseScopes(scopes) {
     for (const s of clean) {
         if (!SCOPE_RE.test(s)) throw new Error(`Invalid scope "${s}". Use domain:action, domain:* or *`);
     }
-    return [...new Set(clean)];
+    return normaliseList(clean);
 }
 
-// granted: array of scopes on the key. required: "domain:action".
+// granted: array of scopes on the key. required: "domain:action" (an old name is read as its new name).
 function hasScope(granted, required) {
-    const domain = required.split(':')[0];
-    return granted.some((g) => g === '*' || g === required || g === `${domain}:*`);
+    const want = normaliseScope(required);
+    const domain = want.split(':')[0];
+    return granted.map(normaliseScope).some((g) => g === '*' || g === want || g === `${domain}:*`);
 }
 
 function create(db, { name, scopes }) {
@@ -42,12 +64,12 @@ function verify(db, key) {
     if (Date.now() - last > TOUCH_EVERY_MS) {
         db.prepare('UPDATE api_keys SET last_used_at = ? WHERE id = ?').run(new Date().toISOString(), row.id);
     }
-    return { id: row.id, name: row.name, scopes: JSON.parse(row.scopes) };
+    return { id: row.id, name: row.name, scopes: storedScopes(row.scopes) };
 }
 
 function list(db) {
     return db.prepare('SELECT id, name, key_prefix, scopes, created_at, last_used_at, revoked_at FROM api_keys ORDER BY id').all()
-        .map((r) => ({ ...r, scopes: JSON.parse(r.scopes) }));
+        .map((r) => ({ ...r, scopes: storedScopes(r.scopes) }));
 }
 
 // idOrName: numeric id, or the name of an active key. Returns true if a key was revoked.
@@ -64,7 +86,7 @@ const fail = (status, message) => Object.assign(new Error(message), { status });
 
 function get(db, id) {
     const r = db.prepare('SELECT id, name, key_prefix, scopes, created_at, last_used_at, revoked_at FROM api_keys WHERE id = ?').get(id);
-    return r ? { ...r, scopes: JSON.parse(r.scopes) } : null;
+    return r ? { ...r, scopes: storedScopes(r.scopes) } : null;
 }
 
 // What changed between two scope lists, as names only.
@@ -105,4 +127,4 @@ function update(db, id, { name, scopes, confirmAll } = {}) {
     return { key: get(db, id), added, removed, renamedFrom: nextName !== before.name ? before.name : null };
 }
 
-module.exports = { create, verify, list, get, update, diffScopes, revoke, hasScope, parseScopes };
+module.exports = { create, verify, list, get, update, diffScopes, revoke, hasScope, parseScopes, normaliseScope, normaliseList, storedScopes, ACTION_ALIASES };
