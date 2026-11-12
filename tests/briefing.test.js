@@ -398,6 +398,24 @@ describe('hub_briefing, GET /hub/briefing, GET /admin/api/briefing', () => {
         expect((await agent.get('/admin/api/briefing?days=1000').expect(200)).body.days).toBe(90);
     });
 
+    // The Overview's Needs attention panel takes these three lines from this endpoint and falls back to /admin/api/overview
+    // when it fails (routes/admin/public/views/overview.js, isShared). Both sources must keep agreeing.
+    test('admin briefing carries the three ids the Overview panel shares, and /admin/api/overview agrees on the counts', async () => {
+        flights.suggest(db.get(), { airline_iata: 'AS', flight_number: '2', origin_iata: 'SEA', dest_iata: 'PDX', sched_dep: '2026-12-01T08:00', source: 'gmail', source_key: 'g:overview' }, 'job');
+        const agent = request.agent(app);
+        await agent.post('/admin/api/login').set(H).send({ key: process.env.ADMIN_KEY }).expect(200);
+        const b = (await agent.get('/admin/api/briefing').expect(200)).body;
+        const o = (await agent.get('/admin/api/overview').expect(200)).body;
+        const byId = Object.fromEntries(b.attention.map((i) => [i.id, i]));
+        const digestId = `digests:missing:${o.digests.expectedDaily}`;
+        expect(Object.keys(byId)).toEqual(expect.arrayContaining(['flights:candidates:pending', 'places:suggestions:pending', digestId]));
+        expect(o.digests.missing).toBe(true);
+        expect(byId['flights:candidates:pending'].text).toMatch(new RegExp(`^${o.flights.candidates.pending} found flights? waits? for review$`));
+        expect(byId['places:suggestions:pending'].text).toMatch(new RegExp(`^${o.places.suggestions.pending} spots? needs? a name$`));
+        expect(byId[digestId].text).toBe(`The daily digest for ${o.digests.expectedDaily} has not arrived`);
+        expect(byId[digestId].severity).toBe('attention');
+    });
+
     test('registry exposes the same visibility rule the briefing uses', () => {
         expect(briefing.visibleDomainsFor(db.get(), { scopes: ['places:read'] })).toEqual(['places']);
         expect(registry.visibleTools(db.get(), { scopes: ['places:read'] }).map((t) => t.def.domain)).toEqual(['places']);
