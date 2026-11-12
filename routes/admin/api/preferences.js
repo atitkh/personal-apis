@@ -1,0 +1,51 @@
+const preferences = require('../../../services/preferences');
+
+module.exports = (api, ctx) => {
+    const { db, audit } = ctx;
+
+    // ---- preferences: the dashboard's API. Works while the domain is switched off. Changes are audited as `admin` with
+    // id, area and key (preferences.auditDetail), never the value or the notes. There is no delete: unset hides, restore
+    // brings back. ----
+    const preferenceHandler = (fn) => (req, res) => {
+        try {
+            fn(req, res, db.get());
+        } catch (err) {
+            if (err instanceof preferences.PreferenceError) return res.status(err.status).json({ error: err.message, code: err.code, ...(err.extra || {}) });
+            console.error('admin preferences error:', err);
+            res.status(500).json({ error: 'Something went wrong.' });
+        }
+    };
+    const preferenceChanged = (req, res, conn, action, result, status = 200) => {
+        if (result.status !== 'unchanged') audit.record(conn, 'admin', action, preferences.auditDetail(result), req.ip);
+        res.status(status).json(result);
+    };
+
+    api.get('/preferences', preferenceHandler((req, res, conn) => {
+        const { area, q, removed, limit, offset } = req.query;
+        res.json(preferences.list(conn, { area, q, removed, limit: limit || 200, offset }));
+    }));
+
+    api.post('/preferences', preferenceHandler((req, res, conn) => {
+        preferenceChanged(req, res, conn, 'preference_set', preferences.create(conn, req.body, 'admin'), 201);
+    }));
+
+    api.get('/preferences/:id', preferenceHandler((req, res, conn) => {
+        res.json({ ...preferences.get(conn, req.params.id, { rev: req.query.rev }), history: preferences.history(conn, req.params.id) });
+    }));
+
+    api.get('/preferences/:id/history', preferenceHandler((req, res, conn) => {
+        res.json({ revisions: preferences.history(conn, req.params.id) });
+    }));
+
+    api.patch('/preferences/:id', preferenceHandler((req, res, conn) => {
+        preferenceChanged(req, res, conn, 'preference_updated', preferences.update(conn, req.params.id, req.body, 'admin'));
+    }));
+
+    api.post('/preferences/:id/unset', preferenceHandler((req, res, conn) => {
+        preferenceChanged(req, res, conn, 'preference_unset', preferences.unset(conn, req.params.id, 'admin'));
+    }));
+
+    api.post('/preferences/:id/restore', preferenceHandler((req, res, conn) => {
+        preferenceChanged(req, res, conn, 'preference_restored', preferences.restore(conn, req.params.id, (req.body || {}).rev, 'admin'));
+    }));
+};
