@@ -188,3 +188,41 @@ Same meaning, clearer names. `read`, `suggest`, `observe`, `publish`, `X:*` and 
 - Also fixed: `adminStats.series` stepped back in 24-hour steps and lost a day when the clocks changed inside the window
   (13 days returned); it now steps calendar days.
 - Tests: `tests/scopeRename.test.js` (aliases, migration, idempotence, ambiguous names, rename-and-count-by-id, labels).
+
+## Code layout (hardening run 2, 2026-11-11: no behaviour change)
+
+`routes/admin/admin.js` (153 lines) keeps only the router, headers/CSP, rate limits, the `X-Requested-With` check, login/session/logout, the
+session gate and the 404. Everything after the gate is one module per domain, registered in this order (the order the routes had
+before the split; the route-table test pins it):
+
+| Module (`routes/admin/api/`) | Routes |
+|---|---|
+| `overview.js` | overview, briefing, series |
+| `backups.js` | backups list, Back up now |
+| `activity.js` | portfolio, activity feed (`ACTIVITY_TYPES`: the audit actions behind each filter chip) |
+| `keys.js` | keys list/create/edit/revoke, a key's recent calls |
+| `domains.js`, `agents.js` | domain switches and MCP mode; agent access summary |
+| `digests.js`, `places.js`, `flights.js`, `deadlines.js`, `preferences.js` | one domain each (flights: queue, list/Passport/airports/trips/settings, data sources; fixed words before `/flights/:id`) |
+
+Each exports `(api, ctx) => {...}`; `ctx` is `{ db, audit }`. A module requires its own service.
+
+Shared helpers (each takes the domain's own `bad(code, message, status, extra)`, so error classes, codes and messages stay per domain):
+- `services/lib/validate.js`: `toId`, `text(bad, v, name, max, { upper, collapse, field })`, `oneOf(bad, v, name, list)`.
+- `services/lib/revisions.js`: `needRow` (row or the caller's not-found), `commitRevision` (insert revision + bump `current_rev`; the caller passes the snapshot shaper), `findRevision`. A domain describes its tables once: `{ table, revTable, fk }`.
+- `services/lib/listing.js`: `clampLimit(v, def, max)` (0/junk = default), `limitOrDefault` (preferences/deadlines: only junk = default), `clampOffset`.
+- `routes/lib/handle.js`: `adminHandler(ErrorClass, logLabel, { code, extra, async })` for the admin API, `hubHandle` for /hub.
+- `routes/lib/changed.js`: `adminChanged(auditDetail)` and `keyChanged(auditDetail)`: answer with the result and audit it unless `unchanged`.
+
+Left local on purpose: places' `text`-like cleaners (different rules), digests' revision code (revisions hold a body, not a snapshot; history rows differ),
+each domain's `history`, `restore`, `build`/`pick` and `auditDetail`. Unit tests: `tests/sharedHelpers.test.js`. Route table: `tests/routeTable.test.js`
+against `tests/__snapshots__/routes.json` (after adding routes on purpose: `UPDATE_ROUTES=1 npx jest tests/routeTable.test.js` and commit the file).
+
+Adding a domain (8 steps):
+1. Migration `db/migrations/NNN_<name>.sql` (applied in filename order at start).
+2. `services/<name>.js`: plain functions on the db connection, a `HubError` subclass, `bad`, `REVISIONS` spec, helpers from `services/lib/`, `auditDetail`, `stats(db)`.
+3. Registry entry in `services/domains.js` (title, sensitivity, storage, defaultEnabled, stats, optional `briefing` hook).
+4. `/hub` routes `routes/hub/<name>.js` as `module.exports = (handle) => router` (`requireScope`, `requireDomain`, `keyChanged`), mounted in `routes/hub/hub.js`.
+5. Admin routes `routes/admin/api/<name>.js` (`adminHandler`, `adminChanged`) plus one `require('./api/<name>')(api, ctx)` line in `admin.js`, before the 404.
+6. Audit action names in `ACTIVITY_TYPES` (`api/activity.js`) and scope text in `routes/admin/public/scopes.js`.
+7. Tests, including the ones that pin the domain list (`tests/admin.test.js`, `tests/digests.test.js`) and the route-table snapshot (regenerate and commit).
+8. Dashboard view `routes/admin/public/views/<name>.js` + `router.register(...)` in `app.js` (nav, badge, palette, activity sentence). Optional: an agent tool in `services/mcp/domains/<name>.js`.

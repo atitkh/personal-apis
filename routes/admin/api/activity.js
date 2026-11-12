@@ -1,5 +1,6 @@
 // Portfolio counts and the activity feed (filters by audit action).
 const stats = require('../../../services/adminStats');
+const { clampLimit } = require('../../../services/lib/listing');
 const apiKeys = require('../../../services/apiKeys');
 
 // Activity filters: which audit actions each chip shows.
@@ -29,7 +30,7 @@ module.exports = (api, ctx) => {
         if (!Object.prototype.hasOwnProperty.call(ACTIVITY_TYPES, type)) {
             return res.status(400).json({ error: `type must be one of: ${Object.keys(ACTIVITY_TYPES).join(', ')}.` });
         }
-        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 199);
+        const limit = clampLimit(req.query.limit, 50, 199);
         const rows = audit.recent(db.get(), limit + 1, { before: req.query.before, actions: ACTIVITY_TYPES[type] });
         // Rows made by a key carry its id: show the key's current name, so a rename does not split the feed.
         const names = new Map(apiKeys.list(db.get()).map((k) => [k.id, k.name]));

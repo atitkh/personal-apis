@@ -176,7 +176,7 @@ function list(db, { kind, from, to, limit = 50, offset = 0 } = {}) {
 
 // The newest `count` digests of a kind with their text, for agents and the weekly review.
 function recent(db, kind, count = 7) {
-    const items = list(db, { kind, limit: Math.min(Math.max(parseInt(count, 10) || 7, 1), 31) });
+    const items = list(db, { kind, limit: clampLimit(count, 7, 31) });
     return items.map((i) => get(db, i.kind, i.period));
 }
 

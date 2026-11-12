@@ -4,6 +4,7 @@
 const apiKeys = require('../apiKeys');
 const domains = require('../domains');
 const registry = require('./registry');
+const { clampLimit } = require('../lib/listing');
 
 const ENDPOINT = '/hub/mcp';
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -106,7 +107,7 @@ function callRow(r, names = new Map()) {
 // history. Older rows have only the name: those count when the key existed (created to revoked), in case an earlier
 // revoked key had the same name.
 function callsFor(conn, key, limit = 20) {
-    const n = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const n = clampLimit(limit, 20, 100);
     const until = key.revoked_at || null;
     return conn.prepare(
         `SELECT at, actor, detail FROM audit_log WHERE action = 'mcp_call' AND (

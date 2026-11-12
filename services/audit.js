@@ -1,3 +1,5 @@
+const { clampLimit } = require('./lib/listing');
+
 // A short, append-only record of dashboard and key activity.
 function record(db, actor, action, detail, ip) {
     db.prepare('INSERT INTO audit_log (at, actor, action, detail, ip) VALUES (?, ?, ?, ?, ?)')
@@ -18,7 +20,7 @@ function keyIdOf(detail) {
 
 // Newest first. `before` (a row id) pages back through older rows; `actions` keeps only those kinds of event.
 function recent(db, limit = 50, { before, actions } = {}) {
-    const n = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 200);
+    const n = clampLimit(limit, 50, 200);
     const where = [];
     const args = [];
     const cursor = parseInt(before, 10);
