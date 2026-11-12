@@ -13,15 +13,16 @@ const DEFAULT_DAYS = 14;
 const MAX_DAYS = 90;
 const CAP = 20;
 const SEVERITIES = ['urgent', 'attention', 'info'];
-const TZ = () => process.env.DIGEST_TZ || 'America/Chicago';
+const { hubTz, todayIn } = require('./lib/tz');
 
 function clampDays(v) {
     if (v == null || v === '' || !Number.isFinite(Number(v))) return DEFAULT_DAYS;
     return Math.min(Math.max(Math.trunc(Number(v)), 1), MAX_DAYS);
 }
 
-// Today's date (YYYY-MM-DD) in the briefing's time zone.
-const today = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ() }).format(now);
+// Today's date (YYYY-MM-DD) in the hub's time zone: `tz` when given (callers with a db pass hubTz(db)), else the
+// DIGEST_TZ / America/Chicago default.
+const today = (now = new Date(), tz = hubTz(null)) => todayIn(tz, now);
 
 // Whole days from one YYYY-MM-DD date to another.
 const dayDiff = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);

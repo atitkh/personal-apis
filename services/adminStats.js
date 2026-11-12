@@ -8,6 +8,7 @@ const agents = require('./mcp/agents');
 const places = require('./places');
 const flights = require('./flights');
 const { readJson } = require('../routes/portfolio/freshJson');
+const { hubTz, todayIn, hourIn } = require('./lib/tz');
 
 const ATIT_DIR = path.join(__dirname, '..', 'routes', 'portfolio', 'atit');
 const BACKUP_RE = /^hub-(\d{4}-\d{2}-\d{2}|pre-delete-\d{8}-\d{6}(-\d+)?)\.db$/;
@@ -73,10 +74,9 @@ function portfolio() {
 // The nightly job runs at 11 PM Central, so from 6 AM on, yesterday's daily digest should exist. Only
 // warns once the domain is on and at least one daily digest has ever arrived.
 function digestWatch(conn, now = new Date()) {
-    const tz = process.env.DIGEST_TZ || 'America/Chicago';
-
-    const hour = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(now));
-    const day = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
+    const tz = hubTz(conn);
+    const hour = hourIn(tz, now);
+    const day = (d) => todayIn(tz, d);
     const enabled = domains.isEnabled(conn, 'digests');
     const latest = conn.prepare("SELECT MAX(period) AS p, COUNT(*) AS n FROM digests WHERE kind = 'daily'").get();
     const expected = hour >= 6 ? day(new Date(now.getTime() - 24 * 3600 * 1000)) : null;
@@ -92,7 +92,7 @@ function digestWatch(conn, now = new Date()) {
 }
 
 // Which of the last `days` days (ending yesterday, today is still being lived) have a daily digest.
-function digestCoverage(conn, now = new Date(), tz = 'America/Chicago', days = 30) {
+function digestCoverage(conn, now = new Date(), tz = hubTz(conn), days = 30) {
     const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz });
     const list = [];
     for (let i = days; i >= 1; i--) list.push(fmt.format(new Date(now.getTime() - i * 24 * 3600 * 1000)));
@@ -146,7 +146,7 @@ function overview() {
 }
 
 // Agent calls per local day for the last `days` days, today included, split by tool, for the activity strip.
-function series(conn, { days = 14, now = new Date(), tz = process.env.DIGEST_TZ || 'America/Chicago' } = {}) {
+function series(conn, { days = 14, now = new Date(), tz = hubTz(conn) } = {}) {
     const n = Math.min(Math.max(Math.trunc(Number(days)) || 14, 1), 90);
     const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz });
     const list = [];

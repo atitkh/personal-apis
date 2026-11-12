@@ -2,6 +2,7 @@
 // collector skips a hook that does. Text carries no booking reference, address or name: flights say airline
 // code + number, airport codes and dates; places and digests say only counts and dates.
 const { today, dayDiff } = require('./briefing');
+const { hubTz } = require('./lib/tz');
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many || `${one}s`}`;
 
@@ -23,7 +24,7 @@ function flights(db, { now, days }) {
             text: `${plural(found, 'found flight')} ${found === 1 ? 'waits' : 'wait'} for review`,
         });
     }
-    const todayLocal = today(now);
+    const todayLocal = today(now, hubTz(db));
     const nowMs = now.getTime();
     // Airport-local dates drive the wording; the horizon counts calendar days from today in the briefing's zone.
     for (const f of svc.upcoming(db, { now, limit: 50 })) {

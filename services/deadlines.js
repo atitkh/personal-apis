@@ -11,7 +11,7 @@
 //                      rewritten); restore puts an item back to an earlier revision as a new revision.
 //
 // STATUS: active (reminds), done (a one-off finished), ended (no more reminders). Overdue = active and due before
-// today. "Today" is the date in DIGEST_TZ (default America/Chicago); every function that needs it takes `now`.
+// today. "Today" is the date in the hub time zone (Settings; default DIGEST_TZ, else America/Chicago); every function that needs it takes `now`.
 //
 // DONE: on a repeating item the due date rolls to the next occurrence AFTER the current due date (and not before
 // today): yearly +12 months, monthly +1, every_n_months +n, clamped to month end (Jan 31 -> Feb 28). Occurrences are
@@ -25,6 +25,7 @@
 // audit rows and the briefing too.
 const { HubError } = require('./errors');
 const { today, dayDiff } = require('./briefing');
+const { hubTz } = require('./lib/tz');
 const validate = require('./lib/validate');
 const { needRow, commitRevision, findRevision } = require('./lib/revisions');
 const { limitOrDefault, clampOffset } = require('./lib/listing');
@@ -95,7 +96,7 @@ function rollDate(due, repeatKind, repeatN, todayDate) {
     throw bad('bad_repeat', 'This item repeats too often to roll forward.');
 }
 
-const daysLeft = (dueDate, now = new Date()) => dayDiff(today(now), dueDate);
+const daysLeft = (dueDate, now = new Date(), tz) => dayDiff(today(now, tz), dueDate);
 
 // The next date the item is due: the stored due date for an active item, null once done or ended.
 const nextDue = (row) => (row.status === 'active' ? row.due_date : null);
@@ -197,9 +198,9 @@ const commit = (db, id, meta) => commitRevision(db, REVISIONS, id, meta, editabl
 
 // An item as callers see it. `reference` true (the default, the full service shape) carries the private
 // reference; false leaves it out and says has_reference instead. Computed: next_due, days_left, overdue, window.
-function shape(row, { reference = true, now = new Date() } = {}) {
+function shape(row, { reference = true, now = new Date(), tz } = {}) {
     const active = row.status === 'active';
-    const left = active ? daysLeft(row.due_date, now) : null;
+    const left = active ? daysLeft(row.due_date, now, tz) : null;
     const out = {
         id: row.id,
         title: row.title,
@@ -248,7 +249,7 @@ function list(db, { kind, status, due_before: before, due_after: after, overdue,
     if (st !== 'all') { where.push('status = @status'); args.status = oneOf(st, 'status', STATUSES); }
     if (before != null && before !== '') { where.push('due_date <= @before'); args.before = cleanDate(before, 'due_before'); }
     if (after != null && after !== '') { where.push('due_date >= @after'); args.after = cleanDate(after, 'due_after'); }
-    if (overdue === true || overdue === 'true' || overdue === '1') { where.push("status = 'active' AND due_date < @today"); args.today = today(now); }
+    if (overdue === true || overdue === 'true' || overdue === '1') { where.push("status = 'active' AND due_date < @today"); args.today = today(now, hubTz(db)); }
     if (typeof q === 'string' && q.trim()) {
         where.push("title LIKE @q ESCAPE '\\'");
         args.q = `%${q.trim().slice(0, 80).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
@@ -259,16 +260,16 @@ function list(db, { kind, status, due_before: before, due_after: after, overdue,
     const lim = cleanLimit(limit, 50);
     const rows = db.prepare(`SELECT * FROM deadlines ${clause} ORDER BY due_date ASC, due_time IS NULL, due_time ASC, id ASC LIMIT @lim OFFSET @off`)
         .all({ ...args, lim, off });
-    return { total, offset: off, limit: lim, deadlines: rows.map((r) => shape(r, { reference, now })) };
+    return { total, offset: off, limit: lim, deadlines: rows.map((r) => shape(r, { reference, now, tz: hubTz(db) })) };
 }
 
 // A revision (rev) shows the item as it was then. `reference` defaults to true: the full reader.
 function get(db, id, { rev, reference = true, now = new Date() } = {}) {
     const row = need(db, id);
-    if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, { reference, now }), revisions: row.current_rev };
+    if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, { reference, now, tz: hubTz(db) }), revisions: row.current_rev };
     const r = findRevision(db, REVISIONS, row.id, rev);
     if (!r) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
-    return { ...shape({ ...row, ...JSON.parse(r.snapshot), current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, { reference, now }), revisions: row.current_rev };
+    return { ...shape({ ...row, ...JSON.parse(r.snapshot), current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, { reference, now, tz: hubTz(db) }), revisions: row.current_rev };
 }
 
 // Newest first; what changed is read with get(id, { rev }). Revision rows carry no field values.
@@ -281,10 +282,10 @@ function history(db, id) {
 // Active items that are overdue or due within `days` days (default 60), soonest first.
 function upcoming(db, { days = 60, limit, reference = false, now = new Date() } = {}) {
     const horizon = Math.min(Math.max(Number.isFinite(Number(days)) ? Math.trunc(Number(days)) : 60, 0), 3650);
-    const last = addDays(today(now), horizon);
+    const last = addDays(today(now, hubTz(db)), horizon);
     const rows = db.prepare("SELECT * FROM deadlines WHERE status = 'active' AND due_date <= ? ORDER BY due_date ASC, due_time IS NULL, due_time ASC, id ASC LIMIT ?")
         .all(last, cleanLimit(limit, LIST_MAX));
-    return rows.map((r) => shape(r, { reference, now }));
+    return rows.map((r) => shape(r, { reference, now, tz: hubTz(db) }));
 }
 
 // The overview tile: a plain total of items, whatever their status.
@@ -340,7 +341,7 @@ function done(db, id, actor, { now = new Date() } = {}) {
             db.prepare("UPDATE deadlines SET status = 'done', done_at = ? WHERE id = ?").run(at, row.id);
             return { status: 'done', id: row.id, title: row.title, rev: commit(db, row.id, { source: 'done', actor, note: 'Done' }), fields: ['status'] };
         }
-        const next = rollDate(row.due_date, row.repeat_kind, row.repeat_n, today(now));
+        const next = rollDate(row.due_date, row.repeat_kind, row.repeat_n, today(now, hubTz(db)));
         const gap = row.cancel_by ? dayDiff(row.due_date, row.cancel_by) : null;
         db.prepare('UPDATE deadlines SET due_date = ?, cancel_by = ?, done_at = ? WHERE id = ?')
             .run(next, gap == null ? null : addDays(next, gap), at, row.id);
