@@ -9,6 +9,14 @@ const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
 let shared = null;
 
+// Migration files not applied yet. null when the database has no migration table at all (a brand-new file).
+function pendingMigrations(db) {
+    const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'").get();
+    if (!has) return null;
+    const applied = new Set(db.prepare('SELECT name FROM schema_migrations').all().map((r) => r.name));
+    return fs.readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith('.sql')).sort().filter((f) => !applied.has(f));
+}
+
 function migrate(db) {
     db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)');
     const applied = new Set(db.prepare('SELECT name FROM schema_migrations').all().map((r) => r.name));
@@ -25,11 +33,18 @@ function migrate(db) {
 
 function open(file = process.env.HUB_DB_FILE || DEFAULT_FILE) {
     if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
+    const existed = file !== ':memory:' && fs.existsSync(file) && fs.statSync(file).size > 0;
     const db = new Database(file);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     db.pragma('busy_timeout = 5000');
+    // A copy of the database as it is, before any pending migration changes it (existing database files only).
+    const pending = existed ? pendingMigrations(db) : null;
+    const pre = pending && pending.length
+        ? require('../services/backup').snapshotBeforeMigration(db, file, { existed, pending: pending.length })
+        : null;
     migrate(db);
+    if (pre && pre.error) require('../services/backup').recordFailure(db, pre.error, 'migration');
     require('./seed').run(db);
     require('../services/domains').sync(db);
     return db;
@@ -60,4 +75,4 @@ function health() {
     }
 }
 
-module.exports = { open, get, close, health, migrate };
+module.exports = { open, get, close, health, migrate, pendingMigrations };

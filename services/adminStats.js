@@ -11,7 +11,6 @@ const { readJson } = require('../routes/portfolio/freshJson');
 const { hubTz, todayIn, hourIn } = require('./lib/tz');
 
 const ATIT_DIR = path.join(__dirname, '..', 'routes', 'portfolio', 'atit');
-const BACKUP_RE = /^hub-(\d{4}-\d{2}-\d{2}|pre-delete-\d{8}-\d{6}(-\d+)?)\.db$/;
 
 const size = (file) => {
     try { return fs.statSync(file).size; } catch (e) { return 0; }
@@ -24,16 +23,9 @@ function folder(name, ext) {
     return { names, count: names.length, bytes: names.reduce((sum, f) => sum + size(path.join(dir, f)), 0) };
 }
 
+// Backup files in the configured folder, newest first (services/backup.js).
 function backups() {
-    const conn = db.get();
-    if (conn.memory) return [];
-    const dir = path.join(path.dirname(conn.name), 'backups');
-    let names = [];
-    try { names = fs.readdirSync(dir).filter((f) => BACKUP_RE.test(f)); } catch (e) { /* none yet */ }
-    return names.sort().reverse().map((name) => {
-        const st = fs.statSync(path.join(dir, name));
-        return { name, bytes: st.size, modifiedAt: st.mtime.toISOString() };
-    });
+    return require('./backup').list(db.get());
 }
 
 function portfolio() {
@@ -124,7 +116,7 @@ function overview() {
             bytes: conn.memory ? 0 : size(conn.name),
             walBytes: conn.memory ? 0 : size(`${conn.name}-wal`),
         },
-        backups: { count: list.length, newest: list[0] || null },
+        backups: { count: list.length, newest: list[0] || null, error: (require('./backup').lastError(conn) || {}).message || null },
         keys: {
             active: keys.filter((k) => !k.revoked_at).length,
             revoked: keys.filter((k) => k.revoked_at).length,

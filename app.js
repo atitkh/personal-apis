@@ -142,7 +142,13 @@ app.get('/health', (req, res) => {
             version: process.env.npm_package_version || '1.0.0',
             database: dbHealth
         };
-        
+        // Backups failing (unwritable or missing folder) is a warning, not an outage: the status code stays 200.
+        if (dbHealth.status === 'healthy') {
+            const failing = require('./services/backup').lastError(db.get());
+            healthCheck.backups = failing ? { status: 'failing', error: failing.message, since: failing.at } : { status: 'ok' };
+            if (failing) healthCheck.status = 'WARNING';
+        }
+
         const statusCode = dbHealth.status === 'healthy' ? 200 : 503;
         res.status(statusCode).json(healthCheck);
     } catch (error) {
