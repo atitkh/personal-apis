@@ -261,9 +261,7 @@ in `ui.js` (red confirm, lists what goes and what stays, "Back up the database f
 and "Delete all dismissed (N)", place drawer, Needs a name rows and bulk, deadline drawer beside End and Done tab rows,
 preference drawer and Removed rows, digest reader.
 
-**Left as it was:** `/hub` still has `DELETE /hub/places/:id` and `DELETE /hub/places/:id/rules/:ruleId` (older than this run,
-scope places write). `tests/noRemoteDelete.test.js` pins the /hub DELETE routes to exactly those two and fails on any new one; it also
-checks that no MCP action is named delete/remove/destroy/purge/forget. Remove them from /hub if that API should lose them too.
+**/hub has no DELETE route at all** (the two old `DELETE /hub/places/...` routes were removed 2026-11-12: never called on the live hub). `tests/noRemoteDelete.test.js` fails on any DELETE under /hub, and checks that no MCP action is named delete/remove/destroy/purge/forget.
 
 Tests: `adminDeleteFlights`, `adminDeletePlaces`, `adminDeleteEntries`, `noRemoteDelete`, `backup` (pre-delete snapshot);
 route-table snapshot gained only the new admin routes. Browser: `run-delete.mjs` on a scratch hub (`SEED=delete-seed.js ./reset.sh`).

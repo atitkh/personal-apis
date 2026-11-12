@@ -74,20 +74,12 @@ module.exports = (handle) => {
         changed(req, res, conn, 'place_restored', places.restore(conn, req.params.id, (req.body || {}).rev, req.apiKey.name));
     }));
 
-    router.delete('/:id', write, handle((req, res, conn) => {
-        changed(req, res, conn, 'place_deleted', places.remove(conn, req.params.id));
-    }));
-
     router.post('/:id/rules', write, handle((req, res, conn) => {
         changed(req, res, conn, 'place_rule_added', places.addRule(conn, req.params.id, req.body, req.apiKey.name), 201);
     }));
 
     router.patch('/:id/rules/:ruleId', write, handle((req, res, conn) => {
         changed(req, res, conn, 'place_rule_updated', places.updateRule(conn, req.params.id, req.params.ruleId, req.body, req.apiKey.name));
-    }));
-
-    router.delete('/:id/rules/:ruleId', write, handle((req, res, conn) => {
-        changed(req, res, conn, 'place_rule_removed', places.removeRule(conn, req.params.id, req.params.ruleId, req.apiKey.name));
     }));
 
     return router;

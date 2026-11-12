@@ -6,11 +6,11 @@ const path = require('path');
 const routes = require('./__snapshots__/routes.json');
 const list = Array.isArray(routes) ? routes : Object.values(routes).flat();
 
-// Older than the dashboard delete and left as it was: /hub/places can delete a place and a rule. Nothing may be added.
-const LEGACY_HUB_DELETES = ['DELETE /hub/places/:id', 'DELETE /hub/places/:id/rules/:ruleId'];
+// The two old /hub/places deletes were removed (never used); nothing may be added back.
+const LEGACY_HUB_DELETES = [];
 
 describe('no delete over /hub or MCP', () => {
-    test('/hub has no DELETE route beyond the two places ones that were already there', () => {
+    test('/hub has no DELETE route at all', () => {
         const hub = list.filter((r) => /^DELETE \/hub\b/.test(r));
         expect(hub.sort()).toEqual([...LEGACY_HUB_DELETES].sort());
     });

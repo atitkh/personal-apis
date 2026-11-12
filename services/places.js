@@ -323,15 +323,6 @@ function restore(db, id, rev, actor) {
     })();
 }
 
-// Final: the rules and the history go with it. Suggestions that led to it stay, without the link.
-function remove(db, id) {
-    return db.transaction(() => {
-        const p = need(db, id);
-        db.prepare('DELETE FROM places WHERE id = ?').run(p.id);
-        return { status: 'deleted', id: p.id, label: p.label, rev: p.current_rev };
-    })();
-}
-
 function addRule(db, id, input, actor, { source = 'rule' } = {}) {
     const rule = cleanRule(input);
     return db.transaction(() => {
@@ -556,7 +547,7 @@ function suggestionAuditDetail(result) {
     return detail;
 }
 
-/* ---------- permanent delete from the dashboard (the older remove() above is what /hub still uses) ---------- */
+/* ---------- permanent delete from the dashboard ---------- */
 
 // What deleting a place takes with it: its rules (an exclude rule included) and every revision. Suggestions that
 // led to it stay, without the link. Digests already written keep the name they used.
@@ -610,7 +601,7 @@ module.exports = {
     placeRemovalPreview, removePlace, removedAuditDetail, removeSuggestion, removeDismissedSuggestions, suggestionRemovedAuditDetail,
     PlaceError, KINDS, RULE_TYPES, STATUSES,
     list, get, history, stats,
-    create, update, restore, remove, addRule, updateRule, removeRule, auditDetail,
+    create, update, restore, addRule, updateRule, removeRule, auditDetail,
     resolve, suggestions, suggestionCounts, acceptSuggestion, dismissSuggestion, suggestionAuditDetail,
     streetOf, haversine, fold, zoneId,
 };

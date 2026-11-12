@@ -55,13 +55,13 @@ describe('access', () => {
         await as(reader).post('/hub/places', { label: 'Nope' }).expect(403);
         await as(reader).patch(`/hub/places/${id}`, { label: 'Nope' }).expect(403);
         await as(reader).post(`/hub/places/${id}/restore`, { rev: 1 }).expect(403);
-        await as(reader).del(`/hub/places/${id}`).expect(403);
         await as(reader).post(`/hub/places/${id}/rules`, { type: 'zone', value: 'nope' }).expect(403);
         await as(reader).patch(`/hub/places/${id}/rules/${ruleId}`, { priority: 3 }).expect(403);
-        await as(reader).del(`/hub/places/${id}/rules/${ruleId}`).expect(403);
 
         expect((await as(reader).get(`/hub/places/${id}`).expect(200)).body).toMatchObject({ label: 'Guarded', rev: 1 });
-        await as(writer).del(`/hub/places/${id}`).expect(200);
+        // There is no remote delete: a place or a rule can only be removed from the dashboard.
+        await as(writer).del(`/hub/places/${id}`).expect(404);
+        await as(writer).del(`/hub/places/${id}/rules/${ruleId}`).expect(404);
     });
 });
 
@@ -80,7 +80,7 @@ describe('places over HTTP', () => {
         expect(one.rules).toEqual([expect.objectContaining({ type: 'street', value: 'Maple Ridge Dr', exclude: false })]);
 
         const list = (await as(reader).get('/hub/places').expect(200)).body.places;
-        expect(list.map((p) => p.label)).toEqual(['Home']);
+        expect(list.map((p) => p.label).sort()).toEqual(['Guarded', 'Home']); // Guarded comes from the access test: nothing can delete it remotely
         expect((await as(reader).get('/hub/places?kind=store').expect(200)).body.places).toEqual([]);
         expect((await as(reader).get('/hub/places').expect(200)).headers['cache-control']).toBe('no-store');
     });
@@ -92,7 +92,7 @@ describe('places over HTTP', () => {
         const added = (await as(writer).post(`/hub/places/${id}/rules`, { type: 'radius', lat: 40, lon: -75, radius_m: 90 }).expect(201)).body;
         expect(added).toEqual({ status: 'updated', id, label: 'Home', rev: 3, rule_id: expect.any(Number), rule_type: 'radius' });
         expect((await as(writer).patch(`/hub/places/${id}/rules/${added.rule_id}`, { radius_m: 150 }).expect(200)).body.rev).toBe(4);
-        expect((await as(writer).del(`/hub/places/${id}/rules/${added.rule_id}`).expect(200)).body.rev).toBe(5);
+        expect((await as(writer).patch(`/hub/places/${id}/rules/${added.rule_id}`, { radius_m: 200 }).expect(200)).body.rev).toBe(5);
 
         const hist = (await as(reader).get(`/hub/places/${id}/history`).expect(200)).body.revisions;
         expect(hist.map((h) => [h.rev, h.source])).toEqual([[5, 'rule'], [4, 'rule'], [3, 'rule'], [2, 'edit'], [1, 'create']]);
@@ -144,21 +144,16 @@ describe('places over HTTP', () => {
         expect((await as(writer).post(`/hub/places/${id}/restore`, { rev: 99 }).expect(404)).body.error).toBe('no_revision');
         expect((await as(reader).get('/hub/places/9999').expect(404)).body.error).toBe('not_found');
         expect((await as(reader).get('/hub/places/abc').expect(404)).body.error).toBe('not_found');
-        expect((await as(writer).del(`/hub/places/${id}/rules/9999`).expect(404)).body.error).toBe('no_rule');
         expect((await as(reader).get(`/hub/places/${id}/nope`).expect(404)).body.error).toBe('not_found');
     });
 
     test('changes are audited with ids and labels, never with rule values or addresses', async () => {
-        const temp = (await as(writer).post('/hub/places', { label: 'Passing', rules: [{ type: 'street', value: 'Tannery Row' }] }).expect(201)).body.id;
-        await as(writer).del(`/hub/places/${temp}`).expect(200);
-
         const rows = audit.recent(db.get(), 200).filter((r) => r.action.startsWith('place_'));
         expect(new Set(rows.map((r) => r.action))).toEqual(new Set([
-            'place_created', 'place_updated', 'place_restored', 'place_deleted', 'place_rule_added', 'place_rule_updated', 'place_rule_removed',
+            'place_created', 'place_updated', 'place_restored', 'place_rule_added', 'place_rule_updated',
         ]));
         expect(rows.find((r) => r.action === 'place_created' && r.detail.label === 'Home')).toMatchObject({ actor: 'places-editor', detail: { id, label: 'Home', rev: 1 } });
         expect(rows.find((r) => r.action === 'place_rule_added').detail).toEqual({ id, label: 'Home', rev: 3, rule_id: expect.any(Number), rule_type: 'radius', key_id: expect.any(Number) });
-        expect(rows.find((r) => r.action === 'place_deleted' && r.detail.label === 'Passing').detail).toEqual({ id: temp, label: 'Passing', rev: 1, key_id: expect.any(Number) });
         // The no-op edit and the reads (resolve, suggestions) left nothing behind.
         expect(rows.filter((r) => r.action === 'place_updated')).toHaveLength(1);
 
@@ -226,7 +221,6 @@ describe('domain switch', () => {
         expect((await as(reader).get('/hub/places').expect(503)).body.error).toBe('domain_disabled');
         await as(reader).post('/hub/places/resolve', { zone: 'home' }).expect(503);
         await as(writer).post('/hub/places', { label: 'While off' }).expect(503);
-        await as(writer).del('/hub/places/1').expect(503);
         await request(app).get('/hub/places').expect(401); // authentication is still checked first
         await as(other).get('/hub/digests').expect(200);   // other domains are untouched
 

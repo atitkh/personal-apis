@@ -124,18 +124,6 @@ describe('places and their history', () => {
         expect(code(() => places.restore(conn, id, 1, 'admin'))).toBe('label_taken');
     });
 
-    test('delete is final and takes rules and history along', () => {
-        const id = add('Cafe', [street('Juniper Hollow')]);
-        conn.prepare("INSERT INTO place_suggestions (street, count, first_seen, last_seen, status, resolved_place_id) VALUES ('Juniper Hollow', 3, 'a', 'b', 'accepted', ?)").run(id);
-
-        expect(places.remove(conn, id)).toEqual({ status: 'deleted', id, label: 'Cafe', rev: 1 });
-        expect(code(() => places.get(conn, id))).toBe('not_found');
-        expect(conn.prepare('SELECT COUNT(*) AS n FROM place_rules').get().n).toBe(0);
-        expect(conn.prepare('SELECT COUNT(*) AS n FROM place_revisions').get().n).toBe(0);
-        expect(places.suggestions(conn, { status: 'accepted' })[0].resolved_place_id).toBeNull();
-        expect(add('Cafe')).toBeGreaterThan(id); // ids are not reused
-    });
-
     test('the domain is registered and counts places', () => {
         expect(places.stats(conn)).toEqual({ records: 0, label: 'places', lastChange: null });
         add('Home');
