@@ -25,6 +25,10 @@
 // audit rows and the briefing too.
 const { HubError } = require('./errors');
 const { today, dayDiff } = require('./briefing');
+const validate = require('./lib/validate');
+const { needRow, commitRevision, findRevision } = require('./lib/revisions');
+const { limitOrDefault, clampOffset } = require('./lib/listing');
+const { toId } = validate;
 
 const KINDS = ['document', 'insurance', 'license', 'subscription', 'membership', 'bill', 'task', 'other'];
 const MONEY_KINDS = ['subscription', 'membership', 'bill'];
@@ -46,6 +50,7 @@ class DeadlineError extends HubError {
 }
 
 const bad = (code, message, status = 400, extra) => new DeadlineError(status, code, message, extra);
+const REVISIONS = { table: 'deadlines', revTable: 'deadline_revisions', fk: 'deadline_id' };
 const stamp = () => new Date().toISOString();
 const who = (actor) => String(actor || 'unknown');
 
@@ -103,24 +108,8 @@ function windowOf(row, left) {
 
 /* ---------- cleaning ---------- */
 
-function toId(v) {
-    const id = typeof v === 'number' ? v : /^\d+$/.test(String(v)) ? Number(v) : NaN;
-    return Number.isSafeInteger(id) && id > 0 ? id : null;
-}
-
-function text(v, name, max) {
-    if (v == null) return null;
-    if (typeof v !== 'string' && typeof v !== 'number') throw bad('bad_request', `${name} must be text.`);
-    const s = String(v).normalize('NFKC').trim();
-    if (!s) return null;
-    if (s.length > max) throw bad('bad_request', `${name} is longer than ${max} characters.`);
-    return s;
-}
-
-function oneOf(v, name, list) {
-    if (!list.includes(v)) throw bad(`bad_${name}`, `${name} must be one of: ${list.join(', ')}.`);
-    return v;
-}
+const text = (v, name, max) => validate.text(bad, v, name, max);
+const oneOf = (v, name, list) => validate.oneOf(bad, v, name, list);
 
 function cleanInt(v, name, min, max) {
     const n = typeof v === 'string' && /^-?\d+$/.test(v.trim()) ? Number(v) : v;
@@ -194,26 +183,14 @@ function build(input, current = {}) {
 
 const editable = (row) => Object.fromEntries(FIELDS.map((k) => [k, row[k] == null ? null : row[k]]));
 
-function need(db, id) {
-    const row = toId(id) && db.prepare('SELECT * FROM deadlines WHERE id = ?').get(toId(id));
-    if (!row) throw bad('not_found', `There is no deadline ${String(id).slice(0, 20)}.`, 404);
-    return row;
-}
+const need = (db, id) => needRow(db, 'deadlines', id, () => bad('not_found', `There is no deadline ${String(id).slice(0, 20)}.`, 404));
 
 function write(db, id, f) {
     db.prepare(`UPDATE deadlines SET ${FIELDS.map((k) => `${k} = @${k}`).join(', ')} WHERE id = @id`).run({ ...f, id });
 }
 
 // Stores the item as it is now as its next revision. Every change ends here.
-function commit(db, id, { source, actor, note }) {
-    const row = db.prepare('SELECT * FROM deadlines WHERE id = ?').get(id);
-    const rev = row.current_rev + 1;
-    const at = stamp();
-    db.prepare('INSERT INTO deadline_revisions (deadline_id, rev, snapshot, source, actor, note, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(id, rev, JSON.stringify(editable(row)), source, who(actor), note || null, at);
-    db.prepare('UPDATE deadlines SET current_rev = ?, updated_at = ?, updated_by = ? WHERE id = ?').run(rev, at, who(actor), id);
-    return rev;
-}
+const commit = (db, id, meta) => commitRevision(db, REVISIONS, id, meta, editable);
 
 /* ---------- shape ---------- */
 
@@ -258,10 +235,7 @@ function shape(row, { reference = true, now = new Date() } = {}) {
 
 /* ---------- reads ---------- */
 
-function cleanLimit(v, def) {
-    const n = parseInt(v, 10);
-    return Number.isFinite(n) ? Math.min(Math.max(n, 1), LIST_MAX) : def;
-}
+const cleanLimit = (v, def) => limitOrDefault(v, def, LIST_MAX);
 
 // Filters: kind, status (active by default; 'all' for every status), due_before / due_after (inclusive dates),
 // overdue=true, q (a piece of the title). Soonest due date first.
@@ -280,7 +254,7 @@ function list(db, { kind, status, due_before: before, due_after: after, overdue,
     }
     const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const total = db.prepare(`SELECT COUNT(*) AS n FROM deadlines ${clause}`).get(args).n;
-    const off = Math.max(parseInt(offset, 10) || 0, 0);
+    const off = clampOffset(offset);
     const lim = cleanLimit(limit, 50);
     const rows = db.prepare(`SELECT * FROM deadlines ${clause} ORDER BY due_date ASC, due_time IS NULL, due_time ASC, id ASC LIMIT @lim OFFSET @off`)
         .all({ ...args, lim, off });
@@ -291,7 +265,7 @@ function list(db, { kind, status, due_before: before, due_after: after, overdue,
 function get(db, id, { rev, reference = true, now = new Date() } = {}) {
     const row = need(db, id);
     if (rev == null || rev === '' || Number(rev) === row.current_rev) return { ...shape(row, { reference, now }), revisions: row.current_rev };
-    const r = db.prepare('SELECT * FROM deadline_revisions WHERE deadline_id = ? AND rev = ?').get(row.id, toId(rev));
+    const r = findRevision(db, REVISIONS, row.id, rev);
     if (!r) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
     return { ...shape({ ...row, ...JSON.parse(r.snapshot), current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, { reference, now }), revisions: row.current_rev };
 }
@@ -388,7 +362,7 @@ function end(db, id, actor) {
 function restore(db, id, rev, actor) {
     return db.transaction(() => {
         const row = need(db, id);
-        const old = toId(rev) && db.prepare('SELECT * FROM deadline_revisions WHERE deadline_id = ? AND rev = ?').get(row.id, toId(rev));
+        const old = findRevision(db, REVISIONS, row.id, rev);
         if (!old) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
         const was = build(JSON.parse(old.snapshot));
         const now = editable(row);

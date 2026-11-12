@@ -1,24 +1,13 @@
 const deadlines = require('../../../services/deadlines');
+const { adminHandler } = require('../../lib/handle');
+const { adminChanged } = require('../../lib/changed');
 
-module.exports = (api, ctx) => {
-    const { db, audit } = ctx;
-
+module.exports = (api) => {
     // ---- deadlines: everything the dashboard needs. The admin sees every field, the private reference included.
     // Works while the domain is switched off. Changes are audited as `admin` with id, title, revision and field
     // names (deadlines.auditDetail), never values. Fixed words come before /deadlines/:id. ----
-    const deadlineHandler = (fn) => (req, res) => {
-        try {
-            fn(req, res, db.get());
-        } catch (err) {
-            if (err instanceof deadlines.DeadlineError) return res.status(err.status).json({ error: err.message, code: err.code, ...(err.extra || {}) });
-            console.error('admin deadlines error:', err);
-            res.status(500).json({ error: 'Something went wrong.' });
-        }
-    };
-    const deadlineChanged = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.record(conn, 'admin', action, deadlines.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const deadlineHandler = adminHandler(deadlines.DeadlineError, 'admin deadlines error:', { extra: true });
+    const deadlineChanged = adminChanged(deadlines.auditDetail);
 
     api.get('/deadlines', deadlineHandler((req, res, conn) => {
         const { kind, status, due_before: before, due_after: after, overdue, q, limit, offset } = req.query;

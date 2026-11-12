@@ -7,7 +7,7 @@
 // Changes are audited with deadlines.auditDetail: id, title, revision and field NAMES, never values.
 const express = require('express');
 const deadlines = require('../../services/deadlines');
-const audit = require('../../services/audit');
+const { keyChanged } = require('../lib/changed');
 const apiKeys = require('../../services/apiKeys');
 const { requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
@@ -20,10 +20,7 @@ module.exports = (handle) => {
         : res.status(403).json({ error: 'Forbidden', message: 'This key lacks the "deadlines:read" scope' }));
     const write = [requireScope('deadlines:api-write'), alsoRead, requireDomain('deadlines')];
 
-    const changed = (req, res, conn, action, result, status = 200) => {
-        if (result.status !== 'unchanged') audit.recordKey(conn, req.apiKey, action, deadlines.auditDetail(result), req.ip);
-        res.status(status).json(result);
-    };
+    const changed = keyChanged(deadlines.auditDetail);
 
     router.get('/', read, handle((req, res, conn) => {
         const { kind, status, due_before: before, due_after: after, overdue, q, limit, offset } = req.query;
