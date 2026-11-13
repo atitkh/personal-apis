@@ -15,6 +15,8 @@ const apiKeys = require('../../services/apiKeys');
 const { requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
 
+const MAX_PUSH_BYTES = 1024 * 1024;
+
 module.exports = (handle) => {
     const router = express.Router();
     const read = [requireScope('lifelog:read'), requireDomain('lifelog')];
@@ -27,8 +29,17 @@ module.exports = (handle) => {
     const pushScope = [requireScope(null), scopeCheck(['lifelog:push', 'lifelog:api-write'])];
     const changed = keyChanged(lifelog.auditDetail);
 
+    // A full batch (100 x 2000 characters of text + 2 KB of data) is well under 1 MB; anything bigger is refused
+    // before it is read. (The app-wide JSON parser in app.js takes up to 10 MB, so the hub router's own 256 KB
+    // limit never applies.)
+    const sizeCap = (req, res, next) => {
+        const len = Number(req.headers['content-length']) || Buffer.byteLength(JSON.stringify(req.body || ''));
+        if (len > MAX_PUSH_BYTES) return res.status(413).json({ error: 'too_large', message: 'The body is over 1 MB. Send fewer observations per call (at most 100).' });
+        return next();
+    };
+
     // Body { observations: [...] } (or a bare list). 201 when at least one was stored.
-    router.post('/observations', pushScope, requireDomain('lifelog'), handle((req, res, conn) => {
+    router.post('/observations', pushScope, requireDomain('lifelog'), sizeCap, handle((req, res, conn) => {
         const body = req.body;
         const items = Array.isArray(body) ? body : (body || {}).observations;
         const result = lifelog.push(conn, req.apiKey, items);

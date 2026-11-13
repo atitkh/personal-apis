@@ -84,13 +84,4 @@ router.use('/lifelog', require('./lifelog')(handle));
 
 router.use((req, res) => res.status(404).json({ error: 'not_found', message: 'No such hub route.' }));
 
-// A body over the JSON limit (256 KB) answers in the hub's own words instead of the generic error page.
-// eslint-disable-next-line no-unused-vars
-router.use((err, req, res, next) => {
-    if (err && err.type === 'entity.too.large') {
-        return res.status(413).json({ error: 'too_large', message: 'The body is over 256 KB. Send fewer items per call.' });
-    }
-    return next(err);
-});
-
 module.exports = router;
