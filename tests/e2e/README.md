@@ -1,6 +1,6 @@
 # Browser flows (tests/e2e)
 
-Headless-browser checks of the admin dashboard: Flights, Passport, Globe, Keys, Deadlines, Preferences, Today card,
+Headless-browser checks of the admin dashboard: Flights, Passport, Globe, Keys, Deadlines, Trips, Preferences, Today card,
 Overview, permanent Delete and Settings. Each flow gets its **own fresh scratch hub** (this repo's code in a `node:20`
 container, a temp data dir, a random free port, admin key `eeee…`, invented seed data). Nothing here touches the live
 hub: the scripts refuse port 3000, non-local hosts, and any data dir inside the repo or equal to `HUB_DATA_DIR`.

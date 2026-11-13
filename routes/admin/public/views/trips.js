@@ -120,7 +120,7 @@ function tripForm({ values, mode, submit, onSave, onCancel, onDirty }) {
                 if (!now.title) throw fieldError('Give the trip a title.', 'title');
                 if (now.start_date && now.end_date && now.end_date < now.start_date) throw fieldError('The end date cannot be before the start date.', 'end_date');
                 const body = mode === 'create'
-                    ? Object.fromEntries(FORM_FIELDS.filter((k) => now[k] != null && k !== 'status_override'))
+                    ? Object.fromEntries(FORM_FIELDS.filter((k) => now[k] != null && k !== 'status_override').map((k) => [k, now[k]]))
                     : Object.fromEntries(FORM_FIELDS.filter((k) => !Object.is(now[k], base[k])).map((k) => [k, now[k]]));
                 await onSave(body);
             } catch (err) {
@@ -184,7 +184,7 @@ function itemForm({ values, mode, onSave, onCancel }) {
                 if (!v.title) throw fieldError('Give the item a title.', 'title');
                 if (v.start_date && v.end_date && v.end_date < v.start_date) throw fieldError('The end date cannot be before the start date.', 'end_date');
                 const body = mode === 'create'
-                    ? Object.fromEntries(ITEM_FIELDS.filter((k) => v[k] != null))
+                    ? Object.fromEntries(ITEM_FIELDS.filter((k) => v[k] != null).map((k) => [k, v[k]]))
                     : Object.fromEntries(ITEM_FIELDS.filter((k) => !Object.is(v[k], base[k])).map((k) => [k, v[k]]));
                 if (mode === 'edit' && !Object.keys(body).length) { toast('Nothing changed', { kind: 'info' }); save.disabled = false; return; }
                 await onSave(body);
@@ -395,11 +395,12 @@ function tripDrawer(ctx, id, fromList, mark) {
         const refBox = h('span', { class: 'item-ref', 'aria-live': 'polite' });
         const refBtn = !item.has_reference ? null : button({ text: refNow != null ? 'Hide reference' : 'Show reference', variant: 'quiet', size: 'small', label: `${refNow != null ? 'Hide' : 'Show'} the reference for ${item.title}`, 'data-key': `ref:${item.id}`,
             onClick: async () => {
-                if (shown.has(item.id)) { shown.delete(item.id); refBox.textContent = ''; refBtn.querySelector('span').textContent = 'Show reference'; return; }
+                const label = (show) => { refBtn.querySelector('span').textContent = show ? 'Hide reference' : 'Show reference'; refBtn.setAttribute('aria-label', `${show ? 'Hide' : 'Show'} the reference for ${item.title}`); };
+                if (shown.has(item.id)) { shown.delete(item.id); refBox.textContent = ''; label(false); return; }
                 try {
                     shown.set(item.id, await reference(item));
                     refBox.textContent = shown.get(item.id) || '(empty)';
-                    refBtn.querySelector('span').textContent = 'Hide reference';
+                    label(true);
                 } catch (err) { if (err.status !== 401) toast(`Could not load the reference. ${err.message}`, { kind: 'bad' }); }
             } });
         if (refNow != null) refBox.textContent = refNow || '(empty)';

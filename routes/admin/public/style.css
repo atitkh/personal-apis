@@ -1430,3 +1430,4 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 .sug-main { display: grid; gap: 4px; flex: 1 1 280px; min-width: 0; }
 .sug-main p { margin: 0; }
 .trip-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.drawer-section > [data-key="add-item"] { justify-self: start; }
