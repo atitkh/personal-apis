@@ -572,8 +572,8 @@ export const ADMIN_NAME = 'Atit';
 export const actorName = (actor) => (actor === 'admin' ? ADMIN_NAME : actor);
 
 // Domain colour slots. Known domains have fixed colours; new ones take the spare slots in order.
-const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal', places: 'plum', deadlines: 'rose', preferences: 'brick' };
-const SPARE = ['plum', 'brick'];
+const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal', places: 'plum', deadlines: 'rose', preferences: 'brick', trips: 'indigo', lifelog: 'moss' };
+const SPARE = ['neutral', 'muted'];
 export function domainHue(name, index = 0) {
     return DOMAIN_HUES[name] || SPARE[index % SPARE.length];
 }

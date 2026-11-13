@@ -52,6 +52,8 @@
     --plum: #8A3FA0;
     --rose: #C23B63;
     --brick: #B5472F;
+    --moss: #5F7A12;
+    --indigo: #5B4FC4;
     --neutral: #6E7F8E;
 
     --good: #2F7D4F;
@@ -106,6 +108,8 @@
     --plum: #C483D8;
     --rose: #F08AA6;
     --brick: #E58468;
+    --moss: #A9C95A;
+    --indigo: #A99BFF;
     --neutral: #8C9BB0;
 
     --good: #6CC58F;
@@ -122,6 +126,8 @@
 .hue-plum { --c: var(--plum); }
 .hue-rose { --c: var(--rose); }
 .hue-brick { --c: var(--brick); }
+.hue-moss { --c: var(--moss); }
+.hue-indigo { --c: var(--indigo); }
 .hue-neutral { --c: var(--neutral); }
 .hue-muted { --c: var(--line-strong); }
 
