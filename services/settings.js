@@ -6,6 +6,8 @@
 //   backup.every_hours  integer 1..168, default 24
 //   backup.keep         integer 1..90, default 7
 //   backup.verify_after bool, default true: check each scheduled backup after writing it
+//   lifelog.retention_days  integer 1..36500 or null (default null = keep forever). Stored only: no job deletes
+//                       anything yet, and the Settings page does not show it.
 const path = require('path');
 
 class SettingError extends Error {
@@ -60,6 +62,7 @@ const DEFS = {
     'backup.every_hours': { parse: int('backup.every_hours', 1, 168), def: () => 24 },
     'backup.keep': { parse: int('backup.keep', 1, 90), def: () => 7 },
     'backup.verify_after': { parse: bool('backup.verify_after'), def: () => true },
+    'lifelog.retention_days': { parse: int('lifelog.retention_days', 1, 36500), def: () => null },
 };
 const KEYS = Object.keys(DEFS);
 const INTERNAL = ['last_backup_error'];

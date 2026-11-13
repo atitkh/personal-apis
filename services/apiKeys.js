@@ -38,11 +38,16 @@ function parseScopes(scopes) {
     return normaliseList(clean);
 }
 
+// Domains so private that "*" does not reach them: a key needs `lifelog:*` or the named scopes, granted on purpose.
+// So every key that held "*" before lifelog existed keeps exactly what it had.
+const SENSITIVE_DOMAINS = ['lifelog'];
+
 // granted: array of scopes on the key. required: "domain:action" (an old name is read as its new name).
 function hasScope(granted, required) {
     const want = normaliseScope(required);
     const domain = want.split(':')[0];
-    return granted.map(normaliseScope).some((g) => g === '*' || g === want || g === `${domain}:*`);
+    const starCounts = !SENSITIVE_DOMAINS.includes(domain);
+    return granted.map(normaliseScope).some((g) => (g === '*' && starCounts) || g === want || g === `${domain}:*`);
 }
 
 function create(db, { name, scopes }) {
@@ -127,4 +132,4 @@ function update(db, id, { name, scopes, confirmAll } = {}) {
     return { key: get(db, id), added, removed, renamedFrom: nextName !== before.name ? before.name : null };
 }
 
-module.exports = { create, verify, list, get, update, diffScopes, revoke, hasScope, parseScopes, normaliseScope, normaliseList, storedScopes, ACTION_ALIASES };
+module.exports = { create, verify, list, get, update, diffScopes, revoke, hasScope, parseScopes, normaliseScope, normaliseList, storedScopes, ACTION_ALIASES, SENSITIVE_DOMAINS };

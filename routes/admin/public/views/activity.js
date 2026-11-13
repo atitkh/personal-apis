@@ -19,6 +19,7 @@ const TYPES = [
     ['deadlines', 'Deadlines'],
     ['trips', 'Trips'],
     ['preferences', 'Preferences'],
+    ['lifelog', 'Lifelog'],
     ['settings', 'Settings'],
     ['signins', 'Sign-ins'],
 ];
@@ -28,8 +29,8 @@ const SETTING_NAME = {
     'backup.keep': 'copies to keep', 'backup.verify_after': 'check each new backup',
 };
 const settingChange = (d) => (d.from === undefined || d.to === undefined ? '' : ` from ${d.from === null ? 'default' : d.from} to ${d.to === null ? 'default' : d.to}`);
-const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', trips: 'No trip changes yet.', preferences: 'No preference changes yet.', settings: 'No settings changes yet.', signins: 'No sign-ins yet.' };
-const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines', trips: 'Trips', preferences: 'Preferences' };
+const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', trips: 'No trip changes yet.', preferences: 'No preference changes yet.', lifelog: 'No lifelog changes yet.', settings: 'No settings changes yet.', signins: 'No sign-ins yet.' };
+const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines', trips: 'Trips', preferences: 'Preferences', lifelog: 'Lifelog' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
     key_created: 'keys', key_updated: 'keys', key_revoked: 'keys',
@@ -48,6 +49,8 @@ const ICON = {
     flight_deleted: 'calendar', trip_deleted: 'calendar', flight_candidate_deleted: 'calendar', deadline_deleted: 'calendar',
     webhook_created: 'agents', webhook_updated: 'agents', webhook_deleted: 'agents', webhook_tested: 'agents', webhook_run: 'agents',
     preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences', preference_deleted: 'preferences',
+    lifelog_pushed: 'agents', lifelog_observation_added: 'agents', lifelog_episode_created: 'agents', lifelog_episode_updated: 'agents',
+    lifelog_episode_restored: 'agents', lifelog_episode_linked: 'agents', lifelog_episode_unlinked: 'agents', lifelog_forgotten: 'warn',
     deadline_created: 'calendar', deadline_updated: 'calendar', deadline_done: 'calendar', deadline_ended: 'calendar', deadline_restored: 'calendar',
 };
 const RULE_NAME = { street: 'street', zone: 'zone', radius: 'circle' };
@@ -122,6 +125,14 @@ function sentence(e) {
     case 'preference_updated': return [who, ' changed the preference ', strong(prefName(d))];
     case 'preference_unset': return [who, ' removed the preference ', strong(prefName(d))];
     case 'preference_restored': return [who, ' restored an older version of the preference ', strong(prefName(d))];
+    case 'lifelog_pushed': return [who, ` pushed ${d.accepted || 0} lifelog observation${d.accepted === 1 ? '' : 's'}${d.sources && d.sources.length ? ` as ${d.sources.join(', ')}` : ''}${d.duplicates ? ` (${d.duplicates} already there)` : ''}${d.rejected ? ` (${d.rejected} refused)` : ''}`];
+    case 'lifelog_observation_added': return [who, ' added a lifelog note'];
+    case 'lifelog_episode_created': return [who, ` added a lifelog episode${d.kind ? ` (${d.kind})` : ''}`];
+    case 'lifelog_episode_updated': return [who, ` changed a lifelog episode${d.kind ? ` (${d.kind})` : ''}`];
+    case 'lifelog_episode_restored': return [who, ' restored an older version of a lifelog episode'];
+    case 'lifelog_episode_linked': return [who, ` linked ${d.linked || 0} observation${d.linked === 1 ? '' : 's'} to a lifelog episode`];
+    case 'lifelog_episode_unlinked': return [who, ` took ${d.unlinked || 0} observation${d.unlinked === 1 ? '' : 's'} off a lifelog episode`];
+    case 'lifelog_forgotten': return [who, ` forgot the lifelog from ${d.from || '?'} to ${d.to || '?'}${d.source ? ` for ${d.source}` : ''} (${d.observations || 0} observations, ${d.episodes || 0} episodes)`];
     case 'deadline_created': return [who, ' added the deadline ', strong(d.title || 'a deadline')];
     case 'deadline_updated': return [who, ' changed the deadline ', strong(d.title || 'a deadline')];
     case 'deadline_done': return [who, ' marked the deadline ', strong(d.title || 'a deadline'), d.next_due ? ` done, next due ${d.next_due}` : ' done'];

@@ -8,12 +8,13 @@ import { CATALOGUE } from '../scopes.js';
 import { scopeEditor, saveKey, saveBar, APPLIES } from '../scopeEditor.js';
 import { MCP_LABEL } from './overview.js';
 
-const VERB = { read: 'Read', suggest: 'Suggest', observe: 'Observe', 'agent-write': 'Agent write', 'api-write': 'API write', publish: 'Publish' };
+const VERB = { push: 'Push', read: 'Read', suggest: 'Suggest', observe: 'Observe', 'agent-write': 'Agent write', 'api-write': 'API write', publish: 'Publish' };
 const verbLabel = (verb) => (VERB[verb] || verb).toLowerCase();
 const verbOf = (scope) => scope.split(':')[1];
 const hasScope = (granted, required) => {
     const domain = required.split(':')[0];
-    return granted.some((g) => g === '*' || g === required || g === `${domain}:*`);
+    // As services/apiKeys.js: "*" does not reach the sensitive domains (lifelog).
+    return granted.some((g) => (g === '*' && domain !== 'lifelog') || g === required || g === `${domain}:*`);
 };
 const callName = (c) => `${c.tool || 'unknown'}${c.action ? `.${c.action}` : ''}`;
 

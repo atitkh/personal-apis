@@ -21,6 +21,8 @@ const ACTIVITY_TYPES = {
     trips: ['trip_created', 'trip_updated', 'trip_restored', 'trip_flight_linked', 'trip_flight_unlinked', 'trip_deleted',
         'trip_item_added', 'trip_item_updated', 'trip_item_removed', 'trip_suggestion_accepted', 'trip_suggestion_dismissed', 'trip_suggestions_restored'],
     preferences: ['preference_set', 'preference_updated', 'preference_unset', 'preference_restored', 'preference_deleted'],
+    lifelog: ['lifelog_pushed', 'lifelog_observation_added', 'lifelog_episode_created', 'lifelog_episode_updated', 'lifelog_episode_restored',
+        'lifelog_episode_linked', 'lifelog_episode_unlinked', 'lifelog_forgotten'],
     signins: ['login', 'logout', 'login_failed'],
 };
 

@@ -84,6 +84,17 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'lifelog',
+        title: 'Lifelog',
+        note: 'The most private domain: a key with "*" (everything) does not get it. Grant Lifelog: everything or the scopes below on purpose.',
+        scopes: [
+            { scope: 'lifelog:push', label: 'Push', text: 'Add observations (what a camera, glasses, a sensor or a voice note saw or heard, as text) through POST /hub/lifelog/observations, only under the key\'s own name as the source. It cannot read anything back or change anything. Give this to capture devices and bridges.', write: true },
+            { scope: 'lifelog:read', label: 'Read', text: 'Read the lifelog: days, episodes (meals, walks, sleep, places) and the raw observations, through /hub (and the agent endpoint once it has a lifelog tool).' },
+            { scope: 'lifelog:agent-write', label: 'Agent write', text: 'Write through the agent tool (once there is one; the domain must also be switched to Read and write on the Overview board). Lets an agent add and change episodes, add observations and link them. Forgetting a time range stays with you (the dashboard only).', write: true },
+            { scope: 'lifelog:api-write', label: 'API write', text: 'Write through the API (jobs and scripts). Add, change and restore episodes, link observations to them, and push observations under any source name, through the /hub REST API. Forgetting a time range stays with you (the dashboard only). It needs Read as well, because the answer is the episode.', write: true },
+        ],
+    },
+    {
         domain: 'attendance',
         title: 'Attendance',
         scopes: [
@@ -103,7 +114,7 @@ const OLD_NAMES = (scope) => scope.replace(/:write$/, ':api-write').replace(/:ed
 // { scope, domain, title, label, text, write } for any scope string.
 export function explain(scope) {
     if (scope === '*') {
-        return { scope, domain: '*', title: 'Everything', label: 'Everything', text: 'Every domain and every action, including ones added later. Keep this for your own tools.', write: true };
+        return { scope, domain: '*', title: 'Everything', label: 'Everything', text: 'Every domain and every action, including ones added later, except Lifelog (the most private domain), which must be granted on its own. Keep this for your own tools.', write: true };
     }
     const known = byScope.get(scope) || byScope.get(OLD_NAMES(scope));
     if (known) return known;
