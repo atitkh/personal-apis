@@ -39,5 +39,19 @@ Plan: `~/.openclaw/workspace/memory/projects/personal-hub-lifelog-plan.md` (deci
 - `forget` with a source deletes only episodes whose own source is that label (and that lie fully inside the range).
 - Extra audit actions `lifelog_episode_linked` / `lifelog_episode_unlinked` (link changes are not revisions).
 
+## Stage B (done): MCP tool `lifelog`
+- services/mcp/domains/lifelog.js (read scope lifelog:read, untrusted preamble). Reads: day (episodes + observation
+  counts by source/kind, first/last; no raw lines; date defaults to today in the hub zone), episodes, observations
+  (only action with raw lines; newest first, limit <= 50 default 20), search (FTS over both, limit <= 20, results
+  carry `type`), sources. Text/detail clipped to 300 characters with textTruncated/detailTruncated; observation
+  `data` and `dedupe` are left out. Writes (lifelog:agent-write, mcp_mode write): add_episode, edit_episode,
+  add_observation (source is always the key's name; a `source` argument is ignored), link, unlink. No forget,
+  delete, restore or batch push over MCP. Service errors pass through the registry's HubError mapping.
+- `*` keys do not see the tool (apiKeys scope rule); lifelog:read and lifelog:* do. Overview shows the tool
+  automatically (hasTool); WRITE_WARNING.lifelog added in routes/admin/public/views/overview.js.
+- Deviation: add_episode takes an optional `source` limited to manual (default) or derived, so the later
+  derivation job can mark its episodes; any other value is refused.
+- Tests: tests/mcpLifelog.test.js. No existing test needed changing ('everything' key lists stay without lifelog).
+
 ## Next
-- Stage B: MCP tool `lifelog` + agents/overview wiring. Stage C: dashboard page.
+- Stage C: dashboard page.

@@ -19,6 +19,7 @@ WRITE_WARNING.flights = 'Agents holding a flights suggest scope can file found f
 WRITE_WARNING.deadlines = 'Agents holding a deadlines agent-write scope can add deadlines, change them and mark them done (a repeating one moves to its next date) or ended. Every earlier version is kept; restoring and anything private, like the reference, stay with you.';
 WRITE_WARNING.trips = 'Agents holding a trips agent-write scope can add trips and change them, link and unlink flights, and add, change and remove trip items. Every earlier version of a trip is kept (items have no history); deleting a trip, restoring an older version and accepting or dismissing suggested trips stay with you.';
 WRITE_WARNING.preferences = 'Agents holding a preferences agent-write scope can set preferences (create or change them by area and key) and unset them. Unset only hides a preference; every earlier version is kept and you can restore it here. Text that looks like a password, a long number or a key is refused.';
+WRITE_WARNING.lifelog = 'Agents holding a lifelog agent-write scope can add and change episodes, log single observations (always under their own key name as the source) and link or unlink observations. Every earlier version of an episode is kept; forgetting a time range and restoring an older version stay with you.';
 const writeWarning = (name) => WRITE_WARNING[name] || MCP_WRITE_WARNING;
 const REFRESH_MS = 60 * 1000;
 const UPCOMING = [{ name: 'flights', title: 'Flights', text: 'Next domain. Past and upcoming trips.' }];

@@ -66,7 +66,7 @@ const REGISTRY = {
         stats: (db) => require('./preferences').stats(db),
     },
     // The most private domain: what Atit does, as text from cameras, glasses, sensors and notes. "*" keys do not reach
-    // it (services/apiKeys.js SENSITIVE_DOMAINS). No briefing hook and no agent tool yet.
+    // it (services/apiKeys.js SENSITIVE_DOMAINS). No briefing hook; agent tool services/mcp/domains/lifelog.js.
     lifelog: {
         title: 'Lifelog',
         sensitivity: 'private',
