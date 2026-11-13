@@ -151,7 +151,7 @@ describe('reading', () => {
 describe('domains', () => {
     test('digests, places, portfolio, flights, deadlines and preferences are registered, on by default', () => {
         const list = domains.list(conn);
-        expect(list.map((d) => d.name).sort()).toEqual(['deadlines', 'digests', 'flights', 'places', 'portfolio', 'preferences', 'trips']);
+        expect(list.map((d) => d.name).sort()).toEqual(['deadlines', 'digests', 'flights', 'lifelog', 'places', 'portfolio', 'preferences', 'trips']);
         expect(list.find((d) => d.name === 'digests')).toMatchObject({ sensitivity: 'private', storage: 'db', enabled: true });
         expect(list.find((d) => d.name === 'portfolio')).toMatchObject({ sensitivity: 'public', storage: 'files', enabled: true });
         expect(list.find((d) => d.name === 'portfolio').confirmOff).toMatch(/public portfolio/);

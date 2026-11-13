@@ -240,7 +240,7 @@ describe('dashboard: domains and digests', () => {
     test('overview carries the domain list and the digest watch', async () => {
         const agent = await signedIn(app);
         const o = (await agent.get('/admin/api/overview').expect(200)).body;
-        expect(o.domains.map((d) => d.name).sort()).toEqual(['deadlines', 'digests', 'flights', 'places', 'portfolio', 'preferences', 'trips']);
+        expect(o.domains.map((d) => d.name).sort()).toEqual(['deadlines', 'digests', 'flights', 'lifelog', 'places', 'portfolio', 'preferences', 'trips']);
         expect(o.digests).toHaveProperty('missing');
         expect(o.digests.dailyCount).toBeGreaterThan(0);
     });
