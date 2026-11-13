@@ -33,6 +33,17 @@ Plan: workspace memory/projects/personal-hub-ui-polish-plan.md. Local commits on
   backup steps now visit `#/settings` and `#/settings/backups`.
 - tests/adminTripsView.test.js: app.js register pattern gained `group: 'data'`.
 
-## Next (Run B, not started)
-Consistency pass: panels, tables, filter bars/tabs, chips, empty states, buttons, drawers; spacing/type audit; Overview
-hierarchy; focus/hover polish; dark theme and 390 px checks.
+## Run B (consistency): done
+- Tokens: --fs-2xs/--fs-read/--fs-read-sm, --gutter, --page-max, --pad-card, --gap-section, --dur replace the one-off sizes, the 28 px gutter and the 24 px section gap.
+- `formActions()` in ui.js: the form foot of deadlines, flights, preferences, trips (x2) and digests (primary + quiet Cancel, same size);
+  in a drawer it sticks to the bottom (`.drawer-body form > .form-actions:last-child`).
+- Tables: row hover and focus-within on every `.table-wrap` (the four per-table rules are gone); sticky header from 1100 px up
+  (narrower tables still scroll sideways, so `overflow: clip` applies only there).
+- Activity's filter chips sit in a `.toolbar` like the other pages. `.empty` inside table/list surfaces gets list padding.
+- Overview: pageHeader lede carries the status sentence (`.headline` span kept), Needs attention + Today side by side, then Channels,
+  then Agent calls (activity). Skeleton follows. Today and Needs attention both still say "Nothing needs you" when empty (e2e asserts both).
+- Polish: input focus border, button/chip/seg active states, transitions on rail, chips, rows (reduced-motion rule already zeroes them),
+  inward focus rings in the rail, sub-nav, More sheet, tab bar and tables.
+- Checked: jest 51 suites / 712 tests; e2e overview, deadlines, preferences; screenshots overview light + 390, deadlines list + 390,
+  preferences dark, drawer dark.
+- Not done: calmer list density beyond spacing tokens; unchecked pages (flights, places, keys, trips) only got the shared CSS.
