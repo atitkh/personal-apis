@@ -271,6 +271,7 @@ textarea { font-family: var(--font-read); font-size: var(--fs-md); line-height: 
 .rail-collapsed .brand { min-height: 38px; }
 .rail-collapsed .rail-foot { justify-content: center; }
 .rail-collapsed .rail-nav { gap: 10px; }
+.rail-collapsed .rail-group-label { padding: 0; margin: 0; }
 .rail-collapsed .rail-group + .rail-group { border-top: 1px solid var(--line); padding-top: 10px; }
 
 .main-col { min-width: 0; display: flex; flex-direction: column; }

@@ -121,6 +121,7 @@ await check('Settings shows the Time zone (General) and the Backups section (its
     eq(await page.locator('#s-bk-keep').inputValue(), '7');
     ok((await text('#s-bk-dir-help')).includes('mount a host folder into the container'), 'helper text');
 });
+await go('settings');
 await check('A bad time zone is refused inline, nothing saved', async () => {
     await page.fill('#s-tz-input', 'Mars/Base');
     await page.locator('[data-key=save-timezone]').click();
@@ -255,6 +256,7 @@ await check('The phone More sheet is grouped like the rail', async () => {
     eq(g.join(' | '), 'data:Places,Flights,Trips,Deadlines,Preferences,Portfolio | system:Activity,Backups,Settings');
     eq(await page.locator('dialog[open] a[aria-current=page]').innerText(), 'Settings');
 });
+await page.waitForTimeout(600);
 await shot('more-sheet-mobile');
 await page.keyboard.press('Escape');
 await page.setViewportSize({ width: 1280, height: 900 });
