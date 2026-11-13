@@ -1,9 +1,11 @@
-// Settings: theme, the session (expiry, sign out), the hub time zone and the backups (settingsForms.js), facts about
+// Settings: theme, the session (expiry, sign out), the hub time zone and the backups (settingsForms.js), webhooks
+// (webhooksSection.js), facts about
 // this hub (from /overview) and the keyboard shortcuts (from shortcuts.js).
 import { h, button, segmented, when, bytes, span, plural, fact, dot } from '../ui.js';
 import { shortcutList } from '../shortcuts.js';
 import { THEMES, preference, setPreference, onThemeChange } from '../theme.js';
 import { timezoneSection, backupSection, everyWords } from './settingsForms.js';
+import { webhooksSection } from './webhooksSection.js';
 
 function timeLeft(iso) {
     const ms = Date.parse(iso) - Date.now();
@@ -12,7 +14,7 @@ function timeLeft(iso) {
 }
 
 export async function render(ctx) {
-    const [o, session, conf] = await Promise.all([ctx.api('/overview'), ctx.api('/session'), ctx.api('/settings')]);
+    const [o, session, conf, hooks] = await Promise.all([ctx.api('/overview'), ctx.api('/session'), ctx.api('/settings'), ctx.api('/webhooks')]);
 
     const theme = segmented({
         label: 'Theme',
@@ -38,6 +40,7 @@ export async function render(ctx) {
             button({ text: 'Sign out', variant: 'quiet', iconName: 'signout', onClick: ctx.signOut })),
         timezoneSection(ctx, conf),
         backupSection(ctx, conf),
+        webhooksSection(ctx, hooks),
         h('section', { class: 'panel', 'aria-labelledby': 's-about' },
             h('h2', { id: 's-about', text: 'This hub' }),
             h('dl', { class: 'facts about' },

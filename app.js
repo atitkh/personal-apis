@@ -235,6 +235,7 @@ if (!config.isTest()) {
     try {
         db.get();
         require('./services/backup').start();
+        require('./services/webhooks').start(() => db.get());
     } catch (err) {
         console.error('Hub database failed to open:', err);
     }

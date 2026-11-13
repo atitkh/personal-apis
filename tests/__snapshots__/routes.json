@@ -97,6 +97,13 @@
     "POST /admin/api/preferences/:id/restore",
     "GET /admin/api/preferences/:id/delete-preview",
     "DELETE /admin/api/preferences/:id",
+    "GET /admin/api/webhooks",
+    "POST /admin/api/webhooks",
+    "PUT /admin/api/webhooks/:id",
+    "DELETE /admin/api/webhooks/:id",
+    "POST /admin/api/webhooks/:id/test",
+    "POST /admin/api/webhooks/:id/run",
+    "GET /admin/api/webhooks/:id/events",
     "USE /admin/api/ fn"
   ],
   "hub": [

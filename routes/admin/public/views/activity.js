@@ -42,6 +42,7 @@ const ICON = {
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
     flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
     flight_deleted: 'calendar', trip_deleted: 'calendar', flight_candidate_deleted: 'calendar', deadline_deleted: 'calendar',
+    webhook_created: 'agents', webhook_updated: 'agents', webhook_deleted: 'agents', webhook_tested: 'agents', webhook_run: 'agents',
     preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences', preference_deleted: 'preferences',
     deadline_created: 'calendar', deadline_updated: 'calendar', deadline_done: 'calendar', deadline_ended: 'calendar', deadline_restored: 'calendar',
 };
@@ -105,6 +106,11 @@ function sentence(e) {
     case 'flight_restored': return [who, ' restored an older version of the flight ', strong(d.flight || 'a flight')];
     case 'trip_created': return [who, ' added the trip ', strong(d.title || 'a trip')];
     case 'trip_updated': return [who, ' changed the trip ', strong(d.title || 'a trip')];
+    case 'webhook_created': return [who, ' added the webhook ', strong(d.name || 'a webhook')];
+    case 'webhook_updated': return [who, ' changed the webhook ', strong(d.name || 'a webhook')];
+    case 'webhook_deleted': return [who, ' deleted the webhook ', strong(d.name || 'a webhook')];
+    case 'webhook_tested': return [who, d.ok ? ' sent a test message to a webhook' : ' tried a test message to a webhook: it did not go through'];
+    case 'webhook_run': return [who, ` checked a webhook (${d.new || 0} new, ${d.escalated || 0} more urgent, ${d.sent || 0} sent)`];
     case 'preference_set': return [who, ' set the preference ', strong(prefName(d))];
     case 'preference_updated': return [who, ' changed the preference ', strong(prefName(d))];
     case 'preference_unset': return [who, ' removed the preference ', strong(prefName(d))];

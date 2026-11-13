@@ -4,6 +4,8 @@ const { clampLimit } = require('./lib/listing');
 function record(db, actor, action, detail, ip) {
     db.prepare('INSERT INTO audit_log (at, actor, action, detail, ip) VALUES (?, ?, ?, ?, ?)')
         .run(new Date().toISOString(), actor, action, detail ? JSON.stringify(detail) : null, ip || null);
+    // Activity may have changed the briefing: ask the webhooks for a check a few seconds from now (debounced; their own rows excluded).
+    if (!String(action).startsWith('webhook_')) require('./webhooks').poke();
 }
 
 // A row made by an API key: the actor column holds the key's name (a display snapshot) and detail.key_id its id, so a

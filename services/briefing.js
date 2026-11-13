@@ -61,7 +61,7 @@ function run(db, name, o) {
 }
 
 // `visibleDomains`: the domains the caller may read (null = all). `domains`: optional narrowing list.
-function collect(db, { now = new Date(), days, domains: only, visibleDomains = null } = {}) {
+function collect(db, { now = new Date(), days, domains: only, visibleDomains = null, cap = CAP } = {}) {
     const at = now instanceof Date ? now : new Date(now);
     const horizon = clampDays(days);
     const asked = Array.isArray(only) && only.length ? new Set(only.map(String)) : null;
@@ -83,9 +83,10 @@ function collect(db, { now = new Date(), days, domains: only, visibleDomains = n
     }
     attention.sort(order);
     upcoming.sort(order);
-    // The cap keeps the most severe: attention first, then upcoming.
-    const room = Math.max(CAP - attention.length, 0);
-    const keptAttention = attention.slice(0, CAP);
+    // The cap keeps the most severe: attention first, then upcoming. (The webhook evaluator passes Infinity: an item
+    // pushed out by the cap must not look resolved.)
+    const room = Math.max(cap - attention.length, 0);
+    const keptAttention = attention.slice(0, cap);
     const keptUpcoming = upcoming.slice(0, room);
     return {
         generated_at: at.toISOString(),
