@@ -55,12 +55,13 @@ describe('create and validation', () => {
         expect(trips.exists(conn, 99)).toBe(false);
     });
 
-    test('the domain is registered, private, read mode by default, with stats and no agent tool yet', () => {
+    test('the domain is registered, private, read mode by default, with stats, a briefing hook and its agent tool', () => {
         expect(domains.REGISTRY.trips).toMatchObject({ title: 'Trips', sensitivity: 'private' });
         expect(domains.mcpMode(conn, 'trips')).toBe('read');
         add();
         expect(domains.list(conn).find((d) => d.name === 'trips')).toMatchObject({ records: 1, recordLabel: 'trip', enabled: true });
-        expect(require('../services/mcp/registry').TOOLS.some((t) => t.domain === 'trips')).toBe(false);
+        expect(require('../services/mcp/registry').TOOLS.some((t) => t.domain === 'trips')).toBe(true);
+        expect(typeof domains.REGISTRY.trips.briefing).toBe('function');
     });
 });
 

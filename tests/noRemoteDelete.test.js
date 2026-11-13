@@ -8,6 +8,10 @@ const list = Array.isArray(routes) ? routes : Object.values(routes).flat();
 
 // The two old /hub/places deletes were removed (never used); nothing may be added back.
 const LEGACY_HUB_DELETES = [];
+// Agent actions that take a part out of a record (not a record): trip items are a trip's itinerary lines, which an
+// agent with trips:agent-write may add, change and take out again (plan decision 9). The trip itself stays and
+// deleting it remains dashboard-only. Anything added here is a decision, not a convenience.
+const MCP_PART_REMOVALS = ['trips.remove_item'];
 
 describe('no delete over /hub or MCP', () => {
     test('/hub has no DELETE route at all', () => {
@@ -33,7 +37,8 @@ describe('no delete over /hub or MCP', () => {
         for (const f of files) {
             const def = require(path.join(dir, f));
             const names = Object.keys(def.actions || {});
-            expect(names.filter((a) => /delete|remove|destroy|purge|forget/i.test(a))).toEqual([]);
+            const named = names.filter((a) => /delete|remove|destroy|purge|forget/i.test(a) && !MCP_PART_REMOVALS.includes(`${def.domain}.${a}`));
+            expect(named).toEqual([]);
         }
     });
 });

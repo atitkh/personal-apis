@@ -42,6 +42,8 @@ const ICON = {
     flight_created: 'calendar', flight_updated: 'calendar', flight_restored: 'calendar',
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
     trip_restored: 'calendar', trip_flight_linked: 'calendar', trip_flight_unlinked: 'calendar',
+    trip_item_added: 'calendar', trip_item_updated: 'calendar', trip_item_removed: 'calendar',
+    trip_suggestion_accepted: 'calendar', trip_suggestion_dismissed: 'calendar', trip_suggestions_restored: 'calendar',
     flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
     flight_deleted: 'calendar', trip_deleted: 'calendar', flight_candidate_deleted: 'calendar', deadline_deleted: 'calendar',
     webhook_created: 'agents', webhook_updated: 'agents', webhook_deleted: 'agents', webhook_tested: 'agents', webhook_run: 'agents',
@@ -126,6 +128,12 @@ function sentence(e) {
     case 'deadline_ended': return [who, ' ended the deadline ', strong(d.title || 'a deadline')];
     case 'deadline_restored': return [who, ' restored an older version of the deadline ', strong(d.title || 'a deadline')];
     case 'flight_deleted': return [who, ' deleted the flight ', strong(d.flight || 'a flight')];
+    case 'trip_item_added': return [who, ' added ', strong(d.title || 'an item'), ' to a trip'];
+    case 'trip_item_updated': return [who, ' changed the trip item ', strong(d.title || 'an item')];
+    case 'trip_item_removed': return [who, ' removed the trip item ', strong(d.title || 'an item')];
+    case 'trip_suggestion_accepted': return [who, ' made the suggested trip ', strong(d.title || 'a trip'), ' a trip'];
+    case 'trip_suggestion_dismissed': return [who, ' dismissed the suggested trip ', strong(d.title || 'a trip')];
+    case 'trip_suggestions_restored': return [who, ' brought back ', `${d.restored || 0} dismissed trip suggestion${d.restored === 1 ? '' : 's'}`];
     case 'trip_deleted': return [who, ' deleted the trip ', strong(d.trip || 'a trip')];
     case 'flight_candidate_deleted': return d.count != null
         ? [who, ` deleted ${plural(d.count, 'dismissed found flight')}`]

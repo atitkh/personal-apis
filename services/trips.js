@@ -7,7 +7,8 @@
 //                   optional), notes, status_override (null or 'cancelled'), current_rev.
 //   trip_revisions  every change stores all editable fields as a new revision (rev 1 = as first filed; trips made
 //                   before 017 got their rev 1 from the migration); restore puts a trip back as a new revision.
-//   trip_items      a small itinerary (stage 2). Deleted with their trip.
+//   trip_items      a small itinerary: services/tripItems.js. Deleted with their trip.
+//   trip_suggestion_dismissed  suggested trips Atit dismissed: services/tripSuggest.js (suggest, accept, dismiss).
 //   Links: flights.trip_id (foreign key, SET NULL) and deadlines.trip_id (a plain number, checked by the
 //   deadlines service through exists()). A flight belongs to one trip at most.
 //
@@ -216,8 +217,9 @@ function deadlinesOf(db, id, today) {
         .map((d) => ({ ...d, days_left: d.status === 'active' ? dayDiff(today, d.due_date) : null }));
 }
 
-// One trip with its flights and deadlines. A revision (rev) shows the trip's own fields as they were then.
-function get(db, id, { rev, now = new Date() } = {}) {
+// One trip with its flights, deadlines and items. A revision (rev) shows the trip's own fields as they were then.
+// reference: true puts the items' references in (the caller decides who may ask); otherwise has_reference only.
+function get(db, id, { rev, now = new Date(), reference = false } = {}) {
     const row = need(db, id);
     const today = todayIn(hubTz(db), now);
     let base = row;
@@ -226,13 +228,31 @@ function get(db, id, { rev, now = new Date() } = {}) {
         if (!r) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
         base = { ...row, ...JSON.parse(r.snapshot), current_rev: r.rev, updated_at: r.at, updated_by: r.actor };
     }
-    const items = count(db, 'SELECT COUNT(*) AS n FROM trip_items WHERE trip_id = ?', row.id);
+    const items = require('./tripItems').rowsOf(db, row.id);
     return {
-        ...shape(base, today, flightFacts(db, [row.id]).get(row.id), items),
+        ...shape(base, today, flightFacts(db, [row.id]).get(row.id), items.length),
         revisions: row.current_rev,
         flights: flightsOf(db, row.id),
         deadlines: deadlinesOf(db, row.id, today),
+        items: items.map((r) => require('./tripItems').shape(r, { withRef: reference })),
     };
+}
+
+// Trips that are ongoing or start within `days` (default 60, 1-365), soonest first. Undated and cancelled trips
+// are left out.
+function upcoming(db, { days, limit, now = new Date() } = {}) {
+    const d = days == null || days === '' ? 60 : Number(days);
+    if (!Number.isInteger(d) || d < 1 || d > 365) throw bad('bad_days', 'days must be a whole number from 1 to 365.');
+    const today = todayIn(hubTz(db), now);
+    const rows = db.prepare('SELECT * FROM trips WHERE COALESCE(start_date, end_date) IS NOT NULL ORDER BY COALESCE(start_date, end_date), id').all()
+        .filter((r) => {
+            const t = timing(r, today);
+            return t.phase === 'ongoing' || (t.phase === 'upcoming' && t.days_to_start <= d);
+        });
+    const page = rows.slice(0, limitOrDefault(limit, 50, LIST_MAX));
+    const facts = flightFacts(db, page.map((r) => r.id));
+    const items = itemCounts(db);
+    return page.map((r) => shape(r, today, facts.get(r.id), items.get(r.id) || 0));
 }
 
 // Newest first; what changed is read with get(id, { rev }). Revision rows carry no field values.
@@ -394,9 +414,12 @@ function listLegacy(db) {
 
 module.exports = {
     TripError, KINDS, PHASES, FIELDS, LEGACY_FIELDS, LIST_MAX,
-    build, need, exists, timing, shape, dayDiff,
-    list, get, history, stats, create, update, restore, auditDetail,
+    build, need, exists, timing, shape, dayDiff, cleanDate,
+    list, get, upcoming, history, stats, create, update, restore, auditDetail,
     linkFlight, unlinkFlight,
     removalPreview, remove, removedAuditDetail,
     legacyShape, listLegacy,
+    // Items and suggestions live in their own files; these are the same functions.
+    get items() { return require('./tripItems'); },
+    suggest: (db, o) => require('./tripSuggest').suggest(db, o),
 };

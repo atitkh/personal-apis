@@ -18,7 +18,8 @@ const ACTIVITY_TYPES = {
         'flight_candidate_filed', 'flight_candidate_accepted', 'flight_candidate_dismissed', 'flight_refreshed', 'flight_observed', 'flight_sources_changed',
         'flight_deleted', 'trip_deleted', 'flight_candidate_deleted'],
     deadlines: ['deadline_created', 'deadline_updated', 'deadline_done', 'deadline_ended', 'deadline_restored', 'deadline_deleted'],
-    trips: ['trip_created', 'trip_updated', 'trip_restored', 'trip_flight_linked', 'trip_flight_unlinked', 'trip_deleted'],
+    trips: ['trip_created', 'trip_updated', 'trip_restored', 'trip_flight_linked', 'trip_flight_unlinked', 'trip_deleted',
+        'trip_item_added', 'trip_item_updated', 'trip_item_removed', 'trip_suggestion_accepted', 'trip_suggestion_dismissed', 'trip_suggestions_restored'],
     preferences: ['preference_set', 'preference_updated', 'preference_unset', 'preference_restored', 'preference_deleted'],
     signins: ['login', 'logout', 'login_failed'],
 };
