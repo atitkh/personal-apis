@@ -2,7 +2,7 @@
 // and an Off / Read / Read and write selector), what needs attention, and recent agent activity.
 // Refetches when the tab comes back and every 60 s while it is visible.
 import {
-    h, icon, toggleSwitch, segmented, confirmDialog, toast, emptyState,
+    h, icon, toggleSwitch, segmented, confirmDialog, toast, emptyState, pageHeader,
     plural, ago, domainHue, hidden, dayLabel, errorState,
 } from '../ui.js';
 import { dayBars, coverageStrip, legend } from '../charts.js';
@@ -397,10 +397,11 @@ export async function render(ctx) {
     const load = () => Promise.all([api('/overview'), api('/series?days=14')]);
     let [o, s] = await load();
 
-    const lead = h('p', { class: 'headline' });
-    const sub = h('p', { class: 'updated', 'aria-live': 'polite' });
+    const lead = h('span', { class: 'headline' });
+    const sub = h('span', { class: 'updated', 'aria-live': 'polite' });
     const b = board(api);
-    const lower = h('div', { class: 'overview-lower' });
+    const top = h('div', { class: 'overview-top' });
+    const activity = h('div', { class: 'overview-activity' });
     let briefing = null; // the one briefing response, shared by the Today card and the Needs attention panel
     const today = todayCard(api, ctx, (b) => { briefing = b; paint(); });
     let fetchedAt = Date.now();
@@ -410,7 +411,8 @@ export async function render(ctx) {
         const [first, second] = headline(o, s, list);
         lead.replaceChildren(h('span', { class: `lead-state ${list.length ? 'warn' : 'good'}` }, icon(list.length ? 'warn' : 'good')), h('span', { text: `${first} ` }), h('span', { class: 'lead-second', text: second }));
         b.update(o.domains || []);
-        lower.replaceChildren(attention(list), pulse(o, s));
+        top.replaceChildren(attention(list), today.el);
+        activity.replaceChildren(pulse(o, s));
         sub.textContent = '';
     }
     paint();
@@ -441,9 +443,9 @@ export async function render(ctx) {
     });
 
     return h('div', { class: 'overview' },
-        h('div', { class: 'summary' }, lead, sub),
-        today.el,
+        pageHeader({ lede: [lead, sub] }),
+        top,
         b.el,
-        lower);
+        activity);
 }
 

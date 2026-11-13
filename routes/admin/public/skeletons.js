@@ -26,7 +26,10 @@ function calendar() {
 
 const SHAPES = {
     overview: () => wrap('overview',
-        h('div', { class: 'summary' }, bar('sk-headline w-60')),
+        h('header', { class: 'page-header' }, h('div', { class: 'page-header-main' }, h('p', { class: 'lede' }, bar('sk-line w-60')))),
+        h('div', { class: 'overview-top' },
+            h('section', { class: 'panel sk-panel' }, bar('sk-line w-30'), bar('sk-line w-80'), bar('sk-line w-60')),
+            h('section', { class: 'panel sk-panel' }, bar('sk-line w-30'), bar('sk-line w-80'), bar('sk-line w-70'))),
         h('section', { class: 'board' },
             h('div', { class: 'board-head' }, bar('sk-title w-20'), bar('sk-line w-70'), bar('sk-line w-70'), bar('sk-line w-20')),
             h('ul', { class: 'channels' }, rows(3, (i) => h('li', { class: 'channel' },
@@ -34,9 +37,7 @@ const SHAPES = {
                 h('div', { class: 'ch-power' }, bar('sk-switch')),
                 h('div', { class: 'ch-route' }, bar('sk-cable'), bar('sk-xs w-40')),
                 h('div', { class: 'ch-mode' }, bar('sk-seg')))))),
-        h('div', { class: 'overview-lower' },
-            h('section', { class: 'panel sk-panel' }, bar('sk-line w-30'), bar('sk-block')),
-            h('section', { class: 'panel sk-panel' }, bar('sk-line w-40'), bar('sk-block')))),
+        h('section', { class: 'panel sk-panel' }, bar('sk-line w-40'), bar('sk-block'))),
 
     digests: (route) => (route.parts.length >= 2
         ? wrap('reader-layout',
