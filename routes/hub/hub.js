@@ -68,8 +68,8 @@ router.post('/digests/:kind/:period/restore', write, handle((req, res, conn) => 
     res.json(digests.restore(conn, req.params.kind, req.params.period, (req.body || {}).rev, req.apiKey.name));
 }));
 
-// Any live key; what it sees follows its scopes and each domain's MCP mode, exactly as hub_overview does.
-router.get('/briefing', requireKey(), handle((req, res, conn) => {
+// Needs briefing:read; what it shows follows the key's domain scopes and each domain's MCP mode, exactly as hub_overview does.
+router.get('/briefing', requireScope('briefing:read'), handle((req, res, conn) => {
     const only = typeof req.query.domains === 'string' ? req.query.domains.split(',').map((d) => d.trim()).filter(Boolean) : undefined;
     res.json(briefing.collect(conn, { days: req.query.days, domains: only, visibleDomains: briefing.visibleDomainsFor(conn, req.apiKey) }));
 }));

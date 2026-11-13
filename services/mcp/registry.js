@@ -1,4 +1,5 @@
-// The hub's MCP tools. `hub_overview` plus one tool per domain, each with a small `action` enum.
+// The hub's MCP tools. `hub_overview` and `hub_briefing` (scopes overview:read and briefing:read) plus one tool per domain, each
+// with a small `action` enum.
 // Each domain declares its tool in services/mcp/domains/<domain>.js:
 //   domain     the name in services/domains.js (must exist there)
 //   readScope  needed to see the tool at all
@@ -41,6 +42,11 @@ function visibleActions(conn, def, key) {
         .filter(([, a]) => (!a.write || mode === 'write') && apiKeys.hasScope(key.scopes, a.scope))
         .map(([name]) => name);
 }
+
+// The two general tools have their own scopes, so an agent that already gets the same changes another way can be
+// kept from pulling it. `*` includes both; a domain wildcard such as digests:* does not.
+const GENERAL = { hub_overview: 'overview:read', hub_briefing: 'briefing:read' };
+const mayUseGeneral = (key, tool) => apiKeys.hasScope(key.scopes, GENERAL[tool]);
 
 function visibleTools(conn, key) {
     return TOOLS.map((def) => ({ def, actions: visibleActions(conn, def, key) })).filter((t) => t.actions.length > 0);
@@ -117,7 +123,7 @@ function describe(def, actions) {
 function buildServer(conn, key, report = () => {}) {
     const server = new McpServer({ name: 'personal-hub', version });
 
-    server.registerTool('hub_overview', {
+    if (mayUseGeneral(key, 'hub_overview')) server.registerTool('hub_overview', {
         title: 'Hub overview',
         description: 'What this hub holds that you can reach (domains, record counts, allowed actions) and a short brief of the latest daily digests. Call this first.',
         annotations: { readOnlyHint: true, openWorldHint: false },
@@ -132,7 +138,7 @@ function buildServer(conn, key, report = () => {}) {
         }
     });
 
-    server.registerTool('hub_briefing', {
+    if (mayUseGeneral(key, 'hub_briefing')) server.registerTool('hub_briefing', {
         title: 'Hub briefing',
         description: 'What needs attention now and what is coming up in the next days, from the domains you can read (flights, places, digests, ...). Items carry a stable id, a severity (urgent, attention, info) and a plain one-line text; never sensitive detail. Call it for a morning briefing.',
         inputSchema: {
@@ -179,4 +185,4 @@ function buildServer(conn, key, report = () => {}) {
     return server;
 }
 
-module.exports = { TOOLS, visibleActions, visibleTools, buildServer, overview, OVERVIEW_MAX_CHARS };
+module.exports = { TOOLS, GENERAL, mayUseGeneral, visibleActions, visibleTools, buildServer, overview, OVERVIEW_MAX_CHARS };

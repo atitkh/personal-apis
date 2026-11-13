@@ -5,6 +5,20 @@ import { chip, domainHue } from './ui.js';
 
 export const CATALOGUE = [
     {
+        domain: 'overview',
+        title: 'Overview',
+        scopes: [
+            { scope: 'overview:read', label: 'Read', text: 'Use the hub overview tool: what the hub holds that this key can reach (domains, record counts, allowed actions) and a short brief of the latest digests. Leave it off for an agent that does not need it.' },
+        ],
+    },
+    {
+        domain: 'briefing',
+        title: 'Briefing',
+        scopes: [
+            { scope: 'briefing:read', label: 'Read', text: 'Use the hub briefing tool and GET /hub/briefing: what needs attention now and what is coming up, from the domains the key can read. Turn it off for an agent that already gets these changes through a webhook.' },
+        ],
+    },
+    {
         domain: 'digests',
         title: 'Digests',
         scopes: [

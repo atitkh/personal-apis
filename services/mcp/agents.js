@@ -16,7 +16,8 @@ const domainsWithTools = (conn) => domains.list(conn).map((d) => ({ ...d, mcpToo
 
 function tools() {
     return [
-        { tool: 'hub_overview', domain: null, alwaysOn: true, actions: [] },
+        { tool: 'hub_overview', domain: null, general: true, title: 'Hub overview', scope: registry.GENERAL.hub_overview, actions: [] },
+        { tool: 'hub_briefing', domain: null, general: true, title: 'Hub briefing', scope: registry.GENERAL.hub_briefing, actions: [] },
         ...registry.TOOLS.map((def) => ({
             tool: def.domain,
             domain: def.domain,
@@ -83,6 +84,7 @@ function summary(conn, now = new Date()) {
             revoked: Boolean(k.revoked_at),
             lastUsedAt: k.last_used_at || null,
             visibleTools: visible.map(({ tool, actions }) => ({ tool, actions })),
+            general: !k.revoked_at ? Object.keys(registry.GENERAL).filter((t) => registry.mayUseGeneral(k, t)) : [],
             canWrite: visible.some((t) => t.writes),
             calls30d: month(k).n,
             lastCallAt: ever(k).at,

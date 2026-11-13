@@ -113,11 +113,17 @@ function openCell(ctx, k, t, d) {
     });
 }
 
+// Which of the two general tools a key has (they have scopes of their own: overview:read, briefing:read).
+const generalWords = (k) => {
+    const has = new Set(k.general || []);
+    return has.size === 2 ? 'Both' : has.has('hub_overview') ? 'Overview only' : has.has('hub_briefing') ? 'Briefing only' : 'Neither';
+};
+
 export async function render(ctx) {
     const [a, { domains }] = await Promise.all([ctx.api('/agents'), ctx.api('/domains')]);
     const active = a.keys.filter((k) => !k.revoked);
     const revokedCount = a.keys.length - active.length;
-    const tools = a.tools.filter((t) => !t.alwaysOn);
+    const tools = a.tools.filter((t) => !t.alwaysOn && !t.general);
     const domainOf = (name) => domains.find((d) => d.name === name);
     const idByName = new Map(active.map((k) => [k.name, k.id]));
     const keyLink = (name) => (idByName.has(name)
@@ -135,6 +141,7 @@ export async function render(ctx) {
                         h('span', { class: `th-domain hue-${domainHue(t.domain, i)}` }, h('span', { class: 'swatch', 'aria-hidden': 'true' }), t.title || t.domain),
                         h('span', { class: 'th-sub', text: `Domain: ${state.toLowerCase()}` }));
                 }),
+                h('th', { scope: 'col' }, h('span', { class: 'th-domain' }, 'Overview and briefing'), h('span', { class: 'th-sub', text: 'Set in Keys' })),
                 h('th', { scope: 'col', class: 'num', text: 'Calls, 30 days' }),
                 h('th', { scope: 'col', text: 'Last call' }))),
             h('tbody', {}, active.map((k) => h('tr', {},
@@ -152,12 +159,13 @@ export async function render(ctx) {
                             onclick: () => openCell(ctx, k, t, domainOf(t.domain)),
                         }, accessCell(verbs), h('span', { class: 'access-edit', 'aria-hidden': 'true' }, icon('edit'))));
                 }),
+                h('td', { 'data-label': 'Overview and briefing', 'data-general': String(k.id), text: generalWords(k) }),
                 h('td', { class: 'num', 'data-label': 'Calls, 30 days', text: k.calls30d.toLocaleString() }),
                 h('td', { 'data-label': 'Last call', text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }),
                 h('td', { class: 'cell-side only-narrow' }, h('a', { class: 'btn ghost icon-only', href: href('keys', [String(k.id)]), tabindex: '-1', 'aria-hidden': 'true' }, icon('next'))))))))
         : emptyState({
             title: active.length ? 'No domain has an agent tool yet.' : 'No active keys.',
-            text: active.length ? 'Agents only get the hub overview.' : 'Create a key for the agent first.',
+            text: active.length ? 'Agents only get the hub overview and briefing, if their keys allow it.' : 'Create a key for the agent first.',
             iconName: 'agents',
             action: active.length
                 ? h('a', { class: 'btn quiet small', href: href('overview'), text: 'Open the channel board' })
@@ -202,7 +210,7 @@ export async function render(ctx) {
         h('section', { class: 'panel endpoint-panel', 'aria-labelledby': 'ag-endpoint' },
             h('h2', { id: 'ag-endpoint', text: 'Endpoint' }),
             h('div', { class: 'copy-row' }, endpointField, copyButton({ value: url, field: endpointField, text: 'Copy', done: 'Copied', size: 'small', label: 'Copy the endpoint URL' })),
-            h('p', { class: 'note' }, 'Send a hub API key as ', h('code', { text: 'Authorization: Bearer <key>' }), '. Every key also gets ', h('code', { text: 'hub_overview' }), ', which lists what it can reach.'),
+            h('p', { class: 'note' }, 'Send a hub API key as ', h('code', { text: 'Authorization: Bearer <key>' }), '. The tools ', h('code', { text: 'hub_overview' }), ' (what the key can reach) and ', h('code', { text: 'hub_briefing' }), ' (what needs attention) come with the scopes ', h('code', { text: 'overview:read' }), ' and ', h('code', { text: 'briefing:read' }), '.'),
             h('details', { class: 'tools-ref' },
                 h('summary', {}, 'Tools and actions'),
                 h('ul', {}, tools.map((t) => h('li', {},

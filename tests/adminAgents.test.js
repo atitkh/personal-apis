@@ -16,7 +16,7 @@ const keys = {};
 let agent;
 beforeAll(async () => {
     for (const [name, scopes] of [['ag-reader', 'digests:read'], ['ag-editor', 'digests:read, digests:agent-write'], ['ag-none', 'attendance:read']]) {
-        keys[name] = apiKeys.create(db.get(), { name, scopes });
+        keys[name] = apiKeys.create(db.get(), { name, scopes: `${scopes}, overview:read, briefing:read` });
     }
     agent = request.agent(app);
     await agent.post('/admin/api/login').set(H).send({ key: KEY }).expect(200);

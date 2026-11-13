@@ -305,7 +305,7 @@ describe('hub_briefing, GET /hub/briefing, GET /admin/api/briefing', () => {
     beforeAll(() => {
         jest.useFakeTimers({ now: NOW, doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'clearImmediate', 'queueMicrotask', 'hrtime', 'performance'] });
         const conn = db.get();
-        const make = (name, scopes) => { keys[name] = apiKeys.create(conn, { name, scopes }).key; };
+        const make = (name, scopes) => { keys[name] = apiKeys.create(conn, { name, scopes: `${scopes}, overview:read, briefing:read` }).key; };
         make('everything', '*');
         make('flights-reader', 'flights:read');
         make('places-reader', 'places:read');

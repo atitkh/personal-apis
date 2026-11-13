@@ -15,8 +15,10 @@ const app = require('../app');
 
 const keys = {};
 const keyRecords = {};
+// These keys also hold the two general scopes, so the tool lists below show hub_overview and hub_briefing as before
+// (their own scopes are tested in generalScopes.test.js).
 const make = (name, scopes) => {
-    const k = apiKeys.create(db.get(), { name, scopes });
+    const k = apiKeys.create(db.get(), { name, scopes: `${scopes}, overview:read, briefing:read` });
     keys[name] = k.key;
     keyRecords[name] = { id: k.id, name, scopes: k.scopes };
 };

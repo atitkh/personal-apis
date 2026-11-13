@@ -12,7 +12,7 @@ const { DATA_NOTE } = require('../services/mcp/util');
 const app = require('../app');
 
 const keys = {};
-const make = (name, scopes) => { keys[name] = apiKeys.create(db.get(), { name, scopes }).key; };
+const make = (name, scopes) => { keys[name] = apiKeys.create(db.get(), { name, scopes: `${scopes}, overview:read, briefing:read` }).key; };
 let home;
 let cafe;
 
