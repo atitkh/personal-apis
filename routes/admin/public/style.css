@@ -615,10 +615,15 @@ dl.facts dd { margin: 0; }
 
 .view { display: grid; gap: 24px; }
 .view > section { display: grid; gap: 12px; align-content: start; }
-.view-intro { display: grid; gap: 6px; }
+.page-header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+.view > .page-header { margin-bottom: -8px; }
+.page-header-main { display: grid; gap: 6px; flex: 1 1 420px; min-width: 0; }
+.page-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.page-header-title { font-size: var(--fs-lg); }
+.page-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .row-between { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
 .row-between .lede { flex: 1 1 420px; }
-.lede { font-size: var(--fs-md); color: var(--muted); max-width: 70ch; }
+.lede { font-size: var(--fs-md); color: var(--muted); max-width: 70ch; margin: 0; }
 .section-title { font-size: var(--fs-md); }
 .section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -1275,7 +1280,8 @@ td .chip { margin-left: 8px; }
     .event > .event-time { display: none; }
     .event-time-inline { display: inline; float: right; margin: 2px 0 0 12px; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .day-title { top: 56px; }
-    .row-between > .btn { width: 100%; }
+    .row-between > .btn, .page-header-actions > .btn { width: 100%; }
+    .page-header-actions { flex: 1 1 100%; }
     .shortcuts { grid-template-columns: 1fr; gap: 4px; }
     .shortcuts dd { margin-bottom: 10px; }
     .rev-actions { width: 100%; }

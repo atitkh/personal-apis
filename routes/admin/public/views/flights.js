@@ -8,8 +8,7 @@
 // appears only in the drawer and the forms, never in a table, a toast or the palette. Server text goes in as text.
 import {
     h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer,
-    chip, chipNav, fact, hidden, actorName, dayLabel,
-} from '../ui.js';
+    chip, chipNav, fact, hidden, actorName, dayLabel, pageHeader } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 import { passportTab, getUnit, distanceText } from '../passport.js';
 import {
@@ -1118,9 +1117,7 @@ export async function render(ctx) {
     else panel = foundTab(ctx, cand, show);
 
     return h('div', { class: 'view flights' },
-        h('div', { class: 'view-intro row-between' },
-            h('p', { class: 'lede', text: 'Your flight history and what is coming up. The Passport sums it up; found flights are ones a job or an agent spotted that wait for your yes.' }),
-            add),
+        pageHeader({ lede: 'Your flight history and what is coming up. The Passport sums it up; found flights are ones a job or an agent spotted that wait for your yes.', actions: add }),
         tabBar(tab, pending),
         panel);
 }

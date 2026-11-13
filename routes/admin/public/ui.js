@@ -417,6 +417,20 @@ export function skeleton(rows = 3, cls = '') {
         Array.from({ length: rows }, (_, i) => h('div', { class: `skeleton ${i === 0 ? 'wide' : ''}`.trim(), 'aria-hidden': 'true' })));
 }
 
+// The standard head of a page, under the title in the top bar: an optional heading (sub-pages), a one-line
+// lede, optional meta chips (counts), and the page's primary action(s) on the right. `lede` may be a string
+// or a list of nodes (a link inside the sentence); `actions` one node or a list.
+export function pageHeader({ title, lede, actions, meta } = {}) {
+    const acts = [].concat(actions || []).filter(Boolean);
+    const chips = [].concat(meta || []).filter(Boolean);
+    return h('header', { class: 'page-header' },
+        h('div', { class: 'page-header-main' },
+            title ? h('h2', { class: 'page-header-title', text: title }) : null,
+            lede ? h('p', { class: 'lede' }, lede) : null,
+            chips.length ? h('p', { class: 'page-meta' }, chips.map((c) => (typeof c === 'string' ? h('span', { class: 'chip', text: c }) : c))) : null),
+        acts.length ? h('div', { class: 'page-header-actions' }, acts) : null);
+}
+
 export function emptyState({ title, text, action, iconName = 'info' }) {
     return h('div', { class: 'empty' },
         icon(iconName, 'empty-icon'),

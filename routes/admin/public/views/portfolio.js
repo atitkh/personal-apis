@@ -1,6 +1,6 @@
 // Portfolio inventory: counts, a to-do list of missing and orphan detail pages, and the entries with a
 // search that lives in the URL (#/portfolio?q=...). The data is routes/portfolio/atit/atit.json plus md/, img/, pdf/.
-import { h, icon, button, plural, ago, when, bytes, emptyState } from '../ui.js';
+import { h, icon, button, plural, ago, when, bytes, emptyState, pageHeader } from '../ui.js';
 import { setQuery } from '../router.js';
 
 const DIR = 'routes/portfolio/atit';
@@ -56,7 +56,7 @@ export async function render(ctx) {
     });
 
     return h('div', { class: 'view portfolio' },
-        h('p', { class: 'lede', text: `The public portfolio site reads atit.json and its files directly; saving the file is publishing. Last edited ${ago(p.updatedAt)} (${when(p.updatedAt)}).` }),
+        pageHeader({ lede: `The public portfolio site reads atit.json and its files directly; saving the file is publishing. Last edited ${ago(p.updatedAt)} (${when(p.updatedAt)}).` }),
         h('section', { class: 'counts', 'aria-label': 'Counts' },
             count('Entries', p.entryCount.toLocaleString(), `${withPage} with a detail page`),
             count('Detail pages', p.files.pages.count.toLocaleString(), bytes(p.files.pages.bytes)),

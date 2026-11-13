@@ -1,6 +1,6 @@
 // Activity: the audit log as sentences, grouped by day, newest first. The filter lives in the URL
 // (#/activity?type=keys); older events load on demand. Agent calls show tool and action, never content.
-import { h, icon, button, emptyState, chipNav, dayLabel, keepFocus, toast, hidden, actorName, plural } from '../ui.js';
+import { h, icon, button, emptyState, chipNav, dayLabel, keepFocus, toast, hidden, actorName, plural, pageHeader } from '../ui.js';
 import { isoDay } from '../charts.js';
 import { href } from '../router.js';
 import { MCP_LABEL } from './overview.js';
@@ -236,7 +236,7 @@ export async function render(ctx) {
 
     const label = (TYPES.find(([id]) => id === type) || TYPES[0])[1].toLowerCase();
     return h('div', { class: 'view activity' },
-        h('p', { class: 'lede', text: 'What happened on the hub, newest first: sign-ins, keys, domain switches, digest edits, backups and agent calls.' }),
+        pageHeader({ lede: 'What happened on the hub, newest first: sign-ins, keys, domain switches, digest edits, backups and agent calls.' }),
         chipNav({ label: 'Show', current: type, items: TYPES.map(([id, text]) => ({ id, label: text, href: href('activity', [], { type: id === 'all' ? null : id }) })) }),
         events.length
             ? h('div', {}, list, foot)

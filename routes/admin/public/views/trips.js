@@ -5,8 +5,7 @@
 // Above the list, suggested trips made from flights that are on no trip: edit the name, Accept or Dismiss. An item's
 // reference (a booking number) is fetched and shown only after Show reference, never in a list. Server text goes in as text.
 import {
-    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, fact, hidden, actorName, dayLabel,
-} from '../ui.js';
+    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, fact, hidden, actorName, dayLabel, pageHeader } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
 const TABS = [['upcoming', 'Upcoming'], ['ongoing', 'Ongoing'], ['past', 'Past']];
@@ -715,9 +714,7 @@ export async function render(ctx) {
 
     const add = button({ text: 'New trip', iconName: 'plus', 'data-key': 'new-trip', onClick: () => newTrip(ctx) });
     return h('div', { class: 'view trips' },
-        h('div', { class: 'view-intro row-between' },
-            h('p', { class: 'lede', text: 'Your trips, with the flights, deadlines and notes that belong to each. Flights that are on no trip can be suggested as one.' }),
-            add),
+        pageHeader({ lede: 'Your trips, with the flights, deadlines and notes that belong to each. Flights that are on no trip can be suggested as one.', actions: add }),
         suggestions(ctx, sug),
         tabBar(tab, counts),
         listTab(ctx, tab, groups[tab], list.total));

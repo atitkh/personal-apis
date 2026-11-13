@@ -6,8 +6,7 @@
 //   #/digests/weekly/2026-W45    the same for a week
 // History, compare and restore live in a right-hand drawer so the text keeps its place.
 import {
-    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, dayLabel, hidden, actorName,
-} from '../ui.js';
+    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, dayLabel, hidden, actorName, pageHeader } from '../ui.js';
 import { monthCalendar, isoDay, parseDay, addDays, addMonths, monthLabel } from '../charts.js';
 import { href, navigate } from '../router.js';
 
@@ -273,8 +272,7 @@ async function browse(ctx) {
     const q = (ctx.route.query.get('q') || '').trim();
     const body = q ? await results(ctx, kind, q) : kind === 'daily' ? await daily(ctx) : await weekly(ctx);
     return h('div', { class: 'view digests' },
-        h('div', { class: 'view-intro' },
-            h('p', { class: 'lede', text: 'Written each night from your day, and each Sunday from the week. Read them, correct them, search them.' })),
+        pageHeader({ lede: 'Written each night from your day, and each Sunday from the week. Read them, correct them, search them.' }),
         h('div', { class: 'toolbar' }, kindNav(kind, q), searchForm(kind, q)),
         body);
 }

@@ -2,8 +2,7 @@
 // agent calls, revoke); #/keys?new=1 opens the create drawer (scope picker, the secret shown once with a copy button).
 // The URL is the truth: closing a drawer goes back to #/keys.
 import {
-    h, icon, button, plural, when, ago, dot, emptyState, errorState, toast, confirmDialog, openDrawer, copyButton, fact, hidden,
-} from '../ui.js';
+    h, icon, button, plural, when, ago, dot, emptyState, errorState, toast, confirmDialog, openDrawer, copyButton, fact, hidden, pageHeader } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 import { CATALOGUE, explain, scopeChip, scopeHue } from '../scopes.js';
 import { scopeEditor, saveKey, saveBar, APPLIES } from '../scopeEditor.js';
@@ -382,9 +381,7 @@ export async function render(ctx) {
     const create = h('a', { class: 'btn', href: href('keys', [], { new: '1' }), 'data-key': 'new-key' }, icon('plus'), h('span', { text: 'Create key' }));
 
     return h('div', { class: 'view keys' },
-        h('div', { class: 'view-intro row-between' },
-            h('p', { class: 'lede', text: 'Each service that reads or writes the hub gets its own key, limited to what you allow. Open a key to see what it can reach and what it did.' }),
-            create),
+        pageHeader({ lede: 'Each service that reads or writes the hub gets its own key, limited to what you allow. Open a key to see what it can reach and what it did.', actions: create }),
         h('section', { 'aria-labelledby': 'k-active' },
             h('h2', { id: 'k-active', class: 'section-title', text: plural(active.length, 'active key') }),
             active.length

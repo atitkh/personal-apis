@@ -7,8 +7,7 @@
 // The reference (a document or policy number) is masked until you press Show and appears only in the drawer and the
 // forms, never in a table, a toast or the palette. Server text goes in as text. Nothing is ever deleted.
 import {
-    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, fact, hidden, actorName, dayLabel,
-} from '../ui.js';
+    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, fact, hidden, actorName, dayLabel, pageHeader } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
 const TABS = [['upcoming', 'Upcoming'], ['all', 'All'], ['done', 'Done']];
@@ -794,9 +793,7 @@ export async function render(ctx) {
     const urgentN = active.deadlines.filter((d) => d.window === 'urgent').length;
     const add = button({ text: 'Add deadline', iconName: 'plus', 'data-key': 'new-deadline', onClick: () => addDeadline(ctx) });
     return h('div', { class: 'view deadlines' },
-        h('div', { class: 'view-intro row-between' },
-            h('p', { class: 'lede', text: `Dates you must not miss: renewals, expiries, bills and tasks. Each one has its own warning window and shows up in your briefing from its start-warning date.${urgentN ? ` ${plural(urgentN, 'item')} ${urgentN === 1 ? 'is' : 'are'} overdue or urgent now.` : ''}` }),
-            add),
+        pageHeader({ lede: `Dates you must not miss: renewals, expiries, bills and tasks. Each one has its own warning window and shows up in your briefing from its start-warning date.${urgentN ? ` ${plural(urgentN, 'item')} ${urgentN === 1 ? 'is' : 'are'} overdue or urgent now.` : ''}`, actions: add }),
         tabBar(tab, counts),
         listTab(ctx, tab, data));
 }

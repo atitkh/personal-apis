@@ -7,8 +7,7 @@
 // reason is shown next to the field. Remove hides a preference and keeps its history; Delete permanently removes it for good.
 // Server text goes in as text.
 import {
-    h, icon, button, plural, ago, when, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, actorName,
-} from '../ui.js';
+    h, icon, button, plural, ago, when, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, actorName, pageHeader } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
 const AREAS = [['travel', 'Travel'], ['communication', 'Communication'], ['work', 'Work'], ['food', 'Food'], ['health', 'Health'],
@@ -439,9 +438,7 @@ export async function render(ctx) {
 
     const add = button({ text: 'Add preference', iconName: 'plus', 'data-key': 'new-pref', onClick: () => addPreference(ctx) });
     return h('div', { class: 'view preferences' },
-        h('div', { class: 'view-intro row-between' },
-            h('p', { class: 'lede', text: 'Plain facts about how you like things: seat, call hours, favourite airline. Agents read them as context. Keep passwords, numbers and keys in the vault.' }),
-            add),
+        pageHeader({ lede: 'Plain facts about how you like things: seat, call hours, favourite airline. Agents read them as context. Keep passwords, numbers and keys in the vault.', actions: add }),
         all.length || removedMode || live.total || gone.total ? toolbar(live, gone, f, removedMode) : null,
         h('div', { class: 'pref-panel' },
             all.length ? h('p', { class: 'note pref-total', 'aria-live': 'polite', text: filtered ? `${shown.length} of ${plural(all.length, removedMode ? 'removed preference' : 'preference')}` : plural(all.length, removedMode ? 'removed preference' : 'preference') }) : null,

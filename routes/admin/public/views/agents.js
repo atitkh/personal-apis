@@ -2,7 +2,7 @@
 // the latest MCP calls (tool.action, key, time, outcome; never content), and the endpoint itself.
 // Every key name links to its drawer on the Keys page. Each key x domain cell is a button: it opens a drawer with
 // just that domain's scopes to change (the PATCH leaves the key's other scopes alone).
-import { h, icon, plural, when, ago, emptyState, copyButton, hidden, domainHue, openDrawer, confirmDialog, toast } from '../ui.js';
+import { h, icon, plural, when, ago, emptyState, copyButton, hidden, domainHue, openDrawer, confirmDialog, toast, pageHeader } from '../ui.js';
 import { href } from '../router.js';
 import { CATALOGUE } from '../scopes.js';
 import { scopeEditor, saveKey, saveBar, APPLIES } from '../scopeEditor.js';
@@ -192,7 +192,7 @@ export async function render(ctx) {
     const endpointField = h('input', { type: 'text', class: 'secret', readonly: true, value: url, 'aria-label': 'Agent endpoint URL', onfocus: (e) => e.target.select() });
 
     return h('div', { class: 'view agents' },
-        h('p', { class: 'lede', text: "Agents reach the hub through one MCP endpoint. What a key can do depends on its scopes, whether the domain is on, and the domain's agent access on the overview. Select a cell to change what that key may do in that domain." }),
+        pageHeader({ lede: "Agents reach the hub through one MCP endpoint. What a key can do depends on its scopes, whether the domain is on, and the domain's agent access on the overview. Select a cell to change what that key may do in that domain." }),
         h('section', { 'aria-labelledby': 'ag-matrix' },
             h('div', { class: 'section-head' },
                 h('h2', { id: 'ag-matrix', class: 'section-title', text: 'What each key can do now' }),

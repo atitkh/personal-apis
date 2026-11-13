@@ -53,7 +53,7 @@ const SHAPES = {
                     rows(5, () => h('div', { class: 'dl-item' }, bar('sk-read w-50'), bar('sk-line w-80'))))))),
 
     places: (route) => wrap('view places',
-        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
         h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab')),
         route.query.get('tab') === 'queue'
             ? h('div', { class: 'tab-panel' }, bar('sk-line w-80'),
@@ -68,7 +68,7 @@ const SHAPES = {
                 h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(5, 5)))),
 
     flights: (route) => wrap('view flights',
-        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
         h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab'), bar('sk-tab')),
         route.query.get('tab') === 'found'
             ? h('div', { class: 'tab-panel' }, bar('sk-line w-80'),
@@ -86,24 +86,24 @@ const SHAPES = {
                     bar('sk-map'))),
 
     deadlines: () => wrap('view deadlines',
-        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
         h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab'), bar('sk-tab')),
         h('div', { class: 'tab-panel' },
             h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
             h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(5, 5)))),
 
     trips: () => wrap('view trips',
-        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
         h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab'), bar('sk-tab')),
         h('div', { class: 'tab-panel skel-stack' }, bar('sk-title w-20'), rows(3, () => bar('sk-block')))),
 
     preferences: () => wrap('view preferences',
-        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
         h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
         h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(3, 3), bar('sk-title w-20'), tableRows(2, 3))),
 
     keys: () => wrap('view keys',
-        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
         h('section', {}, bar('sk-title w-20'), tableRows(3)),
         bar('sk-line w-20')),
 
@@ -112,7 +112,7 @@ const SHAPES = {
         h('section', {}, bar('sk-title w-20'), tableRows(5))),
 
     backups: () => wrap('view backups',
-        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-80 sk-narrow'), bar('sk-line w-60')), bar('sk-button')),
         h('section', { class: 'panel skel-status' }, bar('sk-icon'), bar('sk-read w-80')),
         h('section', {}, bar('sk-title w-20'), tableRows(1)),
         h('section', { class: 'skel-stack' }, bar('sk-title w-30'), bar('sk-line w-70'), bar('sk-block'))),

@@ -1,7 +1,7 @@
 // Backups: where the copies go and how often, the copies with size and age, Back up now, Verify newest, and how to
 // restore one by hand (the dashboard deliberately has no restore button: replacing the live database belongs on the
 // server, with the hub stopped). The folder and the schedule are edited in Settings.
-import { h, icon, button, when, ago, bytes, plural, emptyState, toast, copyButton, fact, dot } from '../ui.js';
+import { h, icon, button, when, ago, bytes, plural, emptyState, toast, copyButton, fact, dot, pageHeader } from '../ui.js';
 import { everyWords } from './settingsForms.js';
 
 const KIND = { scheduled: 'Scheduled', 'pre-delete': 'Before a delete', 'pre-migration': 'Before a migration' };
@@ -65,9 +65,10 @@ export async function render(ctx) {
     const example = newest ? newest.name : 'hub-2026-11-08.db';
     const where = status.dirIsDefault ? 'data/backups' : status.dir;
     return h('div', { class: 'view backups' },
-        h('div', { class: 'view-intro row-between' },
-            h('p', { class: 'lede' }, 'The hub copies its database by itself, from inside the service. Where the copies go and how often is set in ', h('a', { href: '#/settings', text: 'Settings' }), '.'),
-            h('div', { class: 'row' }, verify, run)),
+        pageHeader({
+            lede: ['The hub copies its database by itself, from inside the service. Where the copies go and how often is set in ', h('a', { href: '#/settings/backups', text: 'Settings' }), '.'],
+            actions: h('div', { class: 'row' }, verify, run),
+        }),
         h('section', { class: `panel backup-status ${failing ? 'warn' : stale ? 'warn' : 'good'}`, 'aria-live': 'polite' },
             icon(failing || stale ? 'warn' : 'good'),
             h('div', {},

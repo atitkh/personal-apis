@@ -8,8 +8,7 @@
 // never in the table or in a toast. Everything from the server goes in as text.
 import {
     h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer,
-    chip, chipNav, fact, hidden, actorName, copyButton,
-} from '../ui.js';
+    chip, chipNav, fact, hidden, actorName, copyButton, pageHeader } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
 const TABS = [['places', 'Places'], ['queue', 'Needs a name']];
@@ -814,9 +813,7 @@ export async function render(ctx) {
 
     const create = button({ text: 'New place', iconName: 'plus', 'data-key': 'new-place', onClick: () => newPlace(ctx, kinds) });
     return h('div', { class: 'view places' },
-        h('div', { class: 'view-intro row-between' },
-            h('p', { class: 'lede', text: 'The spots your digests name instead of a street. Each place has rules that recognise a location as it; agents ask the hub which place a location is.' }),
-            create),
+        pageHeader({ lede: 'The spots your digests name instead of a street. Each place has rules that recognise a location as it; agents ask the hub which place a location is.', actions: create }),
         tabBar(tab, counts.pending),
         tab === 'queue' ? queueTab(ctx, sug, data.places, kinds) : placesTab(ctx, data));
 }
