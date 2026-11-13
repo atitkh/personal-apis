@@ -97,7 +97,7 @@ await check('g l opens Lifelog; nav item, privacy note, today in the title', asy
 await check('strip: 5 episode blocks, a busy tick, 5 rows; cancelled one is muted with a chip', async () => {
     eq(await page.locator('.lifelog-block').count(), 5, 'blocks');
     eq(await page.locator('.lifelog-tick').count(), 24, 'ticks');
-    ok(await page.locator('.lifelog-tick[style*="--d:1.00"]').count(), 'busiest tick');
+    ok(await page.evaluate(() => [...document.querySelectorAll('.lifelog-tick')].some((t) => Number(t.style.getPropertyValue('--d')) === 1)), 'busiest tick');
     eq(await page.locator('.lifelog-episode').count(), 5, 'rows');
     ok(await page.locator('.lifelog-block.is-cancelled').count() === 1, 'cancelled block');
     const t = await row('Cancelled nap').innerText(); ok(t.includes('Cancelled') && t.includes('sleep'), `row: ${t}`);
@@ -175,11 +175,12 @@ await check('New episode: errors stay inline, then it is added and shows in the 
     await page.locator('dialog[open] [name="end"]').fill(`${today}T09:00`);
     await page.locator('dialog[open] button[type="submit"]').click();
     ok((await text('dialog[open] .error')).includes('end cannot be before'), 'end error');
-    await page.locator('dialog[open] [name="end"]').fill(`${today}T10:45`);
+    await page.locator('dialog[open] [name="end"]').fill(`${shift(3)}T10:45`);
     await page.locator('dialog[open] [name="start"]').fill(`${shift(3)}T10:00`);
     await page.locator('dialog[open] button[type="submit"]').click();
     await page.waitForFunction(() => /future/i.test((document.querySelector('dialog[open] .error') || {}).innerText || ''), null, { timeout: 5000 });
     await page.locator('dialog[open] [name="start"]').fill(`${today}T10:00`);
+    await page.locator('dialog[open] [name="end"]').fill(`${today}T10:45`);
     await page.locator('dialog[open] [name="place"]').fill('porch');
     await page.locator('dialog[open] [name="confidence"]').fill('0.9');
     await page.locator('dialog[open] button[type="submit"]').click(); await waitToast(/Episode added/); await quiet();

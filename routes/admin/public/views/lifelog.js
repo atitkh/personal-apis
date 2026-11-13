@@ -25,6 +25,8 @@ const hue = (k) => KIND_HUE[k] || (k ? HUES[[...k].reduce((a, c) => a + c.charCo
 const kindLabel = (k) => (k ? k.replace(/_/g, ' ') : 'no kind');
 const fieldError = (message, name) => Object.assign(new Error(message), { field: name });
 const trim = (v) => (v == null ? null : String(v).trim() || null);
+// The page's CSP forbids inline style attributes, so positions go through the style object.
+const styled = (el, props) => { for (const [k, v] of Object.entries(props)) el.style.setProperty(k, v); return el; };
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 
 let tz = 'UTC';           // the hub time zone, read from the settings on each render
@@ -377,15 +379,14 @@ function strip(date, episodes, dens) {
     const max = dens ? Math.max(...dens.bins, 1) : 1;
     const busiest = dens ? dens.bins.indexOf(Math.max(...dens.bins)) : 0;
     return h('div', { class: 'lifelog-strip', role: 'group', 'aria-label': `24-hour timeline for ${date}` },
-        h('div', { class: 'lifelog-lanes', style: `height:${lanes * LANE}px` }, items.map(({ e, a, b, lane }) => h('a', {
+        styled(h('div', { class: 'lifelog-lanes' }, items.map(({ e, a, b, lane }) => styled(h('a', {
             class: `lifelog-block hue-${hue(e.kind)}${e.status === 'cancelled' ? ' is-cancelled' : ''}`,
-            style: `left:${(a * 100).toFixed(3)}%;width:${((b - a) * 100).toFixed(3)}%;top:${lane * LANE}px`,
             href: episodeHref(e.id, date), 'data-key': `block:${e.id}`,
             'aria-label': `${e.title}, ${kindLabel(e.kind)}, ${range(e)}${e.status === 'cancelled' ? ', cancelled' : ''}`, title: `${e.title}: ${range(e)}`,
-        }, h('span', { class: 'block-text', text: e.title })))),
+        }, h('span', { class: 'block-text', text: e.title })), { left: `${(a * 100).toFixed(3)}%`, width: `${((b - a) * 100).toFixed(3)}%`, top: `${lane * LANE}px` }))), { height: `${lanes * LANE}px` }),
         h('div', { class: 'lifelog-ticks', role: 'img', 'aria-label': dens ? `Raw lines per hour. Busiest hour starts at ${String(busiest).padStart(2, '0')}:00 with ${dens.bins[busiest]} lines${dens.partial ? '; based on the first lines of the day' : ''}.` : 'No raw lines this day.' },
-            Array.from({ length: 24 }, (_, i) => h('span', { class: 'lifelog-tick', style: `--d:${dens ? (dens.bins[i] / max).toFixed(2) : 0}`, title: `${String(i).padStart(2, '0')}:00, ${plural(dens ? dens.bins[i] : 0, 'line')}` }))),
-        h('div', { class: 'lifelog-hours', 'aria-hidden': 'true' }, [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => h('span', { style: `left:${(x / 24) * 100}%`, text: String(x).padStart(2, '0') }))));
+            Array.from({ length: 24 }, (_, i) => styled(h('span', { class: 'lifelog-tick', title: `${String(i).padStart(2, '0')}:00, ${plural(dens ? dens.bins[i] : 0, 'line')}` }), { '--d': dens ? (dens.bins[i] / max).toFixed(2) : '0' }))),
+        h('div', { class: 'lifelog-hours', 'aria-hidden': 'true' }, [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => styled(h('span', { text: String(x).padStart(2, '0') }), { left: `${(x / 24) * 100}%` }))));
 }
 
 function episodeRow(e, date) {
