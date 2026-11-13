@@ -17,6 +17,7 @@ const TYPES = [
     ['places', 'Places'],
     ['flights', 'Flights'],
     ['deadlines', 'Deadlines'],
+    ['trips', 'Trips'],
     ['preferences', 'Preferences'],
     ['settings', 'Settings'],
     ['signins', 'Sign-ins'],
@@ -27,8 +28,8 @@ const SETTING_NAME = {
     'backup.keep': 'copies to keep', 'backup.verify_after': 'check each new backup',
 };
 const settingChange = (d) => (d.from === undefined || d.to === undefined ? '' : ` from ${d.from === null ? 'default' : d.from} to ${d.to === null ? 'default' : d.to}`);
-const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', preferences: 'No preference changes yet.', settings: 'No settings changes yet.', signins: 'No sign-ins yet.' };
-const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines', preferences: 'Preferences' };
+const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', trips: 'No trip changes yet.', preferences: 'No preference changes yet.', settings: 'No settings changes yet.', signins: 'No sign-ins yet.' };
+const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines', trips: 'Trips', preferences: 'Preferences' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
     key_created: 'keys', key_updated: 'keys', key_revoked: 'keys',
@@ -40,6 +41,7 @@ const ICON = {
     place_suggestion_accepted: 'places', place_suggestion_dismissed: 'places', place_suggestion_deleted: 'places',
     flight_created: 'calendar', flight_updated: 'calendar', flight_restored: 'calendar',
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
+    trip_restored: 'calendar', trip_flight_linked: 'calendar', trip_flight_unlinked: 'calendar',
     flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
     flight_deleted: 'calendar', trip_deleted: 'calendar', flight_candidate_deleted: 'calendar', deadline_deleted: 'calendar',
     webhook_created: 'agents', webhook_updated: 'agents', webhook_deleted: 'agents', webhook_tested: 'agents', webhook_run: 'agents',
@@ -106,6 +108,9 @@ function sentence(e) {
     case 'flight_restored': return [who, ' restored an older version of the flight ', strong(d.flight || 'a flight')];
     case 'trip_created': return [who, ' added the trip ', strong(d.title || 'a trip')];
     case 'trip_updated': return [who, ' changed the trip ', strong(d.title || 'a trip')];
+    case 'trip_restored': return [who, ' restored an older version of the trip ', strong(d.title || 'a trip')];
+    case 'trip_flight_linked': return [who, d.moved_from ? ' moved the flight ' : ' added the flight ', strong(d.flight || 'a flight'), ' to the trip ', strong(d.title || 'a trip')];
+    case 'trip_flight_unlinked': return [who, ' took the flight ', strong(d.flight || 'a flight'), ' off the trip ', strong(d.title || 'a trip')];
     case 'webhook_created': return [who, ' added the webhook ', strong(d.name || 'a webhook')];
     case 'webhook_updated': return [who, ' changed the webhook ', strong(d.name || 'a webhook')];
     case 'webhook_deleted': return [who, ' deleted the webhook ', strong(d.name || 'a webhook')];

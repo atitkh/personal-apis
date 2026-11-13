@@ -66,6 +66,15 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'trips',
+        title: 'Trips',
+        scopes: [
+            { scope: 'trips:read', label: 'Read', text: 'Read your trips (where, when, what kind, days to go) with their flights and deadlines, through /hub. Booking references, deadline reference numbers and amounts are never part of a trip.' },
+            { scope: 'trips:agent-write', label: 'Agent write', text: 'Write through the agent tool (the domain must also be switched to Read and write on the Overview board). Lets an agent add trips, change them and link or unlink flights, through the agent endpoint. Trips have no agent tool yet, so for now this does nothing. Restoring and deleting stay with you. It needs Read as well to see anything.', write: true },
+            { scope: 'trips:api-write', label: 'API write', text: 'Write through the API (jobs and scripts). Add and change trips, restore older versions, and link or unlink flights, through the /hub REST API. Deleting a trip stays with you. It needs Read as well, because the answer is the trip.', write: true },
+        ],
+    },
+    {
         domain: 'preferences',
         title: 'Preferences',
         scopes: [

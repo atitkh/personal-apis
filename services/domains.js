@@ -48,6 +48,14 @@ const REGISTRY = {
         stats: (db) => require('./deadlines').stats(db),
         briefing: (db, o) => require('./briefingHooks').deadlines(db, o),
     },
+    // The briefing hook comes with stage 2 (ongoing trips, trips starting soon, deadlines due before a trip).
+    trips: {
+        title: 'Trips',
+        sensitivity: 'private',   // where and when Atit travels
+        storage: 'db',
+        defaultEnabled: true,
+        stats: (db) => require('./trips').stats(db),
+    },
     // No briefing hook: preferences are context for agents, not something that needs attention.
     preferences: {
         title: 'Preferences',
