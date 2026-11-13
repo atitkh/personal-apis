@@ -10,7 +10,7 @@ const view = read('views/trips.js');
 
 describe('Trips page: wiring', () => {
     test('is registered with a nav entry, a free shortcut, an icon, a skeleton and palette entries', () => {
-        expect(read('app.js')).toMatch(/router\.register\('trips', \{ title: 'Trips', icon: 'trips', nav: true, load: \(\) => import\('\.\/views\/trips\.js'\) \}\)/);
+        expect(read('app.js')).toMatch(/router\.register\('trips', \{ title: 'Trips', icon: 'trips', nav: true, group: 'data', load: \(\) => import\('\.\/views\/trips\.js'\) \}\)/);
         const shortcuts = read('shortcuts.js');
         expect(shortcuts).toContain("['t', 'trips', 'Trips']");
         const letters = [...shortcuts.matchAll(/^\s+\['(\w)', '\w+', '[^']+'\],$/gm)].map((m) => m[1]);
