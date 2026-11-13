@@ -17,7 +17,7 @@ const KIND_FALLBACK = ['home', 'campus', 'family', 'friend', 'store', 'transit',
 const RULE_WORD = { street: ['street', 'streets'], zone: ['zone', 'zones'], radius: ['circle', 'circles'] };
 const RULE_TITLE = { street: 'Street', zone: 'Zone', radius: 'Circle' };
 const SOURCE_LABEL = { create: 'Created', import: 'Imported', edit: 'Edited', rule: 'Rules changed', restore: 'Restored', suggestion: 'Named from the queue' };
-const IMPORT_CMD = 'docker exec -i nodejs node scripts/places-import.js - --dry-run < known-places.md';
+const IMPORT_CMD = 'docker exec -i personal-hub node scripts/places-import.js - --dry-run < known-places.md';
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 const kindLabel = (k) => cap(k || 'other');

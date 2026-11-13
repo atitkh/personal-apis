@@ -1,5 +1,5 @@
 // Reads a JSON file and re-reads it whenever the file changes on disk. `require()` caches a JSON file for
-// the life of the process, which is why portfolio edits needed `docker restart nodejs`.
+// the life of the process, which is why portfolio edits needed `docker restart personal-hub`.
 const fs = require('fs');
 
 const cache = new Map(); // path -> { mtimeMs, data }

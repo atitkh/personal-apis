@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  nodejs:
+  personal-hub:
     build:
       context: .
       dockerfile: Dockerfile
-    image: nodejs
-    container_name: nodejs
+    image: personal-hub
+    container_name: personal-hub
     restart: unless-stopped
     env_file: .env
     environment:
@@ -16,17 +16,19 @@ services:
     ports:
       - "3000:3000"
     volumes:
+      # The source is bind-mounted (dashboard files are served from disk; code changes apply on restart).
       - ./:/home/node/app
-      - node_modules:/home/node/app/node_modules
       # NAS folder for hub backups (Settings > Backups folder = /backups-nas)
       - /media/voltex/nasbackups/personal-hub:/backups-nas
-    command: sh -c "cd /home/node/app && npm install --production && npm start"
+    # Hides the host's own node_modules folder: the container uses the packages baked into the image (/opt/deps).
+    tmpfs:
+      - /home/node/app/node_modules
     networks:
-      - akapi-network
+      akapi-network:
+        # The old container name, kept so anything that still reaches the hub as "nodejs" on this network keeps working.
+        aliases:
+          - nodejs
 
 networks:
   akapi-network:
     driver: bridge
-
-volumes:
-  node_modules:

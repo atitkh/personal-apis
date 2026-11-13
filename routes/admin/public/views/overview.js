@@ -181,7 +181,7 @@ const isShared = (id) => id === 'flights:candidates:pending' || id === 'places:s
 // Hub health: only what the overview data alone knows.
 function healthIssues(o) {
     const out = [];
-    if (o.database.status !== 'healthy') out.push({ kind: 'bad', text: 'The database is not responding.', hint: 'Check the container logs (docker logs nodejs).' });
+    if (o.database.status !== 'healthy') out.push({ kind: 'bad', text: 'The database is not responding.', hint: 'Check the container logs (docker logs personal-hub).' });
     const b = o.backups;
     const newest = b.newest;
     const staleMs = Math.max(36, (b.everyHours || 24) * 1.5) * 3600 * 1000;

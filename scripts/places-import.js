@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Imports a markdown table of known places (columns: Match, Label, Notes) into the places domain.
 // Run inside the container so it uses the same database file as the server (or point HUB_DB_FILE at a copy):
-//   docker exec -i nodejs node scripts/places-import.js - < known-places.md
+//   docker exec -i personal-hub node scripts/places-import.js - < known-places.md
 //   node scripts/places-import.js <table.md> [--dry-run] [--force] [--exclude "Label=text"]...
 //
 // What it does, and it is safe to repeat:

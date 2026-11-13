@@ -139,7 +139,7 @@ app.get('/health', (req, res) => {
             timestamp: new Date().toISOString(),
             uptime: process.uptime(),
             environment: config.get('NODE_ENV'),
-            version: process.env.npm_package_version || '1.0.0',
+            version: require('./package.json').version,
             database: dbHealth
         };
         // Backups failing (unwritable or missing folder) is a warning, not an outage: the status code stays 200.

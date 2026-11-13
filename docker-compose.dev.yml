@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  nodejs:
+  personal-hub-dev:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    image: nodejs-dev
-    container_name: nodejs-dev
+    image: personal-hub-dev
+    container_name: personal-hub-dev
     restart: unless-stopped
     env_file: .env
     environment:

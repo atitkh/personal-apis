@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Manage API keys. Run inside the container so it uses the same database file as the server:
-//   docker exec nodejs node scripts/keys.js create <name> <scope[,scope...]>
-//   docker exec nodejs node scripts/keys.js list
-//   docker exec nodejs node scripts/keys.js revoke <id|name>
+//   docker exec personal-hub node scripts/keys.js create <name> <scope[,scope...]>
+//   docker exec personal-hub node scripts/keys.js list
+//   docker exec personal-hub node scripts/keys.js revoke <id|name>
 const db = require('../db');
 const apiKeys = require('../services/apiKeys');
 

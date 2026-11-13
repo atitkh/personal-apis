@@ -1,34 +1,25 @@
 FROM node:20
 
-WORKDIR /home/node/app
-
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Install ffmpeg for audio format conversion (WebM to PCM for Whisper)
-# Install Python and pip for mcp-proxy (MCP client for Home Assistant)
-USER root
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    python3 \
-    python3-pip \
-    python3-venv \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install mcp-proxy globally for MCP server communication
-RUN pip3 install --break-system-packages mcp-proxy
-
-# Install dependencies first for better build caching
+# Production dependencies live in the image, outside the app folder, so the compose file can bind-mount the source over
+# /home/node/app (code and dashboard files are served from disk) without hiding them. Rebuild the image only when
+# package.json or package-lock.json change: `docker compose build`. Nothing is installed when the container starts.
+WORKDIR /opt/deps
 COPY package*.json ./
-RUN npm ci --omit=dev && chown -R node:node /home/node
+RUN npm ci --omit=dev && chown -R node:node /opt/deps
+ENV NODE_PATH=/opt/deps/node_modules
+
+WORKDIR /home/node/app
+COPY --chown=node:node . .
 
 # Run as non-root user
 USER node
 
-# Copy the rest of the source code
-COPY --chown=node:node . .
-
 EXPOSE 3000
 
-# Use Node in containers; nodemon is for local dev
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
 CMD [ "node", "app.js" ]

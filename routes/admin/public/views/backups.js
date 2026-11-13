@@ -102,9 +102,9 @@ export async function render(ctx) {
             h('h2', { id: 'b-restore', text: 'Restoring a copy' }),
             h('p', { class: 'note', text: 'There is no restore button on purpose: the live database must not change under a running hub. On the server, in the personal-apis folder:' }),
             h('ol', { class: 'steps' },
-                step(1, 'Stop the hub.', 'docker stop nodejs'),
+                step(1, 'Stop the hub.', 'docker stop personal-hub'),
                 step(2, 'Move the current database aside, with its two journal files, so nothing is lost.', 'mkdir -p data/replaced && mv data/hub.db data/hub.db-wal data/hub.db-shm data/replaced/ 2>/dev/null; ls data/replaced'),
                 step(3, 'Copy the backup you want into place.', `cp ${where}/${example} data/hub.db`),
-                step(4, 'Start the hub and check this page and the overview.', 'docker start nodejs')),
+                step(4, 'Start the hub and check this page and the overview.', 'docker start personal-hub')),
             h('p', { class: 'note', text: 'Anything written after the copy was made (digest edits, new keys, the activity log) is not in it. Keys created since then stop working.' })));
 }
