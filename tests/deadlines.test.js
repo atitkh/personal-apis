@@ -88,8 +88,10 @@ describe('create and validation', () => {
         expect(r.fields).toEqual(['kind', 'amount_cents', 'currency', 'cycle']);
     });
 
-    test('trip_id is a plain integer with no trip needed', () => {
-        expect(deadlines.get(conn, add({ trip_id: 4242 })).trip_id).toBe(4242);
+    test('trip_id must name a trip that exists (since the trips domain)', () => {
+        expect(code(() => deadlines.create(conn, item({ trip_id: 4242 }), 't'))).toBe('bad_trip');
+        const trip = require('../services/trips').create(conn, { title: 'Hong Kong' }, 't').id;
+        expect(deadlines.get(conn, add({ trip_id: trip })).trip_id).toBe(trip);
         expect(code(() => deadlines.create(conn, item({ trip_id: 'abc' }), 't'))).toBe('bad_trip');
     });
 

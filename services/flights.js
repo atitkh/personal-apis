@@ -8,7 +8,8 @@
 //                     (haversine between the airports, null when either is not in the airports table).
 //   flight_revisions  every change stores all editable fields as a new revision (rev 1 = as first filed, never
 //                     rewritten); restore puts a flight back to an earlier revision as a new revision.
-//   trips             title, start_date, end_date, notes. flights.trip_id links to one (or none).
+//   trips             owned by services/trips.js since migration 017; the trip functions here call it and keep
+//                     their old answers. flights.trip_id links to one (or none).
 //   airports          static seed (db/seed.js). airlines: optional names by IATA code.
 //   flight_settings   home_airport (an IATA code), set by hand.
 //
@@ -184,7 +185,7 @@ const airport = (db, iata) => (iata ? db.prepare('SELECT * FROM airports WHERE i
 function cleanTrip(db, v) {
     if (v == null || v === '') return null;
     const id = toId(v);
-    if (!id || !db.prepare('SELECT 1 FROM trips WHERE id = ?').get(id)) throw bad('no_trip', `There is no trip ${String(v).slice(0, 20)}.`, 404);
+    if (!id || !trips().exists(db, id)) throw bad('no_trip', `There is no trip ${String(v).slice(0, 20)}.`, 404);
     return id;
 }
 
@@ -646,7 +647,7 @@ function restore(db, id, rev, actor) {
         const was = { ...Object.fromEntries(FIELDS.map((k) => [k, null])), ...JSON.parse(old.snapshot) };
         if (JSON.stringify(editable(was)) === JSON.stringify(editable(row))) return { status: 'unchanged', id: row.id, label: label(row), rev: row.current_rev };
         // A trip that is gone since then is left out rather than refusing the restore.
-        if (was.trip_id && !db.prepare('SELECT 1 FROM trips WHERE id = ?').get(was.trip_id)) was.trip_id = null;
+        if (was.trip_id && !trips().exists(db, was.trip_id)) was.trip_id = null;
         const { fields: f, derived: d } = build(db, was);
         noTwin(db, f, d, row.id);
         write(db, row.id, f, d);
@@ -665,66 +666,61 @@ const auditDetail = (result) => {
     return out;
 };
 
-/* ---------- trips ---------- */
+/* ---------- trips (services/trips.js owns them; these keep the flights answers as they always were) ---------- */
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-function cleanDate(v, name) {
-    if (v == null || v === '') return null;
-    if (!DATE_RE.test(String(v)) || Number.isNaN(Date.parse(`${v}T00:00:00Z`))) throw bad('bad_date', `${name} must be a date like 2027-03-01.`);
-    return String(v);
-}
+const trips = () => require('./trips'); // lazy: trips.js calls this file too
 
-const needTrip = (db, id) => needRow(db, 'trips', id, () => bad('no_trip', `There is no trip ${String(id).slice(0, 20)}.`, 404));
-
-function buildTrip(input, current = {}) {
-    const given = input || {};
-    for (const k of Object.keys(given)) {
-        if (!['title', 'start_date', 'end_date', 'notes'].includes(k)) throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
+// Runs `fn(trips)` and answers a trips error as a flights error with the same code, message and status.
+function viaTrips(fn) {
+    try {
+        return fn(trips());
+    } catch (err) {
+        if (err instanceof trips().TripError) throw bad(err.code, err.message, err.status, err.extra);
+        throw err;
     }
-    const pick = (k) => (given[k] === undefined ? current[k] : given[k]);
-    const t = {
-        title: text(pick('title'), 'title', 120),
-        start_date: cleanDate(pick('start_date'), 'start_date'),
-        end_date: cleanDate(pick('end_date'), 'end_date'),
-        notes: text(pick('notes'), 'notes', MAX_NOTES),
-    };
-    if (!t.title) throw bad('bad_request', 'title is required.');
-    if (t.start_date && t.end_date && t.end_date < t.start_date) throw bad('bad_date', 'end_date is before start_date.');
-    return t;
 }
 
-const shapeTrip = (t, flights) => ({
-    id: t.id, title: t.title, start_date: t.start_date, end_date: t.end_date, notes: t.notes,
-    flights, created_at: t.created_at, updated_at: t.updated_at, updated_by: t.updated_by,
-});
+const needTrip = (db, id) => viaTrips((t) => t.need(db, id));
 
-function listTrips(db) {
-    const counts = new Map(db.prepare('SELECT trip_id, COUNT(*) AS n FROM flights WHERE trip_id IS NOT NULL GROUP BY trip_id').all().map((r) => [r.trip_id, r.n]));
-    return db.prepare('SELECT * FROM trips ORDER BY start_date IS NULL, start_date DESC, id DESC').all().map((t) => shapeTrip(t, counts.get(t.id) || 0));
+// The flights routes have always taken these four fields only.
+function onlyLegacy(input) {
+    for (const k of Object.keys(input || {})) {
+        if (!trips().LEGACY_FIELDS.includes(k)) throw bad('bad_field', `Unknown field ${k.slice(0, 40)}.`);
+    }
 }
+
+// Validates a trip the way the flights routes always did: { title, start_date, end_date, notes }.
+function buildTrip(input, current = {}) {
+    onlyLegacy(input);
+    const t = viaTrips((svc) => svc.build(input, current));
+    return { title: t.title, start_date: t.start_date, end_date: t.end_date, notes: t.notes };
+}
+
+// A trip's flights in the full flights shape (booking reference included: flights:read answers carry it).
+function tripFlights(db, id) {
+    const names = airlineNames(db);
+    return db.prepare('SELECT * FROM flights WHERE trip_id = ? ORDER BY sched_dep').all(id).map((r) => shape(r, names));
+}
+
+const listTrips = (db) => trips().listLegacy(db);
 
 function getTrip(db, id) {
     const t = needTrip(db, id);
-    const names = airlineNames(db);
-    return shapeTrip(t, db.prepare('SELECT * FROM flights WHERE trip_id = ? ORDER BY sched_dep').all(t.id).map((r) => shape(r, names)));
+    return trips().legacyShape(t, tripFlights(db, t.id));
 }
 
 function createTrip(db, input, actor) {
-    const t = buildTrip(input);
-    const at = now();
-    const id = Number(db.prepare('INSERT INTO trips (title, start_date, end_date, notes, created_at, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(t.title, t.start_date, t.end_date, t.notes, at, at, who(actor)).lastInsertRowid);
-    return { status: 'created', id, title: t.title };
+    onlyLegacy(input);
+    const r = viaTrips((svc) => svc.create(db, input, actor));
+    return { status: r.status, id: r.id, title: r.title };
 }
 
 function updateTrip(db, id, input, actor) {
-    const old = needTrip(db, id);
+    needTrip(db, id);
     if (!input || !Object.keys(input).length) throw bad('bad_request', 'Send at least one of title, start_date, end_date or notes.');
-    const t = buildTrip(input, old);
-    if (['title', 'start_date', 'end_date', 'notes'].every((k) => t[k] === old[k])) return { status: 'unchanged', id: old.id, title: old.title };
-    db.prepare('UPDATE trips SET title = ?, start_date = ?, end_date = ?, notes = ?, updated_at = ?, updated_by = ? WHERE id = ?')
-        .run(t.title, t.start_date, t.end_date, t.notes, now(), who(actor), old.id);
-    return { status: 'updated', id: old.id, title: t.title };
+    onlyLegacy(input);
+    const r = viaTrips((svc) => svc.update(db, id, input, actor));
+    return { status: r.status, id: r.id, title: r.title };
 }
 
 /* ---------- settings ---------- */
@@ -943,34 +939,11 @@ function removeFlight(db, id, input) {
 
 const removedAuditDetail = (r) => ({ id: r.id, flight: r.label, ...r.counts, forget_candidate: r.forget_candidate });
 
-function tripRemovalPreview(db, id) {
-    const t = needTrip(db, id);
-    return {
-        id: t.id, label: t.title,
-        counts: {
-            flights: count(db, 'SELECT COUNT(*) AS n FROM flights WHERE trip_id = ?', t.id),
-            deadlines: count(db, 'SELECT COUNT(*) AS n FROM deadlines WHERE trip_id = ?', t.id),
-        },
-    };
-}
-
-// Flights that still use the trip block the delete (409 with the count) unless `unassign: true` frees them; the
-// flights stay. Deadlines carry the trip as a plain number, so their link is cleared as well.
-function removeTrip(db, id, input) {
-    needConfirm(bad, input);
-    return db.transaction(() => {
-        const p = tripRemovalPreview(db, id);
-        if (p.counts.flights > 0 && input.unassign !== true) {
-            throw bad('trip_in_use', `Trip ${p.label.slice(0, 60)} still has ${p.counts.flights} flight${p.counts.flights === 1 ? '' : 's'}. Unassign them first, or delete with unassign: true.`, 409, { flights: p.counts.flights });
-        }
-        db.prepare('UPDATE flights SET trip_id = NULL WHERE trip_id = ?').run(p.id);
-        db.prepare('UPDATE deadlines SET trip_id = NULL WHERE trip_id = ?').run(p.id);
-        db.prepare('DELETE FROM trips WHERE id = ?').run(p.id);
-        return { status: 'deleted', ...p, unassigned: input.unassign === true };
-    })();
-}
-
-const tripRemovedAuditDetail = (r) => ({ id: r.id, trip: r.label, ...r.counts, unassigned: r.unassigned });
+// The trip delete lives in services/trips.js (same rules: confirm, trip_in_use unless unassign: true, flights and
+// deadlines keep existing without the link, the trip's items go with it).
+const tripRemovalPreview = (db, id) => viaTrips((t) => t.removalPreview(db, id));
+const removeTrip = (db, id, input) => viaTrips((t) => t.remove(db, id, input));
+const tripRemovedAuditDetail = (r) => trips().removedAuditDetail(r);
 
 // A candidate row of any status. An accepted one leaves its flight alone (only the found-flight record goes).
 function removeCandidate(db, id, input) {
@@ -1006,6 +979,6 @@ module.exports = {
     haversineKm, localToUtc, localIso,
     list, get, history, upcoming, overview, stats, searchAirports, mapData,
     create, update, restore, auditDetail,
-    listTrips, getTrip, createTrip, updateTrip,
+    listTrips, getTrip, createTrip, updateTrip, buildTrip, tripFlights,
     getSettings, putSettings,
 };

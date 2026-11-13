@@ -6,7 +6,8 @@
 //                      lead_days and urgent_days are CUSTOM per item (0..730, urgent <= lead; default 14 / 3):
 //                      attention starts lead_days before the due date, urgent starts urgent_days before (or when overdue).
 //                      Money (amount_cents, currency, cycle, auto_renew, cancel_by) is only for subscription,
-//                      membership and bill. trip_id is a plain integer (a flights trip), no foreign key.
+//                      membership and bill. trip_id is a plain integer, no foreign key; since migration 017 it must
+//                      name a trip that exists (checked here when it changes; services/trips.js clears it on delete).
 //   deadline_revisions every change stores all editable fields as a new revision (rev 1 = as first filed, never
 //                      rewritten); restore puts an item back to an earlier revision as a new revision.
 //
@@ -187,6 +188,13 @@ const editable = (row) => Object.fromEntries(FIELDS.map((k) => [k, row[k] == nul
 
 const need = (db, id) => needRow(db, 'deadlines', id, () => bad('not_found', `There is no deadline ${String(id).slice(0, 20)}.`, 404));
 
+// A trip_id must name a trip that exists (services/trips.js). Only checked when it changes, so an item is never
+// stuck on a link it already had.
+function checkTrip(db, f, was) {
+    if (f.trip_id == null || f.trip_id === (was ? was.trip_id : null)) return;
+    if (!require('./trips').exists(db, f.trip_id)) throw bad('bad_trip', `There is no trip ${f.trip_id}.`, 404);
+}
+
 function write(db, id, f) {
     db.prepare(`UPDATE deadlines SET ${FIELDS.map((k) => `${k} = @${k}`).join(', ')} WHERE id = @id`).run({ ...f, id });
 }
@@ -307,6 +315,7 @@ const auditDetail = (result) => {
 function create(db, input, actor) {
     const f = build(input);
     return db.transaction(() => {
+        checkTrip(db, f, null);
         const at = stamp();
         const id = Number(db.prepare(`INSERT INTO deadlines (${FIELDS.join(', ')}, current_rev, created_at, updated_at, updated_by)
             VALUES (${FIELDS.map((k) => `@${k}`).join(', ')}, 0, @at, @at, @actor)`).run({ ...f, at, actor: who(actor) }).lastInsertRowid);
@@ -323,6 +332,7 @@ function update(db, id, input, actor) {
         const was = editable(row);
         const changed = FIELDS.filter((k) => f[k] !== was[k]);
         if (!changed.length) return { status: 'unchanged', id: row.id, title: row.title, rev: row.current_rev };
+        checkTrip(db, f, was);
         write(db, row.id, f);
         // Back to active from done: it is no longer "done at" anything.
         if (row.status === 'done' && f.status === 'active') db.prepare('UPDATE deadlines SET done_at = NULL WHERE id = ?').run(row.id);
@@ -367,6 +377,8 @@ function restore(db, id, rev, actor) {
         const old = findRevision(db, REVISIONS, row.id, rev);
         if (!old) throw bad('no_revision', `Revision ${String(rev).slice(0, 10)} does not exist.`, 404);
         const was = build(JSON.parse(old.snapshot));
+        // A trip that is gone since then is left out rather than refusing the restore (as flights do).
+        if (was.trip_id != null && !require('./trips').exists(db, was.trip_id)) was.trip_id = null;
         const now = editable(row);
         const changed = FIELDS.filter((k) => was[k] !== now[k]);
         if (!changed.length) return { status: 'unchanged', id: row.id, title: row.title, rev: row.current_rev };
