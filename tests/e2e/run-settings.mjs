@@ -78,9 +78,45 @@ const quiet = async () => { await page.waitForLoadState('networkidle'); await pa
 await signIn();
 await go('settings');
 
-await check('Settings shows the Time zone and Backups sections with the defaults', async () => {
+await check('The rail is grouped (Overview, then Data, Access, System) and the active item is marked', async () => {
+    const groups = await page.locator('.rail-nav .rail-group').evaluateAll((els) => els.map((e) => [e.dataset.group, (e.querySelector('.rail-group-label') || {}).textContent || '', [...e.querySelectorAll('a')].map((a) => a.textContent.trim()).join(',')]));
+    eq(groups.map((g) => g[0]).join(','), 'overview,data,access,system');
+    eq(groups[1][1] + groups[2][1] + groups[3][1], 'DataAccessSystem');
+    eq(groups[1][2], 'Digests,Places,Flights,Trips,Deadlines,Preferences,Portfolio');
+    eq(groups[3][2], 'Activity,Backups,Settings');
+    eq(await page.locator('.rail-nav a[aria-current=page]').innerText(), 'Settings');
+});
+await check('Settings opens on General (a two-column page with a sub-nav) and every sub-section has a route', async () => {
+    eq(await page.locator('.subnav a[aria-current=page]').innerText(), 'General');
+    eq(await page.locator('.subnav a').count(), 7);
+    ok(await page.locator('nav[aria-label="Settings sections"]').count(), 'subnav landmark');
+    for (const [id, sel] of [['appearance', '#s-theme'], ['account', '#s-session'], ['backups', '#s-bk-every'], ['webhooks', '#s-wh'], ['shortcuts', '#s-keys'], ['about', '#s-about']]) {
+        await go(`settings/${id}`);
+        eq(await page.locator('.settings-panel').getAttribute('data-section'), id);
+        ok(await page.locator(sel).first().isVisible(), `${id} content`);
+        eq(await page.locator('.subnav a[aria-current=page]').getAttribute('data-key'), `settings-nav-${id}`);
+    }
+    await go('settings/nope');
+    eq(await page.locator('.settings-panel').getAttribute('data-section'), 'general');
+    await page.locator('[data-key=settings-nav-appearance]').click();
+    await page.waitForFunction(() => location.hash === '#/settings/appearance');
+});
+await go('settings');
+await shot('settings-light-rail-open');
+await page.emulateMedia({ colorScheme: 'dark' });
+await page.locator('.rail-toggle').click();
+await page.waitForTimeout(300);
+await check('Dark theme and the collapsed rail: section labels are hidden from sight, the active item stays marked', async () => {
+    ok(await page.evaluate(() => document.querySelector('.rail-group-label').getBoundingClientRect().width <= 1), 'label hidden');
+    eq(await page.locator('.rail-nav a[aria-current=page]').count(), 1);
+});
+await shot('settings-dark-rail-collapsed');
+await page.locator('.rail-toggle').click();
+await page.emulateMedia({ colorScheme: 'light' });
+await check('Settings shows the Time zone (General) and the Backups section (its own sub-page) with the defaults', async () => {
     ok(await page.locator('#s-tz-input').isVisible(), 'tz input');
     eq(await page.locator('#s-tz-input').inputValue(), 'America/Chicago');
+    await go('settings/backups');
     eq(await page.locator('#s-bk-every').inputValue(), '24');
     eq(await page.locator('#s-bk-keep').inputValue(), '7');
     ok((await text('#s-bk-dir-help')).includes('mount a host folder into the container'), 'helper text');
@@ -101,6 +137,7 @@ await check('A valid zone shows a live "now there" preview and saves', async () 
     eq((await api('/settings')).settings.timezone, 'Asia/Tokyo');
     eq((await api('/series')).tz, 'Asia/Tokyo');
 });
+await go('settings/backups');
 await check('Test location: a writable folder is created and reported with free space', async () => {
     await page.fill('#s-bk-dir', NAS);
     await page.locator('[data-key=test-backup-dir]').click();
@@ -144,6 +181,12 @@ await check('Saving every 6 hours, keep 3, the new folder works and says it in w
 });
 
 await go('backups');
+await check('Backups uses the shared page header: lede with a link to Settings > Backups, actions on the right', async () => {
+    ok(await page.locator('.view > .page-header .lede').count(), 'lede');
+    eq(await page.locator('.page-header .lede a').getAttribute('href'), '#/settings/backups');
+    ok(await page.locator('.page-header .page-header-actions [data-key=backup-now]').count(), 'actions');
+});
+await shot('backups-header');
 await check('Backups shows the folder, schedule in words, no error; Back up now writes there with a time-of-day name', async () => {
     const t = await text('.backup-status');
     ok(t.includes(NAS) && t.includes('every 6 hours, keep the newest 3'), t.slice(0, 200));
@@ -206,6 +249,14 @@ await page.setViewportSize({ width: 390, height: 844 });
 await go('settings');
 await check('Settings fits a phone without sideways scroll', async () => ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'overflow'));
 await shot('settings-mobile');
+await page.locator('.tabbar .tab', { hasText: 'More' }).click();
+await check('The phone More sheet is grouped like the rail', async () => {
+    const g = await page.locator('dialog[open] .sheet-group').evaluateAll((els) => els.map((e) => e.dataset.group + ':' + [...e.querySelectorAll('a')].map((a) => a.textContent.trim()).join(',')));
+    eq(g.join(' | '), 'data:Places,Flights,Trips,Deadlines,Preferences,Portfolio | system:Activity,Backups,Settings');
+    eq(await page.locator('dialog[open] a[aria-current=page]').innerText(), 'Settings');
+});
+await shot('more-sheet-mobile');
+await page.keyboard.press('Escape');
 await page.setViewportSize({ width: 1280, height: 900 });
 await check('no console errors in the whole run', async () => eq(errors.length, 0, errors.slice(0, 3).join(' | ')));
 

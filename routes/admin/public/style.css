@@ -620,6 +620,16 @@ dl.facts dd { margin: 0; }
 .page-header-main { display: grid; gap: 6px; flex: 1 1 420px; min-width: 0; }
 .page-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .page-header-title { font-size: var(--fs-lg); }
+
+/* Settings: sub-nav on the left, one section on the right; stacked on phones. */
+.settings-layout { display: grid; grid-template-columns: 188px minmax(0, 1fr); gap: 28px; align-items: start; }
+.subnav { position: sticky; top: 76px; }
+.subnav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.subnav-link { display: flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: var(--r-ctl); color: var(--muted); font-weight: 500; text-decoration: none; }
+.subnav-link:hover { background: var(--surface-2); color: var(--ink); }
+.subnav-link[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.settings-panel { display: grid; gap: 24px; min-width: 0; }
+.settings-panel > section { display: grid; gap: 12px; align-content: start; }
 .page-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .row-between { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
 .row-between .lede { flex: 1 1 420px; }
@@ -1280,6 +1290,11 @@ td .chip { margin-left: 8px; }
     .event > .event-time { display: none; }
     .event-time-inline { display: inline; float: right; margin: 2px 0 0 12px; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
     .day-title { top: 56px; }
+    .settings-layout { grid-template-columns: 1fr; gap: 16px; }
+    .subnav { position: static; margin: 0 -4px; overflow-x: auto; }
+    .subnav ul { display: flex; gap: 6px; padding: 0 4px 4px; }
+    .subnav-link { white-space: nowrap; border: 1px solid var(--line); background: var(--surface); }
+    .subnav-link[aria-current="page"] { border-color: var(--accent); }
     .row-between > .btn, .page-header-actions > .btn { width: 100%; }
     .page-header-actions { flex: 1 1 100%; }
     .shortcuts { grid-template-columns: 1fr; gap: 4px; }

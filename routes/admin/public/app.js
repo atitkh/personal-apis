@@ -10,6 +10,7 @@ import { THEMES, setPreference } from './theme.js';
 import { installShortcuts, showShortcuts, GO } from './shortcuts.js';
 import { renderSignIn } from './views/signin.js';
 import { pageSkeleton } from './skeletons.js';
+import { SETTINGS_SECTIONS } from './settingsNav.js';
 
 router.register('overview', { title: 'Overview', icon: 'overview', nav: true, group: 'overview', mobile: true, load: () => import('./views/overview.js') });
 router.register('digests', { title: 'Digests', icon: 'digests', nav: true, group: 'data', mobile: true, load: () => import('./views/digests.js') });
@@ -190,6 +191,12 @@ addSource(() => router.all().map((r, i) => {
         run: () => router.navigate(router.href(r.name)),
     };
 }));
+
+// Settings sub-sections, found by name (the plain Settings entry above opens General).
+addSource(() => SETTINGS_SECTIONS.map((s, i) => ({
+    id: `settings:${s.id}`, group: 'Go to', icon: 'settings', label: `Settings: ${s.title}`, keywords: `${s.keywords} setting`, order: 50 + i,
+    run: () => router.navigate(router.href('settings', [s.id])),
+})));
 
 addSource(() => [
     {
