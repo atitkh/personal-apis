@@ -7,6 +7,19 @@ import { THEMES, preference, setPreference, onThemeChange } from './theme.js';
 const THEME_ICONS = { system: 'system', light: 'sun', dark: 'moon' };
 const RAIL_KEY = 'hub-rail';
 
+// The rail's sections, in the order the routes were registered. Overview has no label; the others do.
+const GROUP_LABELS = { overview: '', data: 'Data', access: 'Access', system: 'System' };
+function groupRoutes(list) {
+    const out = [];
+    for (const r of list) {
+        const id = r.group || 'system';
+        let g = out.find((x) => x.id === id);
+        if (!g) { g = { id, label: GROUP_LABELS[id] || '', items: [] }; out.push(g); }
+        g.items.push(r);
+    }
+    return out;
+}
+
 function brandMark() {
     // Three short cables into one jack: the hub as a patch bay.
     return h('span', { class: 'brand-mark', 'aria-hidden': 'true' },
@@ -26,11 +39,14 @@ export function createShell({ session, onSignOut, openPalette, api }) {
     const rail = h('aside', { class: 'rail', 'aria-label': 'Main' },
         h('a', { class: 'brand', href: router.href('overview') }, brandMark(), h('span', { class: 'rail-label', text: 'Personal hub' })),
         h('nav', { class: 'rail-nav', 'aria-label': 'Sections' },
-            h('ul', {}, routes.map((r) => {
-                const a = h('a', { href: router.href(r.name), class: 'rail-link', title: r.title }, icon(r.icon), h('span', { class: 'rail-label', text: r.title }));
-                navLinks.set(r.name, [a]);
-                return h('li', {}, a);
-            }))));
+            groupRoutes(routes).map(({ id, label, items }) => {
+                const lists = h('ul', { 'aria-labelledby': label ? `rail-group-${id}` : null }, items.map((r) => {
+                    const a = h('a', { href: router.href(r.name), class: 'rail-link', title: r.title }, icon(r.icon), h('span', { class: 'rail-label', text: r.title }));
+                    navLinks.set(r.name, [a]);
+                    return h('li', {}, a);
+                }));
+                return h('div', { class: 'rail-group', 'data-group': id }, label ? h('p', { class: 'rail-group-label rail-label', id: `rail-group-${id}`, text: label }) : null, lists);
+            })));
 
     let collapsed = false;
     try { collapsed = localStorage.getItem(RAIL_KEY) === 'collapsed'; } catch (e) { /* default */ }
@@ -133,12 +149,14 @@ export function createShell({ session, onSignOut, openPalette, api }) {
         openSheet({
             title: 'More',
             content: h('nav', { class: 'sheet-nav', 'aria-label': 'More sections' },
-                h('ul', {},
-                    rest.map((r) => {
+                groupRoutes(rest).map(({ id, label, items }) => h('div', { class: 'sheet-group', 'data-group': id },
+                    h('p', { class: 'sheet-group-label', id: `sheet-group-${id}`, text: label || 'Sections' }),
+                    h('ul', { 'aria-labelledby': `sheet-group-${id}` }, items.map((r) => {
                         const a = h('a', { class: 'sheet-link', href: router.href(r.name), 'aria-current': r.name === currentName ? 'page' : null }, icon(r.icon), h('span', { text: r.title }));
                         paintBadge(a, badges.get(r.name), r.name);
                         return h('li', {}, a);
-                    }),
+                    })))),
+                h('ul', { class: 'sheet-tools' },
                     h('li', { class: 'sheet-sep' }, h('button', { type: 'button', class: 'sheet-link', onclick: (e) => { e.target.closest('dialog').close(); openPalette(); } }, icon('search'), h('span', { text: 'Search or jump to' }))),
                     h('li', {}, h('button', { type: 'button', class: 'sheet-link', onclick: (e) => { e.target.closest('dialog').close(); onSignOut(); } }, icon('signout'), h('span', { text: 'Sign out' }))))),
         });

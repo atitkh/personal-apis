@@ -255,6 +255,8 @@ textarea { font-family: var(--font-read); font-size: var(--fs-md); line-height: 
 
 .rail-nav ul, .tabbar ul { list-style: none; margin: 0; padding: 0; }
 .rail-nav ul { display: grid; gap: 2px; }
+.rail-nav { display: grid; gap: 14px; align-content: start; overflow-y: auto; min-height: 0; }
+.rail-group-label { margin: 0 0 4px; padding: 0 10px; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .rail-link {
     display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 10px;
     border-radius: var(--r-ctl); color: var(--muted); text-decoration: none; font-weight: 500;
@@ -268,6 +270,8 @@ textarea { font-family: var(--font-read); font-size: var(--fs-md); line-height: 
 .rail-collapsed .rail-link, .rail-collapsed .brand { justify-content: center; padding: 0; }
 .rail-collapsed .brand { min-height: 38px; }
 .rail-collapsed .rail-foot { justify-content: center; }
+.rail-collapsed .rail-nav { gap: 10px; }
+.rail-collapsed .rail-group + .rail-group { border-top: 1px solid var(--line); padding-top: 10px; }
 
 .main-col { min-width: 0; display: flex; flex-direction: column; }
 .topbar {
@@ -439,6 +443,9 @@ dialog::backdrop { background: rgb(8 12 22 / .45); }
 .sheet-link[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .sheet-link[aria-current="page"] .icon { color: var(--accent); }
 .sheet-sep { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 6px; }
+.sheet-group + .sheet-group { margin-top: 6px; }
+.sheet-group-label { margin: 8px 0 2px; padding: 0 12px; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.sheet-tools { margin-top: 6px; }
 @keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } }
 
 /* ---------- toasts ---------- */

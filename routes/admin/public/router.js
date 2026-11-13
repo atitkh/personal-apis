@@ -3,7 +3,7 @@
 const routes = new Map();
 let listener = null;
 
-// def: { title, icon, nav (show in the rail), mobile (show in the bottom bar), load: () => import(...) }
+// def: { title, icon, nav (show in the rail), group (overview, data, access, system: the rail section), mobile (show in the bottom bar), load: () => import(...) }
 export function register(name, def) {
     routes.set(name, { name, ...def });
 }
