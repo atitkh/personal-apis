@@ -15,6 +15,7 @@ router.register('overview', { title: 'Overview', icon: 'overview', nav: true, mo
 router.register('digests', { title: 'Digests', icon: 'digests', nav: true, mobile: true, load: () => import('./views/digests.js') });
 router.register('places', { title: 'Places', icon: 'places', nav: true, load: () => import('./views/places.js') });
 router.register('flights', { title: 'Flights', icon: 'flights', nav: true, load: () => import('./views/flights.js') });
+router.register('trips', { title: 'Trips', icon: 'trips', nav: true, load: () => import('./views/trips.js') });
 router.register('deadlines', { title: 'Deadlines', icon: 'deadlines', nav: true, load: () => import('./views/deadlines.js') });
 router.register('preferences', { title: 'Preferences', icon: 'preferences', nav: true, load: () => import('./views/preferences.js') });
 router.register('keys', { title: 'API keys', short: 'Keys', icon: 'keys', nav: true, mobile: true, load: () => import('./views/keys.js') });
@@ -227,6 +228,10 @@ addSource(() => [
         run: () => router.navigate(router.href('deadlines', [], { new: '1' })),
     },
     {
+        id: 'act:trip', group: 'Actions', icon: 'plus', label: 'New trip', keywords: 'add trip journey vacation conference travel', order: 8.5,
+        run: () => router.navigate(router.href('trips', [], { new: '1' })),
+    },
+    {
         id: 'act:preference', group: 'Actions', icon: 'plus', label: 'Add preference', keywords: 'new preference seat airline call hours food habit likes', order: 9,
         run: () => router.navigate(router.href('preferences', [], { new: '1' })),
     },
@@ -249,13 +254,14 @@ addSource(() => [
 ]);
 
 addSource(async () => {
-    const [daily, weekly, keys, places, trips, due] = await Promise.all([
+    const [daily, weekly, keys, places, flights, due, tripList] = await Promise.all([
         api('/digests?kind=daily&limit=200').catch(() => ({ digests: [] })),
         api('/digests?kind=weekly&limit=60').catch(() => ({ digests: [] })),
         api('/keys').catch(() => ({ keys: [] })),
         api('/places').catch(() => ({ places: [] })),
         api('/flights?limit=200').catch(() => ({ flights: [] })),
         api('/deadlines?status=active&limit=200').catch(() => ({ deadlines: [] })),
+        api('/trips?limit=200').catch(() => ({ trips: [] })),
     ]);
     return [
         ...daily.digests.map((d, i) => digestCommand(d, 100 + i)),
@@ -270,10 +276,16 @@ addSource(async () => {
             run: () => router.navigate(router.href('places', [String(p.id)])),
         })),
         // Route, number and date only: never the booking reference, seat or notes.
-        ...trips.flights.map((f, i) => ({
+        ...flights.flights.map((f, i) => ({
             id: `flight:${f.id}`, group: 'Flights', icon: 'flights', label: `${f.airline_iata} ${f.flight_number}  ${f.origin_iata} to ${f.dest_iata}`, hint: f.dep_local_date,
             keywords: `flight ${f.airline_name || ''} ${f.origin_iata} ${f.dest_iata} ${f.dep_local_date}`, order: 1000 + i,
             run: () => router.navigate(router.href('flights', [String(f.id)])),
+        })),
+        // Title, kind and start date only: never notes or item references.
+        ...tripList.trips.map((t, i) => ({
+            id: `trip:${t.id}`, group: 'Trips', icon: 'trips', label: t.title, hint: t.start_date || t.phase,
+            keywords: `trip ${t.kind} ${t.phase} ${t.destination || ''}`, order: 1800 + i,
+            run: () => router.navigate(router.href('trips', [String(t.id)])),
         })),
         // Title, kind and date only: never the reference, amount, issuer or notes.
         ...due.deadlines.map((d, i) => ({

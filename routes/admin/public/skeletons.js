@@ -92,6 +92,11 @@ const SHAPES = {
             h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
             h('section', { class: 'skel-stack' }, bar('sk-title w-20'), tableRows(5, 5)))),
 
+    trips: () => wrap('view trips',
+        h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab'), bar('sk-tab')),
+        h('div', { class: 'tab-panel skel-stack' }, bar('sk-title w-20'), rows(3, () => bar('sk-block')))),
+
     preferences: () => wrap('view preferences',
         h('div', { class: 'view-intro row-between' }, h('div', { class: 'lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
         h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
