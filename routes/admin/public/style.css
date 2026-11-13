@@ -1493,3 +1493,62 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 .sug-main p { margin: 0; }
 .trip-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
 .drawer-section > [data-key="add-item"] { justify-self: start; }
+
+/* ---------- Lifelog ---------- */
+.lifelog-privacy { margin: 0; }
+.lifelog-bar { margin-top: 4px; }
+.lifelog-nav .lifelog-date { width: auto; min-width: 11em; }
+.lifelog-search { display: flex; gap: 8px; align-items: center; }
+.lifelog-search input[type="search"] { min-width: 14em; }
+.lifelog-day { margin: 0; font-size: var(--fs-md); }
+.lifelog-strip { position: relative; display: grid; gap: 4px; padding: 12px 14px 22px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); }
+.lifelog-lanes { position: relative; min-height: 26px; background: repeating-linear-gradient(to right, var(--line) 0 1px, transparent 1px calc(100% / 8)); }
+.lifelog-block { position: absolute; height: 22px; min-width: 6px; box-sizing: border-box; overflow: hidden; padding: 2px 6px; border: 1px solid var(--c); border-radius: 4px; background: color-mix(in srgb, var(--c) 24%, var(--surface)); color: var(--ink); font-size: var(--fs-xs); line-height: 16px; white-space: nowrap; text-decoration: none; }
+.lifelog-block:hover { background: color-mix(in srgb, var(--c) 40%, var(--surface)); }
+.lifelog-block.is-cancelled, .lifelog-episode.is-cancelled { opacity: .55; }
+.lifelog-block.is-cancelled { border-style: dashed; }
+.lifelog-block .block-text { display: block; overflow: hidden; text-overflow: ellipsis; }
+.lifelog-ticks { display: grid; grid-template-columns: repeat(24, 1fr); gap: 1px; height: 10px; }
+.lifelog-tick { background: color-mix(in srgb, var(--accent) calc(var(--d) * 100%), var(--surface-2)); border-radius: 1px; }
+.lifelog-hours { position: relative; height: 14px; color: var(--muted); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.lifelog-hours span { position: absolute; transform: translateX(-50%); }
+.lifelog-hours span:first-child { transform: none; }
+.lifelog-hours span:last-child { transform: translateX(-100%); }
+.lifelog-episodes { list-style: none; margin: 0; padding: 0; display: grid; }
+.lifelog-episode { display: grid; grid-template-columns: minmax(9em, 12em) 1fr; gap: 4px 16px; padding: 10px 2px; border-top: 1px solid var(--line); }
+.lifelog-episode:first-child { border-top: 0; }
+.lifelog-episode p { margin: 0; }
+.lifelog-episode .ep-time { font-variant-numeric: tabular-nums; }
+.lifelog-episode.is-cancelled .row-link { text-decoration: line-through; }
+.lifelog-episode .ep-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.lifelog-summary { margin: 0; }
+.lifelog-raw { display: grid; gap: 10px; }
+.lifelog-raw > button { justify-self: start; }
+.lifelog-raw-body { display: grid; gap: 10px; }
+.lifelog-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.lifelog-lines { list-style: none; margin: 0; padding: 0; display: grid; }
+.lifelog-lines-wrap { display: grid; gap: 8px; justify-items: start; }
+.lifelog-lines-wrap .lifelog-lines { justify-self: stretch; }
+.lifelog-line { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.lifelog-line:first-child { border-top: 0; }
+.lifelog-line .line-main { display: grid; gap: 2px; min-width: 0; flex: 1 1 260px; }
+.lifelog-line p { margin: 0; overflow-wrap: anywhere; }
+.lifelog-line .line-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.lifelog-line .line-time { font-variant-numeric: tabular-nums; color: var(--muted); }
+.lifelog-line .line-text { white-space: pre-wrap; }
+.lifelog-status { margin: 0; }
+.lifelog-sources, .lifelog-results { display: grid; gap: 10px; }
+.lifelog-menu { position: relative; }
+.lifelog-menu > summary { list-style: none; cursor: pointer; }
+.lifelog-menu > summary::-webkit-details-marker { display: none; }
+.lifelog-menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; display: grid; padding: 6px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-panel); min-width: 14em; box-shadow: 0 6px 20px rgb(0 0 0 / 18%); }
+.lifelog-state { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.lifelog-linker { display: grid; gap: 10px; }
+.lifelog-linker .lifelog-lines-wrap { max-height: 20em; overflow: auto; }
+.lifelog-preview { margin: 0; min-height: 2.6em; }
+.lifelog-dialog textarea { width: 100%; }
+@media (max-width: 640px) {
+    .lifelog-episode { grid-template-columns: 1fr; }
+    .lifelog-search, .lifelog-search input[type="search"] { width: 100%; }
+    .lifelog-hours span:nth-child(even) { display: none; }
+}

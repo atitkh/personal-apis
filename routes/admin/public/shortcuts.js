@@ -11,6 +11,7 @@ export const GO = [
     ['p', 'places', 'Places'],
     ['f', 'flights', 'Flights'],
     ['t', 'trips', 'Trips'],
+    ['l', 'lifelog', 'Lifelog'],
     ['r', 'deadlines', 'Deadlines'],
     ['e', 'preferences', 'Preferences'],
     ['k', 'keys', 'API keys'],

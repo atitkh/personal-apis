@@ -20,6 +20,7 @@ const FLOWS = {
     keys: ['run-keys.mjs', null, null],
     deadlines: ['run-deadlines.mjs', null, 'deadlines-seed.js'],
     trips: ['run-trips.mjs', null, 'trips-seed.js'],
+    lifelog: ['run-lifelog.mjs', null, 'lifelog-seed.js'],
     preferences: ['run-preferences.mjs', null, 'preferences-seed.js'],
     briefing: ['run-briefing.mjs', null, 'briefing-seed.js'],
     'briefing-empty': ['run-briefing.mjs', 'empty', null],

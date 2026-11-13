@@ -98,6 +98,11 @@ const SHAPES = {
         h('div', { class: 'vtabs' }, bar('sk-tab'), bar('sk-tab'), bar('sk-tab')),
         h('div', { class: 'tab-panel skel-stack' }, bar('sk-title w-20'), rows(3, () => bar('sk-block')))),
 
+    lifelog: () => wrap('view lifelog',
+        h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
+        h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip'), bar('sk-chip')), bar('sk-search')),
+        h('section', { class: 'skel-stack' }, bar('sk-title w-30'), bar('sk-block'), rows(3, () => bar('sk-line w-80')))),
+
     preferences: () => wrap('view preferences',
         h('div', { class: 'page-header' }, h('div', { class: 'page-header-main lede' }, bar('sk-line w-90'), bar('sk-line w-60')), bar('sk-button')),
         h('div', { class: 'toolbar' }, h('div', { class: 'row' }, bar('sk-chip'), bar('sk-chip')), bar('sk-search')),

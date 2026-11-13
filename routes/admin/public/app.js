@@ -17,6 +17,7 @@ router.register('digests', { title: 'Digests', icon: 'digests', nav: true, group
 router.register('places', { title: 'Places', icon: 'places', nav: true, group: 'data', load: () => import('./views/places.js') });
 router.register('flights', { title: 'Flights', icon: 'flights', nav: true, group: 'data', load: () => import('./views/flights.js') });
 router.register('trips', { title: 'Trips', icon: 'trips', nav: true, group: 'data', load: () => import('./views/trips.js') });
+router.register('lifelog', { title: 'Lifelog', icon: 'lifelog', nav: true, group: 'data', load: () => import('./views/lifelog.js') });
 router.register('deadlines', { title: 'Deadlines', icon: 'deadlines', nav: true, group: 'data', load: () => import('./views/deadlines.js') });
 router.register('preferences', { title: 'Preferences', icon: 'preferences', nav: true, group: 'data', load: () => import('./views/preferences.js') });
 router.register('portfolio', { title: 'Portfolio', icon: 'portfolio', nav: true, group: 'data', load: () => import('./views/portfolio.js') });
@@ -237,6 +238,18 @@ addSource(() => [
     {
         id: 'act:trip', group: 'Actions', icon: 'plus', label: 'New trip', keywords: 'add trip journey vacation conference travel', order: 8.5,
         run: () => router.navigate(router.href('trips', [], { new: '1' })),
+    },
+    {
+        id: 'act:lifelog', group: 'Actions', icon: 'lifelog', label: 'Open Lifelog', keywords: 'lifelog log day what i did observations episodes', order: 8.6,
+        run: () => router.navigate(router.href('lifelog')),
+    },
+    {
+        id: 'act:lifelog-episode', group: 'Actions', icon: 'plus', label: 'New episode', keywords: 'lifelog add episode ate walked slept sat', order: 8.7,
+        run: () => router.navigate(router.href('lifelog', [], { new: 'episode' })),
+    },
+    {
+        id: 'act:lifelog-note', group: 'Actions', icon: 'plus', label: 'Add note', keywords: 'lifelog add note observation raw line', order: 8.8,
+        run: () => router.navigate(router.href('lifelog', [], { new: 'note' })),
     },
     {
         id: 'act:preference', group: 'Actions', icon: 'plus', label: 'Add preference', keywords: 'new preference seat airline call hours food habit likes', order: 9,
