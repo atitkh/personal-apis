@@ -25,7 +25,23 @@ Plan: `~/.openclaw/workspace/memory/projects/personal-hub-trips-plan.md` (decisi
   activity labels and a Trips activity filter; Keys catalogue entries for trips:read/agent-write/api-write.
 - Tests: tests/trips.test.js, tests/tripsHub.test.js, tests/adminTrips.test.js; route snapshot regenerated.
 
+## Stage 2 (agents and briefing): done, local commits only
+- Code (3c8961e): services/tripItems.js (items: kinds stay/ground/activity/booking/other, real dates, end >= start,
+  items outside the trip dates allowed, reference only with include_reference, audit trip id + item id + title +
+  field names), services/tripSuggest.js (suggest/accept/dismiss/restoreDismissed), trips.upcoming, items in trips.get.
+- REST /hub/trips/:id/items (GET read; POST, PATCH, POST .../remove api-write; ?include_reference=true on GET).
+  Admin: items CRUD incl. DELETE, GET /trips/suggestions, POST suggestions/accept {key, title?} (stale key = 409
+  stale_suggestion), suggestions/dismiss {key}, suggestions/restore-dismissed. Audit trip_item_added/updated/removed,
+  trip_suggestion_accepted/dismissed, trip_suggestions_restored (labels + Trips activity filter).
+- MCP tool `trips` (read: list, get, upcoming, suggest; write: add, edit, link_flight, unlink_flight, add_item,
+  edit_item, remove_item; item args are item_title/item_kind). Overview WRITE_WARNING.trips; Keys texts updated.
+- Briefing hook briefingHooks.trips (ongoing, starts, deadline pressure; ids trips:<id>:ongoing-<start>,
+  starts-<start>, deadline-<deadlineId>).
+- Suggestion choices: only chains of 2+ flights; city from airports.city (else name); a home chain runs until the
+  flight that lands home, a new home departure closes an open one.
+- Tests changed on purpose: tests/mcp.test.js (trips in tool lists), tests/trips.test.js (agent tool now exists),
+  tests/noRemoteDelete.test.js (named exception trips.remove_item). New: tripsItems, tripsSuggest, mcpTrips,
+  tripsBriefing. Full suite: 50 suites, 706 tests passed.
+
 ## Next
-- Stage 2: items service + REST + admin API, `suggest` (+ accept/dismiss admin API), MCP tool `trips`, briefing hook,
-  overview WRITE_WARNING text, items in the trip detail.
 - Stage 3: dashboard Trips page. Stage 4: review, deploy, push.
