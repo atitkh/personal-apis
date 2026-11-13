@@ -7,7 +7,7 @@
 // reason is shown next to the field. Remove hides a preference and keeps its history; Delete permanently removes it for good.
 // Server text goes in as text.
 import {
-    h, icon, button, plural, ago, when, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, actorName, pageHeader } from '../ui.js';
+    h, icon, button, plural, ago, when, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, actorName, pageHeader, formActions } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
 const AREAS = [['travel', 'Travel'], ['communication', 'Communication'], ['work', 'Work'], ['food', 'Food'], ['health', 'Health'],
@@ -106,7 +106,7 @@ function prefForm({ values, mode, submit, onSave, onCancel, onDirty }) {
             }
         },
     }, fArea.el, fKey.el, fValue.el, fNotes.el, formError,
-    h('div', { class: 'row' }, save, onCancel ? button({ text: 'Cancel', variant: 'quiet', size: 'small', onClick: onCancel }) : null));
+    formActions(save, onCancel ? button({ text: 'Cancel', variant: 'quiet', onClick: onCancel }) : null));
     return { el: form, dirty, save };
 }
 

@@ -8,7 +8,7 @@
 // appears only in the drawer and the forms, never in a table, a toast or the palette. Server text goes in as text.
 import {
     h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer,
-    chip, chipNav, fact, hidden, actorName, dayLabel, pageHeader } from '../ui.js';
+    chip, chipNav, fact, hidden, actorName, dayLabel, pageHeader, formActions } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 import { passportTab, getUnit, distanceText } from '../passport.js';
 import {
@@ -373,7 +373,7 @@ function flightForm(ctx, { values, trips, mode, submit, onSave, onCancel, onDirt
             dt('actual_arr', 'Actual arrival', 'The clock at the arrival airport.'))),
     extra ? extra.el : null,
     error,
-    h('div', { class: 'row' }, save, onCancel ? button({ text: 'Cancel', variant: 'quiet', size: 'small', onClick: onCancel }) : null));
+    formActions(save, onCancel ? button({ text: 'Cancel', variant: 'quiet', onClick: onCancel }) : null));
     if (live) addLockNotes(form, live.flight.locked_fields || [], live.onUnlock);
     return { el: form, dirty, save };
 }

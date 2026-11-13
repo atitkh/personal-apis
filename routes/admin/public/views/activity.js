@@ -237,7 +237,7 @@ export async function render(ctx) {
     const label = (TYPES.find(([id]) => id === type) || TYPES[0])[1].toLowerCase();
     return h('div', { class: 'view activity' },
         pageHeader({ lede: 'What happened on the hub, newest first: sign-ins, keys, domain switches, digest edits, backups and agent calls.' }),
-        chipNav({ label: 'Show', current: type, items: TYPES.map(([id, text]) => ({ id, label: text, href: href('activity', [], { type: id === 'all' ? null : id }) })) }),
+        h('div', { class: 'toolbar' }, chipNav({ label: 'Show', current: type, items: TYPES.map(([id, text]) => ({ id, label: text, href: href('activity', [], { type: id === 'all' ? null : id }) })) })),
         events.length
             ? h('div', {}, list, foot)
             : emptyState({

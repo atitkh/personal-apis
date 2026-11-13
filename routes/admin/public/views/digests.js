@@ -6,7 +6,7 @@
 //   #/digests/weekly/2026-W45    the same for a week
 // History, compare and restore live in a right-hand drawer so the text keeps its place.
 import {
-    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, dayLabel, hidden, actorName, pageHeader } from '../ui.js';
+    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, dayLabel, hidden, actorName, pageHeader, formActions } from '../ui.js';
 import { monthCalendar, isoDay, parseDay, addDays, addMonths, monthLabel } from '../charts.js';
 import { href, navigate } from '../router.js';
 
@@ -477,7 +477,7 @@ async function reader(ctx, kind, period) {
         h('label', { for: 'd-body', class: 'visually-hidden', text: 'Digest text' }), area,
         h('label', { for: 'd-note' }, 'Note', note),
         error,
-        h('div', { class: 'row' }, save, button({ text: 'Cancel', variant: 'quiet', onClick: cancel })));
+        formActions(save, button({ text: 'Cancel', variant: 'quiet', onClick: cancel })));
         setTimeout(() => area.focus(), 0);
     } else {
         main = h('article', { class: 'reading', 'aria-label': periodTitle(kind, period) },

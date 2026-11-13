@@ -431,6 +431,12 @@ export function pageHeader({ title, lede, actions, meta } = {}) {
         acts.length ? h('div', { class: 'page-header-actions' }, acts) : null);
 }
 
+// The action row at the foot of a form (drawer or page): primary first, then quiet buttons. Sticks to the
+// bottom of a drawer so Save stays in reach on a long form.
+export function formActions(...kids) {
+    return h('div', { class: 'form-actions' }, kids.flat().filter(Boolean));
+}
+
 export function emptyState({ title, text, action, iconName = 'info' }) {
     return h('div', { class: 'empty' },
         icon(iconName, 'empty-icon'),

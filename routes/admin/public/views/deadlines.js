@@ -7,7 +7,7 @@
 // The reference (a document or policy number) is masked until you press Show and appears only in the drawer and the
 // forms, never in a table, a toast or the palette. Server text goes in as text. Nothing is ever deleted.
 import {
-    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, fact, hidden, actorName, dayLabel, pageHeader } from '../ui.js';
+    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, fact, hidden, actorName, dayLabel, pageHeader, formActions } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
 const TABS = [['upcoming', 'Upcoming'], ['all', 'All'], ['done', 'Done']];
@@ -330,7 +330,7 @@ function deadlineForm(ctx, { values, mode, submit, onSave, onCancel, onDirty }) 
         tx('trip_id', 'Trip id (flights trips)', { type: 'number', min: '1', inputmode: 'numeric' }, 'Optional. The number of a trip in Flights.'),
         h('div', { class: 'wide-field' }, field('Notes', notes))),
     error,
-    h('div', { class: 'row' }, save, onCancel ? button({ text: 'Cancel', variant: 'quiet', size: 'small', onClick: onCancel }) : null));
+    formActions(save, onCancel ? button({ text: 'Cancel', variant: 'quiet', onClick: onCancel }) : null));
     paint();
     return { el: form, dirty, save };
 }

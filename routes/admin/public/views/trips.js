@@ -5,7 +5,7 @@
 // Above the list, suggested trips made from flights that are on no trip: edit the name, Accept or Dismiss. An item's
 // reference (a booking number) is fetched and shown only after Show reference, never in a list. Server text goes in as text.
 import {
-    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, fact, hidden, actorName, dayLabel, pageHeader } from '../ui.js';
+    h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, fact, hidden, actorName, dayLabel, pageHeader, formActions } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
 
 const TABS = [['upcoming', 'Upcoming'], ['ongoing', 'Ongoing'], ['past', 'Past']];
@@ -142,7 +142,7 @@ function tripForm({ values, mode, submit, onSave, onCancel, onDirty }) {
             h('label', { class: 'check', for: cancelled.id }, cancelled, h('span', { text: 'This trip is cancelled' })),
             h('p', { class: 'help', text: 'A cancelled trip moves to Past with a Cancelled chip. Its flights stay linked.' }))) : null)),
     error,
-    h('div', { class: 'row' }, save, onCancel ? button({ text: 'Cancel', variant: 'quiet', size: 'small', onClick: onCancel }) : null));
+    formActions(save, onCancel ? button({ text: 'Cancel', variant: 'quiet', onClick: onCancel }) : null));
     return { el: form, dirty, save };
 }
 
@@ -208,7 +208,7 @@ function itemForm({ values, mode, onSave, onCancel }) {
             h('p', { class: 'help', text: 'A booking or confirmation number. Hidden by default, and never shown in the list.' }))),
         h('div', { class: 'wide-field' }, field('Notes', f.notes))),
     error,
-    h('div', { class: 'row' }, save, button({ text: 'Cancel', variant: 'quiet', size: 'small', onClick: onCancel })));
+    formActions(save, button({ text: 'Cancel', variant: 'quiet', onClick: onCancel })));
     return { el: form, dirty: () => ITEM_FIELDS.some((k) => !Object.is(now()[k], base[k])), first: f.title };
 }
 
