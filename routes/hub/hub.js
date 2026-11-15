@@ -88,6 +88,7 @@ router.use('/deadlines', require('./deadlines')(handle));
 router.use('/trips', require('./trips')(handle));
 router.use('/links', require('./links')(handle));
 router.use('/preferences', require('./preferences')(handle));
+router.use('/entities', require('./entities')(handle));
 router.use('/lifelog', require('./lifelog')(handle));
 
 router.use((req, res) => res.status(404).json({ error: 'not_found', message: 'No such hub route.' }));

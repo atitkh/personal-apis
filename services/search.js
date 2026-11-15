@@ -88,6 +88,17 @@ const ADAPTERS = {
         }));
     },
 
+    // Name, aliases, kind and notes: what a person types to find someone. Names are content, so only this safe text.
+    entities(db, terms, limit) {
+        const w = where(['kind', 'name', 'aliases', 'notes'], terms);
+        return db.prepare(`SELECT id, kind, name, aliases, notes FROM entities WHERE ${w.sql} ORDER BY kind, name COLLATE NOCASE LIMIT ?`)
+            .all(...w.args, limit).map((r) => {
+                let al = [];
+                try { al = JSON.parse(r.aliases); } catch (e) { al = []; }
+                return { id: r.id, title: clip(r.name, TITLE_CHARS), snippet: snippetOf([al.join(', '), r.notes].filter(Boolean).join(' · ') || r.kind, terms), kind: r.kind };
+            });
+    },
+
     preferences(db, terms, limit) {
         const w = where(['area', '"key"', 'value', 'notes'], terms);
         return db.prepare(`SELECT id, area, "key", value, notes FROM preferences WHERE removed_at IS NULL AND ${w.sql}

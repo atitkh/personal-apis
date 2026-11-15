@@ -14,6 +14,7 @@ export const GO = [
     ['l', 'lifelog', 'Lifelog'],
     ['r', 'deadlines', 'Deadlines'],
     ['e', 'preferences', 'Preferences'],
+    ['n', 'entities', 'Entities'],
     ['k', 'keys', 'API keys'],
     ['a', 'agents', 'Agent access'],
     ['s', 'settings', 'Settings'],

@@ -19,6 +19,7 @@ const TYPES = [
     ['deadlines', 'Deadlines'],
     ['trips', 'Trips'],
     ['preferences', 'Preferences'],
+    ['entities', 'Entities'],
     ['lifelog', 'Lifelog'],
     ['settings', 'Settings'],
     ['signins', 'Sign-ins'],
@@ -30,7 +31,7 @@ const SETTING_NAME = {
 };
 const settingChange = (d) => (d.from === undefined || d.to === undefined ? '' : ` from ${d.from === null ? 'default' : d.from} to ${d.to === null ? 'default' : d.to}`);
 const NONE = { keys: 'No key changes yet.', agents: 'No agent calls yet.', backups: 'No backups yet.', domains: 'No domain changes yet.', digests: 'No digest edits yet.', places: 'No place changes yet.', flights: 'No flight changes yet.', deadlines: 'No deadline changes yet.', trips: 'No trip changes yet.', preferences: 'No preference changes yet.', lifelog: 'No lifelog changes yet.', settings: 'No settings changes yet.', signins: 'No sign-ins yet.' };
-const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines', trips: 'Trips', preferences: 'Preferences', lifelog: 'Lifelog' };
+const DOMAIN_TITLE = { digests: 'Digests', portfolio: 'Portfolio', places: 'Places', flights: 'Flights', deadlines: 'Deadlines', trips: 'Trips', preferences: 'Preferences', entities: 'Entities', lifelog: 'Lifelog' };
 const ICON = {
     login: 'user', logout: 'user', login_failed: 'warn',
     key_created: 'keys', key_updated: 'keys', key_revoked: 'keys',
@@ -50,6 +51,7 @@ const ICON = {
     link_created: 'overview', link_removed: 'overview', search_settings_changed: 'settings', search_reindexed: 'settings',
     webhook_created: 'agents', webhook_updated: 'agents', webhook_deleted: 'agents', webhook_tested: 'agents', webhook_run: 'agents',
     preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences', preference_deleted: 'preferences',
+    entity_created: 'entities', entity_updated: 'entities', entity_restored: 'entities', entity_deleted: 'entities',
     lifelog_pushed: 'agents', lifelog_observation_added: 'agents', lifelog_episode_created: 'agents', lifelog_episode_updated: 'agents',
     lifelog_episode_restored: 'agents', lifelog_episode_linked: 'agents', lifelog_episode_unlinked: 'agents', lifelog_forgotten: 'warn',
     deadline_created: 'calendar', deadline_updated: 'calendar', deadline_done: 'calendar', deadline_ended: 'calendar', deadline_restored: 'calendar',
@@ -58,6 +60,7 @@ const RULE_NAME = { street: 'street', zone: 'zone', radius: 'circle' };
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 const strong = (text) => h('strong', { text });
+const entityWhat = (d) => (d.kind ? `a ${d.kind === 'organization' ? 'organization' : d.kind}` : 'an entity');
 const prefName = (d) => (d.key ? `${d.key.replace(/_/g, ' ')}${d.area ? ` (${d.area})` : ''}` : 'a preference');
 const domainName = (n) => DOMAIN_TITLE[n] || n || 'a domain';
 const readableScope = (s) => { const e = explain(s); return e.domain === '*' ? 'everything' : `${e.title} ${e.label.toLowerCase()}`; };
@@ -155,6 +158,10 @@ function sentence(e) {
         ? [who, ` deleted ${plural(d.count, 'dismissed found flight')}`]
         : [who, ' deleted the found flight ', strong(d.flight || 'a flight')];
     case 'deadline_deleted': return [who, ' deleted the deadline ', strong(d.title || 'a deadline')];
+    case 'entity_created': return [who, ` added ${entityWhat(d)}`];
+    case 'entity_updated': return [who, ` changed ${entityWhat(d)}${d.fields && d.fields.length ? ` (${d.fields.join(', ')})` : ''}`];
+    case 'entity_restored': return [who, ` restored an older version of ${entityWhat(d)}`];
+    case 'entity_deleted': return [who, ` deleted ${entityWhat(d)}${d.links ? ` and ${d.links} link${d.links === 1 ? '' : 's'}` : ''}`];
     case 'preference_deleted': return [who, ' deleted the preference ', strong(prefName(d))];
     case 'digest_deleted': return [who, ' deleted ', d.kind === 'daily' ? `the daily digest for ${dayLabel(d.period, { month: 'short', day: 'numeric' })}` : `the weekly review for ${d.period}`];
     case 'place_suggestion_deleted': return d.count != null

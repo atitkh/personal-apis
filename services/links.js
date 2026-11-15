@@ -26,6 +26,7 @@ const DESCRIBE = {
     flights: (db, id) => { const r = db.prepare('SELECT airline_iata, flight_number, origin_iata, dest_iata, dep_local_date FROM flights WHERE id = ?').get(id); return r && { title: `${r.airline_iata} ${r.flight_number} ${r.origin_iata} to ${r.dest_iata}`, date: r.dep_local_date }; },
     trips: (db, id) => { const r = db.prepare('SELECT title, start_date, kind FROM trips WHERE id = ?').get(id); return r && { title: r.title, date: r.start_date || undefined, kind: r.kind }; },
     lifelog: (db, id) => { const r = db.prepare('SELECT title, local_date, kind FROM lifelog_episodes WHERE id = ?').get(id); return r && { title: r.title, date: r.local_date, kind: r.kind }; },
+    entities: (db, id) => { const r = db.prepare('SELECT name, kind FROM entities WHERE id = ?').get(id); return r && { title: r.name, kind: r.kind }; },
     portfolio(db, id) {
         const path = require('path');
         const { readJson } = require('../routes/portfolio/freshJson');
@@ -34,7 +35,7 @@ const DESCRIBE = {
         return e ? { title: e.title || '', date: e.date ? String(e.date) : undefined } : null;
     },
 };
-// Domains registered later (entities) add themselves here.
+// A domain added later can add itself here with register().
 const register = (name, fn) => { DESCRIBE[name] = fn; };
 const linkable = () => Object.keys(DESCRIBE).filter((n) => domains.exists(n));
 

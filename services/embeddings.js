@@ -147,6 +147,11 @@ const SOURCES = {
     },
     deadlines: (db) => db.prepare('SELECT id, title, kind, due_date, issuer, notes FROM deadlines').all()
         .map((r) => ({ id: r.id, title: r.title, text: [r.title, r.kind, r.issuer, r.notes].filter(Boolean).join('. '), snippet: r.notes || r.issuer || r.kind, date: r.due_date, kind: r.kind })),
+    entities: (db) => db.prepare('SELECT id, kind, name, aliases, notes FROM entities').all().map((r) => {
+        let al = [];
+        try { al = JSON.parse(r.aliases); } catch (e) { al = []; }
+        return { id: r.id, title: r.name, text: [r.name, r.kind, al.join(', '), r.notes].filter(Boolean).join('. '), snippet: r.notes || al.join(', ') || r.kind, kind: r.kind };
+    }),
     preferences: (db) => db.prepare('SELECT id, area, "key", value, notes FROM preferences WHERE removed_at IS NULL').all()
         .map((r) => ({ id: r.id, title: `${r.area}: ${r.key}`, text: `${r.area} ${r.key}: ${r.value}. ${r.notes || ''}`, snippet: r.value, kind: r.area })),
     places: (db) => db.prepare('SELECT id, label, kind, notes FROM places').all()

@@ -161,7 +161,7 @@ function buildServer(conn, key, report = () => {}) {
 
     if (mayUseGeneral(key, 'hub_search')) server.registerTool('hub_search', {
         title: 'Hub search',
-        description: 'Look up anything across the domains you can read (digests, deadlines, preferences, places, flights, trips, lifelog episodes, portfolio): every word of q must appear. Results are grouped by domain with short snippets and ids; call that domain\'s tool with get for the full record. Raw lifelog lines are not searched here. When semantic search is on, results can also match by meaning (match: keyword, semantic or both).',
+        description: 'Look up anything across the domains you can read (digests, deadlines, preferences, places, flights, trips, lifelog episodes, entities, portfolio): every word of q must appear. Results are grouped by domain with short snippets and ids; call that domain\'s tool with get for the full record. Raw lifelog lines are not searched here. When semantic search is on, results can also match by meaning (match: keyword, semantic or both).',
         inputSchema: {
             q: z.string().min(1).max(search.MAX_Q).describe('Words to look for (all of them must appear)'),
             domains: z.array(z.string().max(40)).max(20).optional().describe('Only these domains (default: all you can read)'),
