@@ -72,7 +72,7 @@ export function linkedSection(ctx, domain, id) {
                 return ctx.api('/links', { method: 'POST', body: { from: { domain, id: String(id) }, to: { domain: d, id: rest.join('|') }, rel: rel.value.trim() || undefined, note: note.value.trim() || undefined } });
             },
         });
-        if (done) { toast(done.status === 'exists' ? 'Already linked' : 'Linked'); load(); }
+        if (done) { toast(done.status === 'created' ? 'Linked' : 'Already linked'); load(); }
     });
 
     load();
