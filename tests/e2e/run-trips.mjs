@@ -253,6 +253,8 @@ await check('Activity shows the trip rows in plain words', async () => {
 await check('palette finds a trip and the New trip action', async () => {
     await go('overview'); await page.keyboard.press('Control+k'); await page.waitForSelector('dialog[open] input');
     await page.fill('dialog[open] input', 'Spring');
+    // the palette loads trips, flights and keys when it opens: wait for the entry instead of reading at once
+    await page.waitForSelector('dialog[open] .palette-item:has-text("Spring break")', { timeout: 8000 }).catch(() => {});
     ok((await text('dialog[open]')).includes('Spring break'), 'trip entry');
     await page.fill('dialog[open] input', 'New trip');
     ok((await text('dialog[open]')).includes('New trip'), 'action');
