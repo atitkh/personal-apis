@@ -1,4 +1,4 @@
-// Seeds a SCRATCH hub with invented entities, a trip and links for the Graph browser flow. Never use on real data.
+// Seeds a SCRATCH hub with invented entities, a trip and links for the Graph browser flow (relations: related, for, about, during, member-of, works-on, part-of; one link has a note). Never use on real data.
 const db = require('/app/db');
 const entities = require('/app/services/entities');
 const trips = require('/app/services/trips');
@@ -17,7 +17,7 @@ const ent = (id) => ({ domain: 'entities', id });
 links.add(c, { from: ent(mira), to: ent(proj), rel: 'works-on' }, 'seed');
 links.add(c, { from: ent(proj), to: ent(org), rel: 'part-of' }, 'seed');
 links.add(c, { from: ent(org), to: ent(topic), rel: 'about' }, 'seed');
-links.add(c, { from: ent(mira), to: { domain: 'trips', id: trip }, rel: 'about' }, 'seed');
+links.add(c, { from: ent(mira), to: { domain: 'trips', id: trip }, rel: 'during' }, 'seed');
 // Six invented clusters (a hub and its members) so the whole-graph overview has something to lay out.
 const trip2 = String(trips.create(c, { title: 'Field week', destination: 'Tampa', kind: 'leisure', start_date: '2099-03-02', end_date: '2099-03-08' }, 'seed').id);
 const HUBS = ['Tidal Mapping', 'Orchard Co-op', 'Night Sky Club', 'Bike Repair Collective', 'Language Exchange', 'Harbor Choir'];
@@ -46,8 +46,8 @@ hubs.forEach((hub, k) => {
     const place2 = { domain: 'places', id: spots[k] };
     const due2 = { domain: 'deadlines', id: dues[k] };
     links.add(c, { from: ent(hub), to: place2, rel: 'about' }, 'seed');
-    links.add(c, { from: ent(leafOf(k, 2)), to: place2, rel: 'related' }, 'seed');
-    links.add(c, { from: ent(hub), to: due2, rel: 'about' }, 'seed');
+    links.add(c, { from: ent(leafOf(k, 2)), to: place2, rel: 'member-of' }, 'seed');
+    links.add(c, { from: ent(hub), to: due2, rel: 'for', note: 'renew before the date' }, 'seed');
     links.add(c, { from: ent(leafOf(k, 5)), to: due2, rel: 'related' }, 'seed');
     if (k < 5) links.add(c, { from: ent(hub), to: ent(hubs[k + 1]), rel: 'related' }, 'seed');
 });

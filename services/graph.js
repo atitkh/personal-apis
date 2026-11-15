@@ -19,6 +19,8 @@ function describe(db, domain, id) {
     try { return links.DESCRIBE[domain](db, String(id)); } catch (e) { return null; }
 }
 
+// A link as the picture needs it: its row id (to remove it), the two ends, the relation word and the short note, if any.
+const edge = (r) => ({ id: r.id, from: key(r.from_domain, r.from_id), to: key(r.to_domain, r.to_id), rel: r.rel, ...(r.note ? { note: clip(r.note, 200) } : {}) });
 const node = (domain, id, d) => ({ key: key(domain, id), domain, id: String(id), title: clip(d.title, 80), kind: d.kind || null, date: d.date || null });
 
 // The records within `depth` hops of one record. Busy records show PER_NODE_CAP neighbours and say how many they hid.
@@ -50,7 +52,7 @@ function neighborhood(db, { domain, id, depth = 1 } = {}) {
                     next.push(ok);
                     shown += 1;
                 }
-                edges.set(r.id, { id: r.id, from: key(r.from_domain, r.from_id), to: key(r.to_domain, r.to_id), rel: r.rel });
+                edges.set(r.id, edge(r));
             }
         }
         frontier = next;
@@ -63,7 +65,7 @@ function neighborhood(db, { domain, id, depth = 1 } = {}) {
         const n = nodes.get(k);
         for (const r of stmt.all(n.domain, n.id, n.domain, n.id)) {
             if (nodes.has(key(r.from_domain, r.from_id)) && nodes.has(key(r.to_domain, r.to_id))) {
-                edges.set(r.id, { id: r.id, from: key(r.from_domain, r.from_id), to: key(r.to_domain, r.to_id), rel: r.rel });
+                edges.set(r.id, edge(r));
             }
         }
     }
@@ -81,7 +83,7 @@ function overview(db, { cap = OVERVIEW_CAP } = {}) {
     const on = new Map();
     const enabled = (d) => { if (!on.has(d)) on.set(d, Boolean(links.DESCRIBE[d]) && domains.exists(d) && domains.isEnabled(db, d)); return on.get(d); };
     const deg = new Map();
-    const rows = db.prepare('SELECT id, from_domain, from_id, to_domain, to_id, rel FROM links').all()
+    const rows = db.prepare('SELECT id, from_domain, from_id, to_domain, to_id, rel, note FROM links').all()
         .filter((r) => enabled(r.from_domain) && enabled(r.to_domain));
     for (const r of rows) {
         for (const k of [key(r.from_domain, r.from_id), key(r.to_domain, r.to_id)]) deg.set(k, (deg.get(k) || 0) + 1);
@@ -104,7 +106,7 @@ function overview(db, { cap = OVERVIEW_CAP } = {}) {
     for (const n of nodes.values()) (counts[n.domain] || (counts[n.domain] = { shown: 0, total: 0 })).shown += 1;
     for (const [d, t] of Object.entries(total)) (counts[d] || (counts[d] = { shown: 0, total: 0 })).total = t;
     const edges = rows.filter((r) => nodes.has(key(r.from_domain, r.from_id)) && nodes.has(key(r.to_domain, r.to_id)))
-        .map((r) => ({ id: r.id, from: key(r.from_domain, r.from_id), to: key(r.to_domain, r.to_id), rel: r.rel }));
+        .map(edge);
     return { nodes: [...nodes.values()], edges, shown: nodes.size, leftOut, cap: limit, domains: counts };
 }
 

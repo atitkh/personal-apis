@@ -1614,6 +1614,7 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 .graph-below { width: 100%; max-width: var(--page-max); margin: 0 auto; padding: var(--gutter) var(--gutter) 0; display: grid; gap: var(--gap-section); box-sizing: border-box; }
 .graph-svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
 .graph-svg:active { cursor: grabbing; }
+.graph-svg { -webkit-tap-highlight-color: transparent; }
 .graph-svg [hidden] { display: none; }
 
 .graph-edge { stroke: var(--g-edge); stroke-opacity: .42; stroke-width: calc(var(--lt, 1) * 1px); vector-effect: non-scaling-stroke; transition: stroke-opacity .15s, stroke .15s; }
@@ -1638,7 +1639,7 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 .graph-svg.show-arrows .graph-edge { marker-end: url(#graph-arrow); }
 #graph-arrow path { fill: var(--g-edge); fill-opacity: .7; }
 @media (prefers-reduced-motion: reduce) {
-    .graph-node, .graph-edge, .graph-node .dot, .graph-hint { transition: none; }
+    .graph-node, .graph-edge, .graph-node .dot, .graph-hint, .graph-rel { transition: none; }
 }
 
 .graph-tip { position: absolute; transform: translate(-50%, -100%); max-width: min(320px, 80%); padding: 4px 8px; border-radius: var(--r-ctl); background: var(--g-glass); border: 1px solid var(--g-glass-line); color: var(--g-text); font-size: 12px; line-height: 1.3; pointer-events: none; z-index: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1700,6 +1701,57 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 .graph-near:hover { background: var(--accent-soft); }
 .graph-near span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .graph-actions { display: inline-flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
+/* relation words on the lines, link tooltip and the selected link */
+.graph-rels { pointer-events: none; }
+.graph-rel { fill: var(--g-dim); font-size: calc(var(--fs, 11px) * .88); pointer-events: none; paint-order: stroke; stroke: var(--g-bg); stroke-width: calc(var(--fs, 11px) * .32); stroke-linejoin: round; transition: opacity .15s; }
+.graph-rel.is-hot { fill: var(--g-text); font-weight: 600; }
+.graph-svg.has-hover .graph-rel:not(.is-hot) { opacity: .08 !important; }
+.graph-svg.over-edge { cursor: pointer; }
+.graph-node.is-end text, .graph-node.is-source text, .graph-node.is-target text { opacity: 1 !important; }
+.graph-node.is-end .dot, .graph-node.is-source .dot, .graph-node.is-target .dot { fill: var(--c, var(--neutral)); fill-opacity: 1; }
+.graph-node.is-source .dot, .graph-node.is-target .dot { stroke: var(--accent); stroke-width: 2px; vector-effect: non-scaling-stroke; }
+/* editing links: the ring you drag from, the line you draw, the badge, the create popover */
+.graph-ring { pointer-events: none; }
+.graph-stage.is-editing .graph-ring:not([hidden]) { pointer-events: auto; }
+.graph-stage.is-editing.is-linking .graph-ring:not([hidden]) { pointer-events: none; }
+.ring-vis { fill: none; stroke: var(--accent); stroke-width: 1.5px; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+.ring-hit { fill: none; stroke: transparent; stroke-width: 12px; vector-effect: non-scaling-stroke; pointer-events: stroke; cursor: crosshair; }
+.graph-rubber { stroke: var(--accent); stroke-width: 1.8px; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.graph-stage.is-linking .graph-node, .graph-stage.is-linking-drag .graph-node { cursor: crosshair; }
+.graph-stage.is-linking .graph-card { display: none; }
+.graph-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.graph-badge { display: flex; align-items: center; gap: 8px; max-width: min(300px, calc(100% - 72px)); padding: 6px 8px 6px 10px; border-radius: var(--r-ctl); background: var(--g-glass); border: 1px solid var(--accent); color: var(--g-text); font-size: var(--fs-xs); }
+.graph-badge[hidden], .graph-badge-btn[hidden] { display: none; }
+.graph-badge .icon { width: 14px; height: 14px; flex: none; color: var(--accent); }
+.graph-badge-body { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.graph-badge-sub { color: var(--g-dim); overflow-wrap: anywhere; }
+.graph-badge-sub:empty { display: none; }
+.graph-badge-btn { min-height: 26px; padding: 0 8px; border: 1px solid var(--g-glass-line); border-radius: 4px; background: none; color: var(--g-text); font: inherit; cursor: pointer; }
+.graph-badge-btn:hover { border-color: var(--accent); color: var(--accent); }
+.graph-badge-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.graph-pop { position: absolute; z-index: 6; width: 280px; box-sizing: border-box; display: grid; gap: 8px; padding: 12px 14px; border-radius: var(--r-panel); background: var(--g-glass); border: 1px solid var(--g-glass-line); color: var(--g-text); box-shadow: 0 8px 28px rgba(0, 0, 0, .28); }
+.graph-pop-ends { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; font-size: var(--fs-sm); }
+.graph-pop-ends strong { overflow-wrap: anywhere; }
+.graph-pop-ends .muted { font-size: var(--fs-xs); padding-top: 2px; }
+.graph-pop-field { display: grid; gap: 3px; }
+.graph-pop-field label { font-size: var(--fs-xs); color: var(--g-dim); }
+.graph-pop-err { margin: 0; color: var(--bad); font-size: var(--fs-xs); }
+.graph-pop-err:empty { display: none; }
+.graph-pop input[aria-invalid="true"] { border-color: var(--bad); }
+.graph-link-ends { display: grid; gap: 2px; }
+.graph-link-end { display: grid; }
+.graph-link-end > .muted { padding: 0 6px; font-size: var(--fs-xs); }
+.graph-link-rel { margin: 0; padding: 2px 6px; color: var(--accent); font-weight: 600; font-size: var(--fs-sm); }
+.graph-link-note { margin: 0; padding: 4px 8px; border-left: 2px solid var(--g-glass-line); color: var(--g-dim); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.graph-confirm { display: grid; gap: 6px; padding-top: 4px; }
+.graph-confirm p { margin: 0; font-size: var(--fs-sm); }
+.graph-near-row { display: grid; }
+.graph-rels-of { display: flex; flex-wrap: wrap; gap: 2px 4px; padding: 0 6px 2px 24px; }
+.graph-relbtn { padding: 1px 7px; border: 1px solid var(--g-glass-line); border-radius: 10px; background: none; color: var(--g-dim); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.graph-relbtn:hover, .graph-relbtn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.graph-count { margin-left: auto; color: var(--g-dim); font-variant-numeric: tabular-nums; font-size: var(--fs-xs); }
+.graph-reltype[aria-pressed="false"] .graph-group-text { text-decoration: line-through; }
+.graph-help { margin: 0; font-size: var(--fs-xs); }
 @media (max-width: 760px) {
     .graph-stage { height: calc(100dvh - 56px - 64px); min-height: 380px; }
     .content:has(.graph-full) { padding: 0 0 96px; }
@@ -1708,6 +1760,8 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
     .graph-panel { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 65%; border-width: 1px 0 0; border-radius: var(--r-panel) var(--r-panel) 0 0; }
     .graph-card { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 48%; }
     .graph-stage.panel-open .graph-card { display: none; }
+    .graph-pop { left: 0 !important; right: 0; top: auto !important; bottom: 0; width: auto; padding-bottom: 16px; border-width: 1px 0 0; border-radius: var(--r-panel) var(--r-panel) 0 0; }
+    .graph-stage:has(.graph-pop) .graph-card { display: none; }
 }
 .graph-list { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 6px; }
 .graph-results { margin-bottom: 18px; }

@@ -4,7 +4,7 @@
 // follow along the links) and goes to sleep (no animation frames at all) once it is still. Floating over the canvas: a
 // settings panel (filters, groups, display, forces), zoom buttons and whatever the view hands in (mode switch, details card).
 // Positions live in memory only; the settings are kept in localStorage under `hub-graph`. No libraries.
-import { h, svg, icon, domainHue, plural } from '../ui.js';
+import { h, svg, icon, domainHue, plural, toast } from '../ui.js';
 
 const BASE_W = 920;     // world units across the canvas at zoom 1
 const BASE_H = 560;
@@ -13,6 +13,7 @@ const K_MAX = 6;
 const DRAG_PX = 5;      // a press that moves less than this is a tap
 const DOUBLE_MS = 350;
 const STORE = 'hub-graph';
+const REL_RE = /^[a-z][a-z0-9_-]{0,29}$/;   // the same rule as the server's (services/links.js)
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clipText = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -20,9 +21,9 @@ const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-r
 
 // ---- settings (display and forces only; never any record data) ----
 
-export const DEFAULTS = { nodeSize: 1, linkThick: 1, textFade: 0.5, arrows: false, center: 0.3, repel: 0.5, link: 0.5, linkDist: 60 };
+export const DEFAULTS = { nodeSize: 1, linkThick: 1, textFade: 0.5, arrows: false, linkLabels: false, center: 0.3, repel: 0.5, link: 0.5, linkDist: 60 };
 const RANGE = { nodeSize: [0.4, 2.5, 0.05], linkThick: [0.3, 3, 0.1], textFade: [0, 1, 0.01], center: [0, 1, 0.01], repel: [0, 1, 0.01], link: [0, 1, 0.01], linkDist: [20, 200, 1] };
-const PART = { nodeSize: 'display', linkThick: 'display', textFade: 'display', arrows: 'display', center: 'forces', repel: 'forces', link: 'forces', linkDist: 'forces' };
+const PART = { nodeSize: 'display', linkThick: 'display', textFade: 'display', arrows: 'display', linkLabels: 'display', center: 'forces', repel: 'forces', link: 'forces', linkDist: 'forces' };
 
 export function loadSettings(store) {
     const out = { ...DEFAULTS };
@@ -114,17 +115,23 @@ const SPRING = 0.6;
 const ALPHA_MIN = 0.015;
 const DECAY = 0.017;
 export function createSim(nodes, edges, anchors, forces) {
-    const n = nodes.length;
-    const idx = new Map(nodes.map((x, i) => [x.key, i]));
-    const ends = edges.map((e) => [idx.get(e.from), idx.get(e.to)]).filter(([a, b]) => a != null && b != null);
-    const fx = new Float64Array(n);
-    const fy = new Float64Array(n);
-    const next = new Int32Array(n);
-    // Busy records push harder (so hubs keep their groups apart) and tug less per link (one hub is not dragged around by each leaf).
-    const charge = Float64Array.from(nodes, (x) => 1 + 0.5 * Math.sqrt(x.degree || 0));
-    const tug = ends.map(([a, b]) => 1 / Math.sqrt(Math.max(Math.min(nodes[a].degree || 1, nodes[b].degree || 1), 1)));
+    let n; let idx; let ends; let fx; let fy; let next; let charge; let tug;
+    // (Re)reads the nodes and edges: called once, and again after a link is added or removed (positions are kept).
+    const build = () => {
+        n = nodes.length;
+        idx = new Map(nodes.map((x, i) => [x.key, i]));
+        ends = edges.map((e) => [idx.get(e.from), idx.get(e.to)]).filter(([a, b]) => a != null && b != null);
+        fx = new Float64Array(n);
+        fy = new Float64Array(n);
+        next = new Int32Array(n);
+        // Busy records push harder (so hubs keep their groups apart) and tug less per link (one hub is not dragged around by each leaf).
+        charge = Float64Array.from(nodes, (x) => 1 + 0.5 * Math.sqrt(x.degree || 0));
+        tug = ends.map(([a, b]) => 1 / Math.sqrt(Math.max(Math.min(nodes[a].degree || 1, nodes[b].degree || 1), 1)));
+    };
+    build();
     let head = new Int32Array(0);
     const sim = { alpha: 1, target: 0, forces: { ...forces }, ticks: 0 };
+    sim.rebuild = build;
     sim.asleep = () => sim.target === 0 && sim.alpha < ALPHA_MIN;
     sim.step = () => {
         sim.alpha += (sim.target - sim.alpha) * DECAY;
@@ -199,8 +206,12 @@ export function createSim(nodes, edges, anchors, forces) {
 // ---- the canvas ----
 
 // o: { nodes (seeded: x, y), edges, anchors, centerKey, selected, hidden (Set of domains), dense, label, oneLabel(domain),
-//      groups [{ d, text }], hudLeft [elements], card (element), onSelect(key), onFocus(key), onClear(), onHidden(set) }
-//   -> { el, setSelected, setHidden, fit, zoomBy, focusOn, search, replay, sim, destroy }
+//      groups [{ d, text }], hudLeft [elements], card (element), hiddenRel (Set of relation words), onSelect(key), onFocus(key),
+//      onSelectEdge(edge, { confirm }), onClear(), onHidden(set), onHiddenRel(set), onEdit(on), onEdges(),
+//      api { create(body), remove(id) } (the only writes: both audited by the server, and only ever called while editing) }
+//   -> { el, setSelected, setSelectedEdge, setHidden, setHiddenRel, setEditing, isEditing, startLink, removeLink, fit, zoomBy, focusOn, search, replay, sim, destroy }
+// `edges` ({ id, from, to, rel, note }) and `nodes` are changed in place when a link is added or removed, so the view's own
+// lists (the details card) read the same arrays.
 export function createCanvas(o) {
     const { nodes, edges } = o;
     const dense = Boolean(o.dense);
@@ -211,9 +222,18 @@ export function createCanvas(o) {
     const edgeEls = [];
     const view = { cx: BASE_W / 2, cy: BASE_H / 2, k: 1 };
     const settings = loadSettings();
-    const maxDeg = Math.max(1, ...nodes.map((n) => n.degree || 0));
+    let maxDeg = Math.max(1, ...nodes.map((n) => n.degree || 0));
     const small = nodes.length <= 40;
     let hidden = new Set(o.hidden || []);
+    let hiddenRel = new Set(o.hiddenRel || []);
+    let selEdge = null;     // the selected link (an item of edgeEls)
+    let hoverEdge = null;
+    let forced = new Set(); // links whose relation word always shows: those of the hovered/selected record and the hovered/selected link
+    let editing = false;
+    let linking = null;     // { from }: a link started from one record (keyboard or tap), waiting for the other end
+    let draft = null;       // { a, b }: the two ends while the create popover is open
+    let ringKey = null;     // the record the edge ring is drawn around
+    let pop = null;
     let selected = o.selected || null;
     let hovered = null;
     let tween = 0;
@@ -235,21 +255,24 @@ export function createCanvas(o) {
     const tip = h('div', { class: 'graph-tip', role: 'presentation' });
     tip.hidden = true;
 
-    for (const e of edges) {
+    const addItem = (e) => {
         const a = by.get(e.from);
         const b = by.get(e.to);
-        if (!a || !b) continue;
-        const item = { a: a.key, b: b.key, na: a, nb: b, rel: e.rel, off: false, line: null };
+        if (!a || !b) return null;
+        const item = { id: e.id, a: a.key, b: b.key, na: a, nb: b, rel: e.rel, e, off: false, line: null, lab: null };
         edgeEls.push(item);
         inc.get(a.key).push(item); inc.get(b.key).push(item);
         adj.get(a.key).add(b.key); adj.get(b.key).add(a.key);
-    }
+        return item;
+    };
+    for (const e of edges) addItem(e);
     // All the links are one path (one attribute to update per frame, however many links there are); the links of the hovered and
     // selected records are drawn again on top as lines, which is what lights them up. With arrows on, every link is its own line.
     const pathAll = svg('path', { class: 'graph-edge graph-edge-all' });
     const gLines = svg('g', { class: 'graph-lines' });
     const gHot = svg('g', { class: 'graph-hot' });
     gEdges.append(pathAll, gLines);
+    const ariaFor = (n) => `${o.oneLabel(n.domain)}: ${n.title}. ${plural(n.degree || 0, 'link')}. Press Enter to select, Shift and Enter to focus on it.`;
     const topKeys = new Set([...nodes].sort((a, b) => (b.degree || 0) - (a.degree || 0)).slice(0, dense ? 40 : nodes.length).map((n) => n.key));
     const baseR = (n) => (n.key === o.centerKey ? 8 : dense ? 2.4 + Math.sqrt(n.degree || 0) * 1.2 : 4.5 + Math.sqrt(n.degree || 0) * 1.4);
     // Drawn from the least to the most connected, so the busy records sit on top of their neighbours.
@@ -259,21 +282,35 @@ export function createCanvas(o) {
         const text = svg('text', { 'text-anchor': 'middle', dy: '1.2em' }, clipText(n.title, 28));
         const g = svg('g', { class: `graph-node hue-${domainHue(n.domain)}${n.key === o.centerKey ? ' is-center' : ''}`,
             tabindex: topKeys.has(n.key) ? '0' : '-1', role: 'button', 'data-key': `node:${n.key}`,
-            'aria-label': `${o.oneLabel(n.domain)}: ${n.title}. ${plural(n.degree || 0, 'link')}. Press Enter to select, Shift and Enter to focus on it.` }, hit, dot, text);
+            'aria-label': ariaFor(n) }, hit, dot, text);
         drawn.set(n.key, { n, g, hit, dot, text, r: 0, lo: -1 });
         gNodes.append(g);
     }
-    root.append(defs, gEdges, gHot, gNodes);
+    // Relation words (one text per link, made when first needed), the ring you drag a new link from, and the line it draws.
+    const gRel = svg('g', { class: 'graph-rels' });
+    const ringVis = svg('circle', { class: 'ring-vis' });
+    const ringHit = svg('circle', { class: 'ring-hit' });
+    const gRing = svg('g', { class: 'graph-ring', hidden: '' }, ringVis, ringHit);
+    const rubber = svg('line', { class: 'graph-rubber', hidden: '' });
+    root.append(defs, gEdges, gHot, gRel, gNodes, rubber, gRing);
 
     // -- the floating controls --
     const button = (text, label, key, fn) => h('button', { type: 'button', class: 'graph-btn', 'aria-label': label, title: label, 'data-key': key, onclick: fn }, text);
     const gear = h('button', { type: 'button', class: 'graph-btn', 'aria-label': 'Graph settings', title: 'Graph settings', 'aria-expanded': 'false', 'aria-controls': 'graph-panel', 'data-key': 'graph-settings', onclick: () => togglePanel() }, icon('settings'));
-    const tools = h('div', { class: 'graph-hud graph-hud-right' }, gear,
+    const editBtn = h('button', { type: 'button', class: 'graph-btn', 'aria-label': 'Edit links', title: 'Edit links (E)', 'aria-pressed': 'false', 'data-key': 'graph-edit', onclick: () => setEditing(!editing) }, icon('edit'));
+    const tools = h('div', { class: 'graph-hud graph-hud-right' }, gear, editBtn,
         h('div', { class: 'graph-zoom', role: 'group', 'aria-label': 'Zoom' },
             button('+', 'Zoom in', 'graph-zoom-in', () => zoomBy(1.4)), button('−', 'Zoom out', 'graph-zoom-out', () => zoomBy(1 / 1.4)),
             button(icon('expand'), 'Reset the view to fit everything', 'graph-fit', () => fit(true))));
     const hint = h('p', { class: 'graph-hint', text: 'Scroll to zoom · drag to pan · double-click a point to see just its neighbours' });
-    const el = h('div', { class: `graph-stage${dense ? ' is-dense' : ''}`, 'data-key': 'graph-stage' }, root, tip, h('div', { class: 'graph-hud graph-hud-left' }, o.hudLeft || []), tools, hint);
+    // While editing: a badge says so (with a way out) and, while a link is being picked, what to do next.
+    const badgeSub = h('span', { class: 'graph-badge-sub', 'aria-live': 'polite' });
+    const badgeCancel = h('button', { type: 'button', class: 'graph-badge-btn', 'data-key': 'graph-link-cancel', onclick: () => cancelLink(true), text: 'Cancel' });
+    const badge = h('div', { class: 'graph-badge', role: 'status', 'data-key': 'graph-badge' }, icon('edit'),
+        h('span', { class: 'graph-badge-body' }, h('strong', { text: 'Editing links' }), badgeSub), badgeCancel,
+        h('button', { type: 'button', class: 'graph-badge-btn', 'data-key': 'graph-edit-done', onclick: () => setEditing(false), text: 'Done' }));
+    badge.hidden = true; badgeCancel.hidden = true;
+    const el = h('div', { class: `graph-stage${dense ? ' is-dense' : ''}`, 'data-key': 'graph-stage' }, root, tip, h('div', { class: 'graph-hud graph-hud-left' }, [...(o.hudLeft || []), badge]), tools, hint);
 
     // -- the settings panel: filters, groups, display, forces --
     const sliders = new Map();
@@ -294,6 +331,10 @@ export function createCanvas(o) {
     let searchTimer = 0;
     searchBox.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => search(searchBox.value, true), 250); });
     searchBox.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimer); search(searchBox.value, true); } });
+    const labelsBox = h('input', { type: 'checkbox', 'data-key': 'set:linkLabels' });
+    labelsBox.addEventListener('change', () => { settings.linkLabels = labelsBox.checked; changed('linkLabels'); });
+    const relBox = h('div', { class: 'graph-groups', role: 'group', 'aria-label': 'Show these link types' });
+    const relOptions = h('datalist', { id: 'graph-pop-rels' });
     const toggles = new Map();
     const paintGroups = () => {
         for (const [d, b] of toggles) {
@@ -316,14 +357,17 @@ export function createCanvas(o) {
         h('div', { class: 'graph-panel-head' }, h('strong', { text: 'Graph settings' }), button(icon('close'), 'Close the settings', 'graph-settings-close', () => togglePanel(false))),
         section('Filters', true, searchBox, found),
         section('Groups', true, groups),
-        section('Display', false, slider('nodeSize', 'Node size'), slider('linkThick', 'Link thickness'), slider('textFade', 'Text fade threshold'), h('label', { class: 'graph-row graph-check' }, arrows, h('span', { text: 'Arrows' }))),
+        section('Link types', true, relBox),
+        section('Display', false, slider('nodeSize', 'Node size'), slider('linkThick', 'Link thickness'), slider('textFade', 'Text fade threshold'), h('label', { class: 'graph-row graph-check' }, arrows, h('span', { text: 'Arrows' })),
+            h('label', { class: 'graph-row graph-check' }, labelsBox, h('span', { text: 'Link labels' })), h('p', { class: 'graph-help muted', text: 'Writes the relation on each link. Zoom in to read them; a record\u2019s own links always show.' })),
         section('Forces', false, slider('center', 'Center force'), slider('repel', 'Repel force'), slider('link', 'Link force'), slider('linkDist', 'Link distance', (v) => String(Math.round(v)))),
         h('div', { class: 'graph-panel-foot' },
             h('button', { type: 'button', class: 'btn small', 'data-key': 'graph-animate', onclick: () => replay(), text: 'Animate' }),
             h('button', { type: 'button', class: 'btn quiet small', 'data-key': 'graph-defaults', onclick: () => resetSettings(), text: 'Reset to defaults' })));
-    el.append(panel);
+    el.append(panel, relOptions);
     if (o.card) el.append(o.card);
     arrows.checked = settings.arrows;
+    labelsBox.checked = settings.linkLabels;
 
     const togglePanel = (open = panel.hidden) => {
         panel.hidden = !open;
@@ -340,6 +384,7 @@ export function createCanvas(o) {
         try { localStorage.removeItem(STORE); } catch (e) { /* nothing saved anyway */ }
         for (const show of sliders.values()) show();
         arrows.checked = settings.arrows;
+        labelsBox.checked = settings.linkLabels;
         Object.assign(sim.forces, { center: settings.center, repel: settings.repel, link: settings.link, linkDist: settings.linkDist });
         paintSizes();
         wake(0.6);
@@ -382,6 +427,9 @@ export function createCanvas(o) {
             pathAll.setAttribute('d', dstr);
         }
         for (const l of gHot.children) setLine(l, l.__item);
+        if (ringKey) placeRing();
+        if (draft) drawDraft();
+        paintRels();
     };
     // The links of the hovered and the selected record, as lines drawn over the grey ones.
     const paintHot = () => {
@@ -389,16 +437,56 @@ export function createCanvas(o) {
         const add = (key, cls) => { if (!key || !inc.get(key)) return; for (const it of inc.get(key)) if (!it.off) out.push([it, cls]); };
         add(selected, 'is-on');
         add(hovered, 'is-near');
+        if (selEdge && !selEdge.off) out.push([selEdge, 'is-on']);
+        if (hoverEdge && hoverEdge !== selEdge && !hoverEdge.off) out.push([hoverEdge, 'is-near']);
         const seen = new Map();
         for (const [it, cls] of out) seen.set(it, seen.get(it) === 'is-near' ? 'is-near' : cls);
+        forced = new Set(seen.keys());
         const kids = [];
         for (const [it, cls] of seen) {
-            const l = svg('line', { class: `graph-edge ${cls}` }, dense ? null : svg('title', {}, it.rel));
+            const l = svg('line', { class: `graph-edge ${cls}` }, dense ? null : svg('title', {}, edgeText(it)));
             l.__item = it;
             setLine(l, it);
             kids.push(l);
         }
         gHot.replaceChildren(...kids);
+        paintRels();
+    };
+    const edgeText = (it) => `${it.na.title} \u2014${it.rel}\u2192 ${it.nb.title}`;
+
+    // Relation words on the lines: one small text per link, upright, at the middle of the line. They fade in with the zoom like the
+    // record names (never on a graph that is zoomed out), only for links on screen and long enough to hold the word, and only the
+    // links of the hovered or selected record (and a hovered or selected link) show whatever the zoom. The texts are made the
+    // first time a link needs one and only touched while labels are on.
+    let relShown = 0;
+    const relFade = () => clamp((view.k / kRef - (1.1 + settings.textFade * 0.8) * (small ? 0.45 : 1)) / 0.5, 0, 1);
+    const hideRels = () => { for (const it of edgeEls) if (it.lab && !it.lab.hasAttribute('hidden')) it.lab.setAttribute('hidden', ''); relShown = 0; };
+    const paintRels = () => {
+        if (!settings.linkLabels) { if (relShown) hideRels(); return; }
+        const f = relFade();
+        if (f === 0 && !forced.size) { if (relShown) hideRels(); return; }
+        const dm = dims();
+        const x0 = view.cx - dm.vw / 2 - 10; const x1 = view.cx + dm.vw / 2 + 10;
+        const y0 = view.cy - dm.vh / 2 - 10; const y1 = view.cy + dm.vh / 2 + 10;
+        let shown = 0;
+        for (const it of edgeEls) {
+            const a = it.na; const b = it.nb;
+            const hot = forced.has(it);
+            const mx = (a.x + b.x) / 2; const my = (a.y + b.y) / 2;
+            const on = !it.off && shown < 220 && mx >= x0 && mx <= x1 && my >= y0 && my <= y1
+                && (hot || (f > 0 && Math.hypot(b.x - a.x, b.y - a.y) * scale >= it.rel.length * 5.5 + 14));
+            if (!on) { if (it.lab && !it.lab.hasAttribute('hidden')) it.lab.setAttribute('hidden', ''); continue; }
+            shown += 1;
+            if (!it.lab) { it.lab = svg('text', { class: 'graph-rel', 'text-anchor': 'middle', dy: '-0.4em' }, it.rel); gRel.append(it.lab); }
+            let deg = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+            if (deg > 90) deg -= 180; else if (deg < -90) deg += 180;
+            it.lab.setAttribute('transform', `translate(${r1(mx)} ${r1(my)}) rotate(${deg.toFixed(1)})`);
+            it.lab.removeAttribute('hidden');
+            it.lab.classList.toggle('is-hot', hot);
+            it.lab.classList.toggle('is-plain', it.rel === 'related');
+            it.lab.style.opacity = (hot ? 1 : f).toFixed(2);
+        }
+        relShown = shown;
     };
     const setArrows = () => {
         if (settings.arrows && !gLines.firstChild) for (const it of edgeEls) { it.line = svg('line', { class: 'graph-edge' }); gLines.append(it.line); }
@@ -430,6 +518,8 @@ export function createCanvas(o) {
             }
         }
         paintLabels();
+        paintRels();
+        if (ringKey) placeRing();
     };
 
     // -- view state --
@@ -526,12 +616,14 @@ export function createCanvas(o) {
     };
     const hover = (key) => {
         if (key === hovered) return;
+        if (key && hoverEdge) clearEdgeHover();
         for (const x of lit) x.classList.remove('is-near', 'is-hover');
         lit = [];
         hovered = key;
-        root.classList.toggle('has-hover', Boolean(key));
+        root.classList.toggle('has-hover', Boolean(key) || Boolean(hoverEdge));
         paintHot();
-        if (!key) { tip.hidden = true; return; }
+        paintRing();
+        if (!key) { if (!hoverEdge) tip.hidden = true; return; }
         const add = (x) => { x.classList.add('is-near'); lit.push(x); };
         drawn.get(key).g.classList.add('is-hover'); lit.push(drawn.get(key).g);
         for (const k of adj.get(key)) add(drawn.get(k).g);
@@ -540,21 +632,115 @@ export function createCanvas(o) {
         tip.hidden = false;
         placeTip(key);
     };
-    const setSelected = (key) => {
+    // A record or a link is selected, never both (null clears either).
+    let endLit = [];
+    const applySel = (key, it) => {
         if (selected && drawn.get(selected)) drawn.get(selected).g.classList.remove('is-selected');
+        for (const g of endLit) g.classList.remove('is-end');
+        endLit = [];
         selected = key;
+        selEdge = it;
         if (key && drawn.get(key)) drawn.get(key).g.classList.add('is-selected');
+        if (it) for (const n of [it.na, it.nb]) { const g = drawn.get(n.key).g; g.classList.add('is-end'); endLit.push(g); }
         paintHot();
+    };
+    const setSelected = (key) => applySel(key, null);
+    const setSelectedEdge = (id) => { const it = edgeEls.find((x) => x.id === id) || null; applySel(null, it); return it; };
+    const selectEdgeItem = (it, opts) => { clearEdgeHover(); applySel(null, it); if (o.onSelectEdge) o.onSelectEdge(it.e, opts || {}); };
+    const refreshOff = (it) => { it.off = isHidden(it.na) || isHidden(it.nb) || hiddenRel.has(it.rel); if (it.line) it.line.toggleAttribute('hidden', it.off); };
+    const refreshEdges = () => {
+        for (const item of edgeEls) refreshOff(item);
+        root.dataset.edges = String(edgeEls.filter((i) => !i.off).length);
+        paintHot();
+        place();
     };
     const setHidden = (set) => {
         hidden = new Set(set);
         for (const d of drawn.values()) d.g.toggleAttribute('hidden', isHidden(d.n));
-        for (const item of edgeEls) { item.off = isHidden(item.na) || isHidden(item.nb); if (item.line) item.line.toggleAttribute('hidden', item.off); }
-        root.dataset.edges = String(edgeEls.filter((i) => !i.off).length);
-        paintHot();
-        place();
+        refreshEdges();
         paintGroups();
         if (query) search(query, false);
+    };
+    const setHiddenRel = (set) => { hiddenRel = new Set(set); refreshEdges(); paintRelTypes(); };
+
+    // -- link types in the panel: every relation word in use, with how many links carry it; a click hides or shows that type --
+    const relCounts = () => {
+        const m = new Map();
+        for (const it of edgeEls) m.set(it.rel, (m.get(it.rel) || 0) + 1);
+        return [...m].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+    };
+    const relButtons = new Map();
+    const paintRelTypes = () => { for (const [rel, b] of relButtons) b.setAttribute('aria-pressed', String(!hiddenRel.has(rel))); };
+    const buildRelTypes = () => {
+        const list = relCounts();
+        relButtons.clear();
+        relBox.replaceChildren(...(list.length ? list.map(([rel, n]) => {
+            const b = h('button', { type: 'button', class: 'graph-group graph-reltype', 'data-key': `hiderel:${rel}`, onclick: () => {
+                const set = new Set(hiddenRel);
+                if (set.has(rel)) set.delete(rel); else set.add(rel);
+                setHiddenRel(set);
+                if (o.onHiddenRel) o.onHiddenRel(set);
+            } }, h('span', { class: 'graph-group-text', text: rel }), h('span', { class: 'graph-count', text: String(n) }));
+            relButtons.set(rel, b);
+            return b;
+        }) : [h('p', { class: 'muted graph-help', text: 'No links yet.' })]));
+        relOptions.replaceChildren(...[...new Set(['related', 'for', 'about', 'during', ...list.map(([rel]) => rel)])].map((rel) => h('option', { value: rel })));
+        paintRelTypes();
+    };
+
+    // -- a link under the pointer: the lines are thin, so the nearest line within a few pixels counts (nodes win over lines) --
+    const segDist = (px, py, a, b) => {
+        const dx = b.x - a.x; const dy = b.y - a.y;
+        const l2 = dx * dx + dy * dy;
+        const t = l2 ? clamp(((px - a.x) * dx + (py - a.y) * dy) / l2, 0, 1) : 0;
+        return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+    };
+    const edgeAt = (cx, cy, tolPx) => {
+        const w = toWorld(cx, cy);
+        let best = null; let bd = tolPx / scale;
+        for (const it of edgeEls) {
+            if (it.off) continue;
+            const dd = segDist(w.x, w.y, it.na, it.nb);
+            if (dd < bd) { bd = dd; best = it; }
+        }
+        return best;
+    };
+    let litEdge = [];
+    const clearEdgeHover = () => {
+        if (!hoverEdge) return;
+        hoverEdge = null;
+        for (const g of litEdge) g.classList.remove('is-near');
+        litEdge = [];
+        root.classList.remove('over-edge');
+        root.classList.toggle('has-hover', Boolean(hovered));
+        if (!hovered) tip.hidden = true;
+        paintHot();
+    };
+    const setEdgeHover = (it, at) => {
+        if (it !== hoverEdge) {
+            clearEdgeHover();
+            hoverEdge = it;
+            for (const n of [it.na, it.nb]) { const g = drawn.get(n.key).g; g.classList.add('is-near'); litEdge.push(g); }
+            root.classList.add('over-edge', 'has-hover');
+            tip.textContent = edgeText(it);
+            tip.hidden = false;
+            paintHot();
+        }
+        const r = el.getBoundingClientRect();
+        tip.style.left = `${clamp(at.x - r.left, 8, r.width - 8).toFixed(0)}px`;
+        tip.style.top = `${Math.max(at.y - r.top - 14, 22).toFixed(0)}px`;
+    };
+    let moveTimer = 0;
+    let lastMove = null;
+    const idleMove = (e) => {
+        if (nodeAt(e.target)) { if (hoverEdge) clearEdgeHover(); return; }
+        lastMove = { x: e.clientX, y: e.clientY };
+        if (moveTimer) return;
+        moveTimer = setTimeout(() => {
+            moveTimer = 0;
+            const it = edgeAt(lastMove.x, lastMove.y, 6);
+            if (it) setEdgeHover(it, lastMove); else clearEdgeHover();
+        }, 40);
     };
     const focusOn = (key) => {
         const n = by.get(key);
@@ -575,11 +761,214 @@ export function createCanvas(o) {
         found.textContent = query ? plural(hits.length, 'match', 'matches') : '';
         if (zoom && hits.length) { used(); goTo(viewFor(hits, 300, 200, 2.4), true); }
     };
-    const tap = (key) => {
+    const tap = (key, at) => {
+        if (linking) { pickTarget(key, at); return; }
         const now = Date.now();
         if (last.key === key && now - last.t < DOUBLE_MS) { last = { key: null, t: 0 }; o.onFocus(key); return; }
         last = { key, t: now };
         o.onSelect(key);
+    };
+
+    // -- editing links: nothing below runs unless Edit links is on, and the two writes (create, remove) happen only from a button,
+    // Enter in the popover or the confirm: never from hover, drag of a node, zoom or select --
+    const screenOf = (n) => {
+        const r = rect(); const dm = dims();
+        return { x: r.left + ((n.x - (view.cx - dm.vw / 2)) / dm.vw) * dm.w, y: r.top + ((n.y - (view.cy - dm.vh / 2)) / dm.vh) * dm.hh };
+    };
+    const placeRing = () => {
+        const d = drawn.get(ringKey);
+        gRing.setAttribute('transform', `translate(${r1(d.n.x)} ${r1(d.n.y)})`);
+        const rr = (d.r + 5 / scale).toFixed(2);
+        ringVis.setAttribute('r', rr); ringHit.setAttribute('r', rr);
+    };
+    // The ring shows around the hovered or focused record, the one a link is being drawn from, or the one picked to start from.
+    const paintRing = () => {
+        const k = !editing ? null : gesture && gesture.type === 'link' ? gesture.key : linking ? linking.from : hovered;
+        ringKey = k && by.get(k) && !isHidden(by.get(k)) ? k : null;
+        gRing.toggleAttribute('hidden', !ringKey);
+        if (ringKey) placeRing();
+    };
+    const drawDraft = () => {
+        const a = by.get(draft.a); const b = by.get(draft.b);
+        rubber.setAttribute('x1', r1(a.x)); rubber.setAttribute('y1', r1(a.y)); rubber.setAttribute('x2', r1(b.x)); rubber.setAttribute('y2', r1(b.y));
+    };
+    let target = null;
+    const markTarget = (elm, from) => {
+        const k = nodeAt(elm);
+        const nk = k && k !== from && !isHidden(by.get(k)) ? k : null;
+        if (nk === target) return;
+        if (target && drawn.get(target)) drawn.get(target).g.classList.remove('is-target');
+        target = nk;
+        if (target) drawn.get(target).g.classList.add('is-target');
+    };
+    const startRubber = (key) => {
+        const n = by.get(key);
+        rubber.setAttribute('x1', r1(n.x)); rubber.setAttribute('y1', r1(n.y)); rubber.setAttribute('x2', r1(n.x)); rubber.setAttribute('y2', r1(n.y));
+        rubber.removeAttribute('hidden');
+        el.classList.add('is-linking-drag');
+    };
+    const endRubber = () => {
+        markTarget(null, null);
+        if (!draft) rubber.setAttribute('hidden', '');
+        el.classList.remove('is-linking-drag');
+    };
+    const closePop = (refocus) => {
+        if (!pop) return;
+        const from = pop.from;
+        pop.form.remove();
+        pop = null;
+        draft = null;
+        rubber.setAttribute('hidden', '');
+        if (refocus && drawn.get(from)) drawn.get(from).g.focus({ preventScroll: true });
+    };
+    const openPop = (fromKey, toKey, at) => {
+        if (!editing) return;
+        closePop();
+        const a = by.get(fromKey); const b = by.get(toKey);
+        const rel = h('input', { type: 'text', name: 'rel', id: 'graph-pop-rel', class: 'graph-search', value: 'related', maxlength: '30', autocomplete: 'off', spellcheck: 'false', list: 'graph-pop-rels', 'aria-describedby': 'graph-pop-err', 'data-key': 'graph-pop-rel' });
+        const note = h('input', { type: 'text', name: 'note', id: 'graph-pop-note', class: 'graph-search', maxlength: '200', placeholder: 'Optional', autocomplete: 'off', 'data-key': 'graph-pop-note' });
+        const err = h('p', { id: 'graph-pop-err', class: 'graph-pop-err', role: 'alert', 'data-key': 'graph-pop-err' });
+        const go = h('button', { type: 'submit', class: 'btn small', 'data-key': 'graph-pop-create', text: 'Create' });
+        const form = h('form', { class: 'graph-pop', role: 'dialog', 'aria-label': 'Create a link', 'data-key': 'graph-pop', novalidate: '' },
+            h('div', { class: 'graph-pop-ends' },
+                h('span', { class: 'muted', text: 'From' }), h('strong', { text: clipText(a.title, 44) }),
+                h('span', { class: 'muted', text: 'To' }), h('strong', { text: clipText(b.title, 44) })),
+            h('div', { class: 'graph-pop-field' }, h('label', { for: 'graph-pop-rel', text: 'Relation' }), rel),
+            h('div', { class: 'graph-pop-field' }, h('label', { for: 'graph-pop-note', text: 'Note' }), note),
+            err,
+            h('div', { class: 'graph-actions' }, go, h('button', { type: 'button', class: 'btn quiet small', 'data-key': 'graph-pop-cancel', onclick: () => closePop(true), text: 'Cancel' })));
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const word = rel.value.trim().toLowerCase() || 'related';
+            if (!REL_RE.test(word)) {
+                err.textContent = 'Use one short lowercase word (letters, numbers, - or _), such as for, about or during.';
+                rel.setAttribute('aria-invalid', 'true');
+                rel.focus();
+                return;
+            }
+            rel.removeAttribute('aria-invalid');
+            err.textContent = '';
+            go.disabled = true;
+            try {
+                const text = note.value.trim() || undefined;
+                const r = await o.api.create({ from: { domain: a.domain, id: a.id }, to: { domain: b.domain, id: b.id }, rel: word, note: text });
+                closePop(true);
+                if (r.status === 'created') {
+                    const it = addEdge({ id: r.id, from: r.from, to: r.to, rel: r.rel, ...(text ? { note: text } : {}) });
+                    toast('Link created');
+                    if (it) selectEdgeItem(it);
+                } else {
+                    toast('Already linked');
+                    const it = edgeEls.find((x) => x.id === r.id);
+                    if (it) selectEdgeItem(it);
+                }
+            } catch (e2) {
+                err.textContent = e2.message || 'Could not create the link.';
+                go.disabled = false;
+            }
+        });
+        el.append(form);
+        const r = el.getBoundingClientRect();
+        const at2 = at || screenOf(b);
+        form.style.left = `${clamp(at2.x - r.left + 10, 8, Math.max(r.width - form.offsetWidth - 8, 8)).toFixed(0)}px`;
+        form.style.top = `${clamp(at2.y - r.top + 10, 8, Math.max(r.height - form.offsetHeight - 8, 8)).toFixed(0)}px`;
+        pop = { form, from: fromKey };
+        draft = { a: fromKey, b: toKey };
+        drawDraft();
+        rubber.removeAttribute('hidden');
+        rel.focus();
+        rel.select();
+    };
+    // Picking the other end without dragging (keyboard: L, tap: "Link from here"): the next record chosen opens the same popover.
+    const sourceLit = () => { for (const d of drawn.values()) d.g.classList.toggle('is-source', Boolean(linking) && d.n.key === linking.from); };
+    const startLink = (key) => {
+        if (!editing || !by.get(key)) return;
+        closePop();
+        linking = { from: key };
+        el.classList.add('is-linking');
+        badgeSub.textContent = `Linking from “${clipText(by.get(key).title, 30)}”. Pick the other record. Esc cancels.`;
+        badgeCancel.hidden = false;
+        sourceLit();
+        paintRing();
+    };
+    const endPick = () => {
+        linking = null;
+        el.classList.remove('is-linking');
+        badgeSub.textContent = '';
+        badgeCancel.hidden = true;
+        sourceLit();
+        paintRing();
+    };
+    const cancelLink = (refocus) => {
+        const from = linking && linking.from;
+        endPick();
+        endRubber();
+        closePop();
+        if (refocus && from && drawn.get(from)) drawn.get(from).g.focus({ preventScroll: true });
+    };
+    const pickTarget = (key, at) => {
+        if (!linking) return;
+        const from = linking.from;
+        if (key === from) { cancelLink(true); return; }
+        endPick();
+        openPop(from, key, at || screenOf(by.get(key)));
+    };
+    const setEditing = (on) => {
+        if (on === editing) return;
+        if (!on) { cancelLink(false); closePop(); }
+        editing = on;
+        editBtn.setAttribute('aria-pressed', String(on));
+        editBtn.title = on ? 'Stop editing links (E)' : 'Edit links (E)';
+        el.classList.toggle('is-editing', on);
+        badge.hidden = !on;
+        paintRing();
+        if (o.onEdit) o.onEdit(on);
+    };
+
+    // The only places the picture changes after a write: the arrays, the drawn parts and the simulation are patched, the view and
+    // every position stay as they are, and the simulation is woken so the two ends settle closer (or apart).
+    const afterEdgeChange = () => {
+        maxDeg = Math.max(1, ...nodes.map((n) => n.degree || 0));
+        for (const n of nodes) drawn.get(n.key).g.setAttribute('aria-label', ariaFor(n));
+        sim.rebuild();
+        autoFit = false;
+        buildRelTypes();
+        refreshEdges();
+        paintSizes();
+        if (o.onEdges) o.onEdges();
+        wake(0.8);
+    };
+    const addEdge = (e) => {
+        if (edgeEls.some((x) => x.id === e.id)) return edgeEls.find((x) => x.id === e.id);
+        const it = addItem(e);
+        if (!it) return null;
+        edges.push(e);
+        it.na.degree = (it.na.degree || 0) + 1;
+        it.nb.degree = (it.nb.degree || 0) + 1;
+        if (gLines.firstChild || settings.arrows) { it.line = svg('line', { class: 'graph-edge' }); gLines.append(it.line); }
+        afterEdgeChange();
+        return it;
+    };
+    const removeEdge = (id) => {
+        const it = edgeEls.find((x) => x.id === id);
+        if (!it) return;
+        if (it === selEdge) { applySel(null, null); if (o.onClear) o.onClear(); }
+        if (it === hoverEdge) clearEdgeHover();
+        edgeEls.splice(edgeEls.indexOf(it), 1);
+        edges.splice(edges.indexOf(it.e), 1);
+        for (const k of [it.a, it.b]) inc.set(k, inc.get(k).filter((x) => x !== it));
+        if (!edgeEls.some((x) => (x.a === it.a && x.b === it.b) || (x.a === it.b && x.b === it.a))) { adj.get(it.a).delete(it.b); adj.get(it.b).delete(it.a); }
+        it.na.degree = Math.max((it.na.degree || 1) - 1, 0);
+        it.nb.degree = Math.max((it.nb.degree || 1) - 1, 0);
+        if (it.line) it.line.remove();
+        if (it.lab) it.lab.remove();
+        afterEdgeChange();
+    };
+    const removeLink = async (id) => {
+        if (!editing) throw new Error('Turn on Edit links first.');
+        await o.api.remove(id);
+        removeEdge(id);
+        toast('Link removed');
     };
 
     // -- the live part: one animation frame per step while awake, none at all while asleep --
@@ -625,8 +1014,10 @@ export function createCanvas(o) {
     let gesture = null;
     let pinch = null;
     const nodeAt = (target) => {
-        const g = target && target.closest ? target.closest('.graph-node') : null;
-        return g ? g.getAttribute('data-key').slice(5) : null;
+        if (!target || !target.closest) return null;
+        const g = target.closest('.graph-node');
+        if (g) return g.getAttribute('data-key').slice(5);
+        return ringKey && target.closest('.graph-ring') ? ringKey : null;   // the ring belongs to its record
     };
     const mid = () => {
         const [a, b] = [...ptrs.values()];
@@ -638,13 +1029,16 @@ export function createCanvas(o) {
         try { root.setPointerCapture(e.pointerId); } catch (err) { /* synthetic pointer */ }
         ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (ptrs.size === 2) { pinch = mid(); gesture = { type: 'pinch', moved: true }; return; }
+        // Pressing the ring of a record (edit mode only) starts a new link from it; the body of the node still moves it.
+        if (editing && ringKey && e.target.closest && e.target.closest('.graph-ring')) { gesture = { type: 'link', key: ringKey, sx: e.clientX, sy: e.clientY, moved: false }; clearEdgeHover(); return; }
         const key = nodeAt(e.target);
         gesture = { type: key ? 'node' : 'pan', key, sx: e.clientX, sy: e.clientY, moved: false };
+        clearEdgeHover();
         hover(null);
     });
     root.addEventListener('pointermove', (e) => {
         const p = ptrs.get(e.pointerId);
-        if (!p || !gesture) return;
+        if (!p || !gesture) { if (!gesture && !ptrs.size && e.pointerType !== 'touch') idleMove(e); return; }
         const dx = e.clientX - p.x;
         const dy = e.clientY - p.y;
         p.x = e.clientX; p.y = e.clientY;
@@ -654,6 +1048,14 @@ export function createCanvas(o) {
             zoomAt(m.x, m.y, m.dist / pinch.dist);
             panBy(m.x - pinch.x, m.y - pinch.y);
             pinch = mid();
+            return;
+        }
+        if (gesture.type === 'link') {
+            if (!gesture.moved && Math.hypot(e.clientX - gesture.sx, e.clientY - gesture.sy) < DRAG_PX) return;
+            if (!gesture.moved) { gesture.moved = true; used(); startRubber(gesture.key); }
+            const w = toWorld(e.clientX, e.clientY);
+            rubber.setAttribute('x2', r1(w.x)); rubber.setAttribute('y2', r1(w.y));
+            markTarget(document.elementFromPoint(e.clientX, e.clientY), gesture.key);
             return;
         }
         if (!gesture.moved && Math.hypot(e.clientX - gesture.sx, e.clientY - gesture.sy) < DRAG_PX) return;
@@ -679,6 +1081,17 @@ export function createCanvas(o) {
             return;
         }
         gesture = null;
+        if (g && g.type === 'link') {
+            const to = g.moved && !cancelled ? nodeAt(document.elementFromPoint(e.clientX, e.clientY)) : null;
+            endRubber();
+            if (to && to !== g.key && !isHidden(by.get(to))) openPop(g.key, to, { x: e.clientX, y: e.clientY });
+            paintRing();
+            return;
+        }
+        if (g && g.type === 'pan' && !g.moved && !cancelled) {
+            const it = edgeAt(e.clientX, e.clientY, e.pointerType === 'touch' ? 12 : 6);
+            if (it) selectEdgeItem(it); else if (linking) cancelLink(true);
+        }
         if (g && g.type === 'node' && g.moved) {
             const n = by.get(g.key);
             n.fixed = Boolean(n.pinned);
@@ -686,7 +1099,7 @@ export function createCanvas(o) {
             sim.target = 0;
             wake(0.3);
         }
-        if (g && g.type === 'node' && !g.moved && !cancelled) tap(g.key);
+        if (g && g.type === 'node' && !g.moved && !cancelled) tap(g.key, { x: e.clientX, y: e.clientY });
     };
     root.addEventListener('pointerup', (e) => release(e, false));
     root.addEventListener('pointercancel', (e) => release(e, true));
@@ -697,7 +1110,7 @@ export function createCanvas(o) {
         zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * unit * (e.ctrlKey ? 0.01 : 0.0016)));
     }, { passive: false });
     root.addEventListener('pointerover', (e) => { if (e.pointerType !== 'touch' && !gesture) hover(nodeAt(e.target)); });
-    root.addEventListener('pointerleave', () => { if (!gesture) hover(null); });
+    root.addEventListener('pointerleave', () => { if (!gesture) { hover(null); clearEdgeHover(); } });
     root.addEventListener('focusin', (e) => {
         const key = nodeAt(e.target);
         if (!key) return;
@@ -715,18 +1128,52 @@ export function createCanvas(o) {
         if (e.target.closest && e.target.closest('button, input, summary')) return;
         if (e.altKey || e.ctrlKey || e.metaKey) return;
         const key = nodeAt(e.target);
-        if ((e.key === 'Enter' || e.key === ' ') && key) { e.preventDefault(); if (e.shiftKey) o.onFocus(key); else o.onSelect(key); return; }
+        if (editing && key && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); startLink(key); return; }
+        if ((e.key === 'Enter' || e.key === ' ') && key) {
+            e.preventDefault();
+            if (linking) pickTarget(key, screenOf(by.get(key))); else if (e.shiftKey) o.onFocus(key); else o.onSelect(key);
+            return;
+        }
+        if ((e.key === 'Delete' || e.key === 'Backspace') && editing && selEdge) { e.preventDefault(); if (o.onSelectEdge) o.onSelectEdge(selEdge.e, { confirm: true }); return; }
         const d = dims();
         const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+        // While picking the other end, the arrows move to the nearest record that way instead of panning.
+        if (move && linking && key) {
+            e.preventDefault();
+            const from = by.get(key);
+            let best = null; let bs = Infinity;
+            for (const dd of drawn.values()) {
+                const n = dd.n;
+                if (n === from || isHidden(n)) continue;
+                const vx = n.x - from.x; const vy = n.y - from.y;
+                const along = vx * move[0] + vy * move[1];
+                if (along <= 1) continue;
+                const sc = along + 2 * Math.abs(vx * move[1] - vy * move[0]);
+                if (sc < bs) { bs = sc; best = n; }
+            }
+            if (best) drawn.get(best.key).g.focus();
+            return;
+        }
         if (move) { e.preventDefault(); used(); goTo({ cx: view.cx + move[0] * d.vw * 0.15, cy: view.cy + move[1] * d.vh * 0.15, k: view.k }, false); return; }
         if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomBy(1.4); } else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomBy(1 / 1.4); } else if (e.key === '0') { e.preventDefault(); fit(true); }
     });
     const onEsc = (e) => {
         if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]')) return;
+        if (pop || linking || (gesture && gesture.type === 'link')) { e.preventDefault(); cancelLink(true); return; }
         if (!panel.hidden) { e.preventDefault(); togglePanel(false); return; }
-        if (selected && o.onClear) { e.preventDefault(); o.onClear(); }
+        if (editing) { e.preventDefault(); setEditing(false); return; }
+        if ((selected || selEdge) && o.onClear) { e.preventDefault(); o.onClear(); }
     };
     document.addEventListener('keydown', onEsc);
+    // E turns Edit links on and off (not while typing in a field).
+    const onEdit = (e) => {
+        if ((e.key !== 'e' && e.key !== 'E') || e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
+        if (e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (document.querySelector('dialog[open]')) return;
+        e.preventDefault();
+        setEditing(!editing);
+    };
+    document.addEventListener('keydown', onEdit);
 
     // The size is only known once the canvas is on the page: fit then, and keep the view in step with later resizes.
     const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
@@ -739,9 +1186,10 @@ export function createCanvas(o) {
         } else apply();
     }) : null;
     if (watch) watch.observe(root);
+    buildRelTypes();
     setHidden(hidden);
     setSelected(selected);
     paintSizes();
-    return { el, setSelected, setHidden, fit, zoomBy, focusOn, search, replay, sim, togglePanel,
-        destroy: () => { cancelAnimationFrame(tween); cancelAnimationFrame(raf); clearTimeout(searchTimer); document.removeEventListener('keydown', onEsc); if (watch) watch.disconnect(); } };
+    return { el, setSelected, setSelectedEdge, setHidden, setHiddenRel, setEditing, isEditing: () => editing, startLink, removeLink, fit, zoomBy, focusOn, search, replay, sim, togglePanel,
+        destroy: () => { cancelAnimationFrame(tween); cancelAnimationFrame(raf); clearTimeout(searchTimer); clearTimeout(moveTimer); document.removeEventListener('keydown', onEsc); document.removeEventListener('keydown', onEdit); if (watch) watch.disconnect(); } };
 }

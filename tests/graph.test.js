@@ -128,3 +128,35 @@ test('overview: the API needs a session and honours cap', async () => {
     expect(r.leftOut).toBeGreaterThan(0);
     expect(r).toMatchObject({ cap: 7, shown: 7 });
 });
+
+test('edges carry their row id, relation and the short note (when there is one), in the overview and in a neighbourhood', () => {
+    const ref = (id) => ({ domain: 'entities', id: String(id) });
+    const made = links.add(conn, { from: ref(d), to: ref(a), rel: 'for', note: 'seen at the harbour' }, 't');
+    const o = graph.overview(conn);
+    const e = o.edges.find((x) => x.id === made.id);
+    expect(e).toEqual({ id: made.id, from: `entities:${d}`, to: `entities:${a}`, rel: 'for', note: 'seen at the harbour' });
+    expect(o.edges.find((x) => x.rel === 'works-on')).not.toHaveProperty('note');
+    const n = graph.neighborhood(conn, { domain: 'entities', id: a, depth: 1 });
+    expect(n.edges.find((x) => x.id === made.id)).toMatchObject({ rel: 'for', note: 'seen at the harbour' });
+    links.remove(conn, made.id);
+});
+
+test('link edits from the graph go through the audited admin API: created, already linked (answered unchanged, no audit row), removed', async () => {
+    const ref = (id) => ({ domain: 'entities', id: String(id) });
+    const rows = () => conn.prepare("SELECT actor, action, detail FROM audit_log WHERE action IN ('link_created', 'link_removed') ORDER BY id").all();
+    const before = rows().length;
+    await request(app).post('/admin/api/links').set(H).send({ from: ref(a), to: ref(d), rel: 'about' }).expect(401);
+    await agent.post('/admin/api/links').send({ from: ref(a), to: ref(d), rel: 'about' }).expect(403);
+    const made = (await agent.post('/admin/api/links').set(H).send({ from: ref(a), to: ref(d), rel: 'about', note: 'x' }).expect(201)).body;
+    expect(made).toMatchObject({ status: 'created', rel: 'about' });
+    const again = (await agent.post('/admin/api/links').set(H).send({ from: ref(d), to: ref(a), rel: 'about' }).expect(200)).body;
+    expect(again).toEqual({ status: 'unchanged', id: made.id });
+    await agent.post('/admin/api/links').set(H).send({ from: ref(a), to: ref(d), rel: 'Not Valid' }).expect(400);
+    expect(rows()).toHaveLength(before + 1);
+    expect(graph.overview(conn).edges.some((e) => e.id === made.id && e.note === 'x')).toBe(true);
+    await agent.delete(`/admin/api/links/${made.id}`).set(H).send({ confirm: true }).expect(200);
+    const after = rows();
+    expect(after).toHaveLength(before + 2);
+    expect(after.slice(-2).map((r) => [r.actor, r.action])).toEqual([['admin', 'link_created'], ['admin', 'link_removed']]);
+    expect(graph.overview(conn).edges.some((e) => e.id === made.id)).toBe(false);
+});
