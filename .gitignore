@@ -131,3 +131,6 @@ dist
 
 docs/
 data/
+
+# Internal notes and progress files (kept on disk, never committed)
+internal/

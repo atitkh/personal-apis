@@ -3,7 +3,7 @@
 // (doc.aerodatabox.com/docs/openapi-apimarket-v1.json and openapi-rapidapi-v1.json, 2026-11-10).
 //
 // Checked against live answers on 2026-11-11 (RapidAPI, two flights: a past F9 and a future CX): times, terminals,
-// aircraft type and registration, actual times and delay came back sane (see FLIGHTS_PROGRESS.md, Stage D).
+// aircraft type and registration, actual times and delay came back sane (see internal/progress/FLIGHTS_PROGRESS.md, Stage D).
 // Not yet seen live: gates, baggage belt, multi-leg answers, a cancelled flight.
 //
 // Env: AERODATABOX_API_KEY (the key), AERODATABOX_PROVIDER = apimarket (default) | rapidapi.
