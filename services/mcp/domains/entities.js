@@ -3,6 +3,7 @@
 // get, find) and, in write mode with entities:agent-write, add and edit. There is no way to delete or restore over MCP
 // (a person does that at the dashboard). The audit row (mcp_call) never holds arguments or results.
 const entities = require('../../entities');
+const suggestions = require('../../entitySuggestions');
 const links = require('../../links');
 const briefing = require('../../briefing');
 const { ToolError } = require('../util');
@@ -23,6 +24,7 @@ module.exports = {
         list: { scope: 'entities:read', describe: `list: entities by kind then name (optional kind, q = part of the name, an alias or the notes; limit 1-${LIST_MAX})` },
         get: { scope: 'entities:read', describe: 'get: one entity by id, with the records linked to it (only domains you can read)' },
         find: { scope: 'entities:read', describe: 'find: entities whose name or alias equals name (any case); use it to resolve a name to an id' },
+        suggest: { scope: 'entities:suggest', write: true, describe: 'suggest: file a name that is not an entity yet for a person to review (name required; optional kind and a short example of where it was seen). A name that already is an entity or alias is not filed: the answer gives that entity. Agents cannot create entities from a suggestion' },
         add: { scope: 'entities:agent-write', write: true, describe: 'add: create an entity (kind and name required; aliases up to 10, notes up to 2000 characters). The same kind and name cannot exist twice' },
         edit: { scope: 'entities:agent-write', write: true, describe: 'edit: change an entity by id (any of kind, name, aliases, notes; null clears aliases or notes; optional note = why). Earlier versions are kept' },
     },
@@ -30,13 +32,14 @@ module.exports = {
     input(z, actions) {
         const shape = {};
         const has = (...names) => names.some((n) => actions.includes(n));
-        if (has('list', 'add', 'edit', 'find')) shape.kind = z.string().max(20).optional().describe(`${entities.KINDS.join(', ')}`);
+        if (has('list', 'add', 'edit', 'find', 'suggest')) shape.kind = z.string().max(20).optional().describe(`${entities.KINDS.join(', ')}`);
         if (has('list')) {
             shape.q = z.string().max(80).optional().describe('list: part of the name, an alias or the notes');
             shape.limit = z.number().int().min(1).max(LIST_MAX).optional().describe('list: how many');
         }
         if (has('get', 'edit')) shape.id = z.number().int().positive().optional().describe('get/edit: the entity id');
-        if (has('find', 'add', 'edit')) shape.name = z.string().max(120).optional().describe('find: the name or alias to look for; add/edit: the entity name');
+        if (has('suggest')) shape.example = z.string().max(200).optional().describe('suggest: a short note on where the name was seen (no record content)');
+        if (has('find', 'add', 'edit', 'suggest')) shape.name = z.string().max(120).optional().describe('find: the name or alias to look for; add/edit: the entity name');
         if (has('add', 'edit')) {
             shape.aliases = z.array(z.string().max(60)).max(10).nullable().optional().describe('add/edit: other names it goes by');
             shape.notes = z.string().max(2000).nullable().optional().describe('add/edit: notes');
@@ -59,6 +62,11 @@ module.exports = {
         case 'find': {
             const r = entities.find(db, need(args.name, 'a name'), { kind: args.kind });
             return { count: r.count, entities: r.entities.map(clean) };
+        }
+        case 'suggest': {
+            need(args.name, 'a name');
+            const r = suggestions.suggest(db, { name: args.name, kind: args.kind, example: args.example }, key.name);
+            return r.suggestion ? { status: r.status, suggestion: { id: r.suggestion.id, status: r.suggestion.status, count: r.suggestion.count } } : r;
         }
         case 'add': {
             need(args.kind, 'a kind');

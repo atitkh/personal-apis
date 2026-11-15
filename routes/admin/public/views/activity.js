@@ -51,7 +51,7 @@ const ICON = {
     link_created: 'overview', link_removed: 'overview', search_settings_changed: 'settings', search_reindexed: 'settings',
     webhook_created: 'agents', webhook_updated: 'agents', webhook_deleted: 'agents', webhook_tested: 'agents', webhook_run: 'agents',
     preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences', preference_deleted: 'preferences',
-    entity_created: 'entities', entity_updated: 'entities', entity_restored: 'entities', entity_deleted: 'entities',
+    entity_created: 'entities', entity_updated: 'entities', entity_restored: 'entities', entity_deleted: 'entities', entity_suggestion_filed: 'entities', entity_suggestion_accepted: 'entities', entity_suggestion_dismissed: 'entities', entity_suggestion_deleted: 'entities', entity_suggestions_dismissed: 'entities',
     lifelog_pushed: 'agents', lifelog_observation_added: 'agents', lifelog_episode_created: 'agents', lifelog_episode_updated: 'agents',
     lifelog_episode_restored: 'agents', lifelog_episode_linked: 'agents', lifelog_episode_unlinked: 'agents', lifelog_forgotten: 'warn',
     deadline_created: 'calendar', deadline_updated: 'calendar', deadline_done: 'calendar', deadline_ended: 'calendar', deadline_restored: 'calendar',
@@ -161,6 +161,11 @@ function sentence(e) {
     case 'entity_created': return [who, ` added ${entityWhat(d)}`];
     case 'entity_updated': return [who, ` changed ${entityWhat(d)}${d.fields && d.fields.length ? ` (${d.fields.join(', ')})` : ''}`];
     case 'entity_restored': return [who, ` restored an older version of ${entityWhat(d)}`];
+    case 'entity_suggestion_filed': return [who, ` filed ${entityWhat(d)} for review`];
+    case 'entity_suggestion_accepted': return [who, ` accepted a suggested ${d.kind || 'entity'}`];
+    case 'entity_suggestion_dismissed': return [who, ' dismissed a suggested entity'];
+    case 'entity_suggestions_dismissed': return [who, ` dismissed ${plural(d.count || 0, 'waiting name')} in the entities queue`];
+    case 'entity_suggestion_deleted': return d.count != null ? [who, ` deleted ${plural(d.count, 'suggested name')} from the entities queue`] : [who, ' deleted a suggested name from the entities queue'];
     case 'entity_deleted': return [who, ` deleted ${entityWhat(d)}${d.links ? ` and ${d.links} link${d.links === 1 ? '' : 's'}` : ''}`];
     case 'preference_deleted': return [who, ' deleted the preference ', strong(prefName(d))];
     case 'digest_deleted': return [who, ' deleted ', d.kind === 'daily' ? `the daily digest for ${dayLabel(d.period, { month: 'short', day: 'numeric' })}` : `the weekly review for ${d.period}`];

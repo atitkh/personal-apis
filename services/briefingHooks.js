@@ -159,4 +159,14 @@ function trips(db, { now, days }) {
     return { attention, upcoming };
 }
 
-module.exports = { flights, places, digests, deadlines, trips };
+// Names waiting in the entities review queue: a count only, never a name.
+function entities(db) {
+    const waiting = require('./entitySuggestions').counts(db).pending;
+    if (!waiting) return { attention: [], upcoming: [] };
+    return {
+        attention: [{ id: 'entities:suggestions:pending', severity: 'attention', text: `${plural(waiting, 'name')} ${waiting === 1 ? 'waits' : 'wait'} for review in Entities` }],
+        upcoming: [],
+    };
+}
+
+module.exports = { flights, places, digests, deadlines, trips, entities };

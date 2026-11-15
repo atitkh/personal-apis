@@ -5,6 +5,7 @@
 // Names, aliases and notes are your own text and go in as text. Deleting is permanent and takes the entity's links with it;
 // the records themselves stay.
 import { linkedSection } from './linked.js';
+import { tabBar, suggestionsTab, takeFocus } from './entitySuggestions.js';
 import {
     h, icon, button, chip, plural, ago, when, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, actorName,
     pageHeader, formActions, chipNav, domainHue } from '../ui.js';
@@ -296,7 +297,21 @@ export async function render(ctx) {
     const kind = KIND[kindRaw] ? kindRaw : '';
     const text = (q.get('q') || '').trim();
 
-    const data = await ctx.api('/entities?limit=200');
+    const tab = q.get('tab') === 'suggested' ? 'suggested' : 'entities';
+    const showRaw = q.get('show');
+    const [data, sug] = await Promise.all([
+        ctx.api('/entities?limit=200'),
+        ctx.api(`/entities/suggestions?status=${tab === 'suggested' && ['accepted', 'dismissed', 'all'].includes(showRaw) ? showRaw : 'pending'}&limit=${tab === 'suggested' ? 200 : 1}`),
+    ]);
+    const pending = sug.counts.pending;
+    if (tab === 'suggested') {
+        const key = takeFocus();
+        if (key) setTimeout(() => { const el = document.querySelector(`[data-key="${key}"]`) || document.querySelector('[data-key="tab:suggested"]'); if (el) el.focus(); }, 0);
+        return h('div', { class: 'view entities' },
+            pageHeader({ lede: 'The people, projects, organizations and topics your records can be linked to. Search finds them by name or any other name.' }),
+            tabBar('suggested', pending),
+            suggestionsTab(ctx, sug, data.entities));
+    }
 
     syncDrawer(ctx);
     lastWasList = !idRaw;
@@ -347,6 +362,7 @@ export async function render(ctx) {
     const add = button({ text: 'New entity', iconName: 'plus', 'data-key': 'new-entity', onClick: () => addEntity(ctx, kind || undefined) });
     return h('div', { class: 'view entities' },
         pageHeader({ lede: 'The people, projects, organizations and topics your records can be linked to. Search finds them by name or any other name.', actions: add }),
+        tabBar('entities', pending),
         all.length ? h('div', { class: 'toolbar filter-bar' }, h('div', { class: 'filters' }, chips), searchForm) : null,
         h('div', { class: 'entity-panel' },
             all.length ? h('p', { class: 'note entity-total', 'aria-live': 'polite', text: kind || text ? `${shown.length} of ${plural(all.length, 'entity', 'entities')}` : plural(all.length, 'entity', 'entities') }) : null,

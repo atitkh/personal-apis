@@ -74,13 +74,14 @@ const REGISTRY = {
         stats: (db) => require('./links').stats(db),
     },
     // People, projects, organizations and topics that links can point at (services/entities.js). Agent tool
-    // services/mcp/domains/entities.js; no briefing hook.
+    // services/mcp/domains/entities.js; the briefing hook counts names waiting for review.
     entities: {
         title: 'Entities',
         sensitivity: 'private',   // names of people and what Atit notes about them
         storage: 'db',
         defaultEnabled: true,
         stats: (db) => require('./entities').stats(db),
+        briefing: (db, o) => require('./briefingHooks').entities(db, o),
     },
     // The most private domain: what Atit does, as text from cameras, glasses, sensors and notes. "*" keys do not reach
     // it (services/apiKeys.js SENSITIVE_DOMAINS). No briefing hook; agent tool services/mcp/domains/lifelog.js.

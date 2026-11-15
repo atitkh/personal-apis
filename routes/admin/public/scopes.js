@@ -104,6 +104,7 @@ export const CATALOGUE = [
         title: 'Entities',
         scopes: [
             { scope: 'entities:read', label: 'Read', text: 'Read your entities (the people, projects, organizations and topics your records are linked to: name, other names, notes) through the agent endpoint and /hub, and look a name up.' },
+            { scope: 'entities:suggest', label: 'Suggest', text: 'File a name that is not an entity yet into the review queue, through the agent endpoint (write mode) and /hub. It cannot create or change any entity; accepting and dismissing stays with you.', write: true },
             { scope: 'entities:agent-write', label: 'Agent write', text: 'Write through the agent tool (the domain must also be switched to Read and write on the Overview board). Lets an agent add entities and change them (name, aliases, notes), through the agent endpoint. Earlier versions are kept. It cannot delete or restore an entity. It needs Read as well to see anything.', write: true },
             { scope: 'entities:api-write', label: 'API write', text: 'Write through the API (jobs and scripts). Add and change entities and restore older versions, through the /hub REST API. It cannot delete an entity; that is done at the dashboard. It needs Read as well, because the answer is the entity.', write: true },
         ],
