@@ -722,16 +722,38 @@ function queueItem(ctx, s, { places, kinds, next }) {
         h('div', { class: 'q-actions' }, ...(s.status === 'accepted' ? [remove] : [nameIt, attach, dismiss, remove])));
 }
 
-async function deleteAllDismissed(ctx, n) {
+const STATUS_WORD = { pending: 'waiting', accepted: 'named', dismissed: 'dismissed', all: '' };
+
+// Deletes every spot of the shown status (or all of them) from the queue.
+async function deleteAllSpots(ctx, status, n) {
+    const word = STATUS_WORD[status];
+    const label = `${word ? `${word} ` : ''}${n === 1 ? 'spot' : 'spots'}`;
     const out = await deleteDialog({
-        title: `Delete all ${n} dismissed ${n === 1 ? 'spot' : 'spots'}?`,
-        goes: [plural(n, 'dismissed spot'), 'A street seen again after this is filed as a new spot'],
-        stays: ['Your places and their rules', 'Spots waiting or already named'],
-        run: (o) => ctx.api('/places/suggestions/dismissed', { method: 'DELETE', body: { confirm: true, backup: o.backup } }),
+        title: `Delete all ${n} ${label}?`,
+        goes: [plural(n, `${word ? `${word} ` : ''}spot`), 'A street seen again after this is filed as a new spot'],
+        stays: ['Your places and their rules', status === 'all' ? 'Nothing else in the queue' : 'Spots with another status'],
+        run: (o) => ctx.api('/places/suggestions', { method: 'DELETE', body: { confirm: true, status, backup: o.backup } }),
     });
     if (!out) return;
-    toast(`Deleted ${plural(out.count, 'dismissed spot')}`);
+    toast(`Deleted ${plural(out.count, `${word ? `${word} ` : ''}spot`)}`);
     ctx.rerender();
+}
+
+// Moves every waiting spot to Dismissed after a confirmation.
+async function dismissAllWaiting(ctx, n) {
+    const ok = await confirmDialog({
+        title: `Dismiss all ${n} waiting ${n === 1 ? 'spot' : 'spots'}?`,
+        body: ['They leave the queue and stay dismissed: later sightings only raise their counts.', 'You can still name any of them from Dismissed.'],
+        confirm: 'Dismiss all',
+    });
+    if (!ok) return;
+    try {
+        const r = await ctx.api('/places/suggestions/dismiss-all', { method: 'POST', body: {} });
+        toast(`Dismissed ${plural(r.count, 'spot')}`);
+        ctx.rerender();
+    } catch (err) {
+        toast(`Could not dismiss them. ${err.message}`, { kind: 'bad' });
+    }
 }
 
 function queueTab(ctx, sug, places, kinds) {
@@ -774,9 +796,13 @@ function queueTab(ctx, sug, places, kinds) {
     return h('div', { class: 'tab-panel', id: 'panel-queue', role: 'tabpanel', 'aria-labelledby': 'tab-queue' },
         h('p', { class: 'note', text: 'Streets the nightly digest saw that no place claims, most recent first. Name one to turn it into a place, add it to a place you have, or dismiss it.' }),
         h('div', { class: 'toolbar' }, nav,
-            (show === 'dismissed' || show === 'all') && counts.dismissed > 0
-                ? button({ text: `Delete all dismissed (${counts.dismissed})`, variant: 'quiet-danger', size: 'small', iconName: 'trash', 'data-key': 'delete-dismissed', onClick: () => deleteAllDismissed(ctx, counts.dismissed) })
-                : null),
+            show === 'pending' || show === 'all'
+                ? (counts.pending > 0 ? button({ text: `Dismiss all waiting (${counts.pending})`, variant: 'quiet', size: 'small', iconName: 'close', 'data-key': 'dismiss-all', onClick: () => dismissAllWaiting(ctx, counts.pending) }) : null)
+                : null,
+            (() => {
+                const n = { pending: counts.pending, accepted: counts.accepted, dismissed: counts.dismissed, all: counts.pending + counts.accepted + counts.dismissed }[show];
+                return n > 0 ? button({ text: `Delete all${STATUS_WORD[show] ? ` ${STATUS_WORD[show]}` : ''} (${n})`, variant: 'quiet-danger', size: 'small', iconName: 'trash', 'data-key': show === 'dismissed' ? 'delete-dismissed' : 'delete-all-spots', onClick: () => deleteAllSpots(ctx, show, n) }) : null;
+            })()),
         h('section', { 'aria-labelledby': 'q-count', class: 'queue' },
             h('h2', { id: 'q-count', class: 'section-title', text: show === 'pending' ? `${plural(list.length, 'spot')} waiting` : plural(list.length, 'spot') }),
             body));

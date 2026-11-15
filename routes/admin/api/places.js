@@ -31,6 +31,19 @@ module.exports = (api, ctx) => {
 
     const bad = (code, message, status) => new places.PlaceError(status || 400, code, message);
     // Delete a queue spot, or every dismissed one (the fixed word first). Body { confirm: true, backup?: true }.
+    // Every spot of one status ({ status: pending|accepted|dismissed|all, confirm: true, backup? }) and "dismiss all waiting".
+    api.delete('/places/suggestions', placeHandler((req, res, conn) => removal(req, res, conn, 'place_suggestion_deleted', {
+        plan: () => { needConfirm(bad, req.body); },
+        run: () => places.removeSuggestionsWhere(conn, (req.body || {}).status, req.body),
+        detail: places.suggestionRemovedAuditDetail,
+    })));
+
+    api.post('/places/suggestions/dismiss-all', placeHandler((req, res, conn) => {
+        const result = places.dismissAllPending(conn, 'admin');
+        if (result.status !== 'unchanged') audit.record(conn, 'admin', 'place_suggestions_dismissed', { count: result.count }, req.ip);
+        res.json({ ...result, counts: places.suggestionCounts(conn) });
+    }));
+
     api.delete('/places/suggestions/dismissed', placeHandler((req, res, conn) => removal(req, res, conn, 'place_suggestion_deleted', {
         plan: () => { needConfirm(bad, req.body); },
         run: () => places.removeDismissedSuggestions(conn, req.body),

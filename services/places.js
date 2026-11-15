@@ -593,12 +593,31 @@ function removeDismissedSuggestions(db, input) {
     })();
 }
 
+// Every spot in the queue with one status (pending, accepted, dismissed) or all of them.
+function removeSuggestionsWhere(db, status, input) {
+    needConfirm(bad, input);
+    if (!['pending', 'accepted', 'dismissed', 'all'].includes(status)) throw bad('bad_request', 'status must be pending, accepted, dismissed or all.');
+    return db.transaction(() => {
+        const n = (status === 'all' ? db.prepare('DELETE FROM place_suggestions').run() : db.prepare('DELETE FROM place_suggestions WHERE status = ?').run(status)).changes;
+        return { status: 'deleted', count: n, suggestion_status: status };
+    })();
+}
+
+// Every waiting spot becomes dismissed (as if each had been dismissed by hand).
+function dismissAllPending(db, actor) {
+    return db.transaction(() => {
+        const rows = db.prepare("SELECT * FROM place_suggestions WHERE status = 'pending'").all();
+        for (const s of rows) decide(db, s, 'dismissed', null, actor);
+        return { status: rows.length ? 'dismissed' : 'unchanged', count: rows.length };
+    })();
+}
+
 const suggestionRemovedAuditDetail = (r) => (r.count == null
     ? { suggestion_id: r.id, status: r.suggestion_status }
     : { count: r.count, status: r.suggestion_status });
 
 module.exports = {
-    placeRemovalPreview, removePlace, removedAuditDetail, removeSuggestion, removeDismissedSuggestions, suggestionRemovedAuditDetail,
+    placeRemovalPreview, removePlace, removedAuditDetail, removeSuggestion, removeDismissedSuggestions, removeSuggestionsWhere, dismissAllPending, suggestionRemovedAuditDetail,
     PlaceError, KINDS, RULE_TYPES, STATUSES,
     list, get, history, stats,
     create, update, restore, addRule, updateRule, removeRule, auditDetail,

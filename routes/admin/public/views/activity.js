@@ -40,7 +40,7 @@ const ICON = {
     backup_run: 'backup', backup_failed: 'warn', backup_verified: 'backup', setting_changed: 'settings', mcp_call: 'agents',
     place_created: 'places', place_updated: 'places', place_restored: 'places', place_deleted: 'places',
     place_rule_added: 'places', place_rule_updated: 'places', place_rule_removed: 'places',
-    place_suggestion_accepted: 'places', place_suggestion_dismissed: 'places', place_suggestion_deleted: 'places',
+    place_suggestion_accepted: 'places', place_suggestion_dismissed: 'places', place_suggestion_deleted: 'places', place_suggestions_dismissed: 'places',
     flight_created: 'calendar', flight_updated: 'calendar', flight_restored: 'calendar',
     trip_created: 'calendar', trip_updated: 'calendar', flight_settings_changed: 'calendar',
     trip_restored: 'calendar', trip_flight_linked: 'calendar', trip_flight_unlinked: 'calendar',
@@ -164,8 +164,9 @@ function sentence(e) {
     case 'entity_deleted': return [who, ` deleted ${entityWhat(d)}${d.links ? ` and ${d.links} link${d.links === 1 ? '' : 's'}` : ''}`];
     case 'preference_deleted': return [who, ' deleted the preference ', strong(prefName(d))];
     case 'digest_deleted': return [who, ' deleted ', d.kind === 'daily' ? `the daily digest for ${dayLabel(d.period, { month: 'short', day: 'numeric' })}` : `the weekly review for ${d.period}`];
+    case 'place_suggestions_dismissed': return [who, ` dismissed ${plural(d.count || 0, 'waiting spot')} in the places queue`];
     case 'place_suggestion_deleted': return d.count != null
-        ? [who, ` deleted ${plural(d.count, 'dismissed spot')} from the places queue`]
+        ? [who, ` deleted ${plural(d.count, `${d.status && d.status !== 'all' ? `${{ pending: 'waiting', accepted: 'named', dismissed: 'dismissed' }[d.status] || d.status} ` : ''}spot`)} from the places queue`]
         : [who, ' deleted a spot from the places queue'];
     case 'flight_settings_changed': return [who, ' changed the flights settings'];
     case 'flight_candidate_filed': return [who, ' found the flight ', strong(d.flight || 'a flight'), ' for review'];

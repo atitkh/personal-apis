@@ -40,6 +40,8 @@
     "GET /admin/api/places",
     "POST /admin/api/places/resolve",
     "GET /admin/api/places/suggestions",
+    "DELETE /admin/api/places/suggestions",
+    "POST /admin/api/places/suggestions/dismiss-all",
     "DELETE /admin/api/places/suggestions/dismissed",
     "DELETE /admin/api/places/suggestions/:id",
     "POST /admin/api/places/suggestions/:id/accept",
