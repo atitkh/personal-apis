@@ -6,6 +6,7 @@
 //                                ?show=accepted|dismissed|all for the ones already decided
 // Private data: rule values (streets, zones, coordinates) appear only in the drawer and in the check result,
 // never in the table or in a toast. Everything from the server goes in as text.
+import { linkedSection } from './linked.js';
 import {
     h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer,
     chip, chipNav, fact, hidden, actorName, copyButton, pageHeader } from '../ui.js';
@@ -435,6 +436,7 @@ function placeDrawer(ctx, id, fromList, kinds) {
                 place.rules.length
                     ? h('ul', { class: 'rule-list' }, place.rules.map(ruleItem))
                     : emptyState({ title: 'No rules yet.', text: 'Without a rule nothing resolves to this place. Add the street as the phone reports it, a Home Assistant zone, or a circle.', iconName: 'places' })),
+            linkedSection(ctx, 'places', place.id),
             h('section', { class: 'drawer-section', 'aria-labelledby': 'pd-history' },
                 h('h3', { id: 'pd-history', tabindex: '-1', 'data-key': 'history', text: `History, ${plural(place.history.length, 'revision')}` }),
                 h('p', { class: 'note', text: 'Every change to the place or one of its rules is kept. Restoring adds a new revision, so nothing is lost.' }),

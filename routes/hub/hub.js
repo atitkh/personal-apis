@@ -86,6 +86,7 @@ router.use('/places', require('./places')(handle));
 router.use('/flights', require('./flights')(handle));
 router.use('/deadlines', require('./deadlines')(handle));
 router.use('/trips', require('./trips')(handle));
+router.use('/links', require('./links')(handle));
 router.use('/preferences', require('./preferences')(handle));
 router.use('/lifelog', require('./lifelog')(handle));
 

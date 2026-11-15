@@ -12,6 +12,15 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'links',
+        title: 'Links',
+        scopes: [
+            { scope: 'links:read', label: 'Read', text: 'See which records are linked to a record (a preference for a trip, a deadline for a flight), through the agent endpoint and /hub. Links to domains the key cannot read are only counted.' },
+            { scope: 'links:agent-write', label: 'Agent write', text: 'Write through the agent tool (the domain must also be switched to Read and write on the Overview board). Lets an agent add and take away links between records of domains it can read. The records themselves never change.', write: true },
+            { scope: 'links:api-write', label: 'API write', text: 'Write through the API (jobs and scripts). Add and remove links through the /hub REST API.', write: true },
+        ],
+    },
+    {
         domain: 'search',
         title: 'Search',
         scopes: [

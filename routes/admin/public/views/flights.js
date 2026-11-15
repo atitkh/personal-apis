@@ -6,6 +6,7 @@
 //   #/flights?tab=found          "Found flights": candidates a job or an agent filed; ?show=accepted|dismissed|all
 // Times are shown and typed as the clock at each airport. The booking reference is masked until you press Show and
 // appears only in the drawer and the forms, never in a table, a toast or the palette. Server text goes in as text.
+import { linkedSection } from './linked.js';
 import {
     h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer,
     chip, chipNav, fact, hidden, actorName, dayLabel, pageHeader, formActions } from '../ui.js';
@@ -634,6 +635,7 @@ function flightDrawer(ctx, id, fromList, mark) {
                     fact('Source', SOURCE[flight.source] || cap(flight.source)),
                     fact('Added', when(flight.created_at)),
                     fact('Last changed', `${ago(flight.updated_at)} by ${actorName(flight.updated_by)}`))),
+            linkedSection(ctx, 'flights', flight.id),
             h('section', { class: 'drawer-section', 'aria-labelledby': 'fd-history' },
                 h('h3', { id: 'fd-history', tabindex: '-1', 'data-key': 'history', text: `History, ${plural(flight.history.length, 'revision')}` }),
                 h('p', { class: 'note', text: 'Every change is kept. Restoring adds a new revision, so nothing is lost.' }),

@@ -12,6 +12,7 @@ export const MCP_LABEL = { off: 'Off', read: 'Read', write: 'Read and write' };
 export const MCP_WRITE_WARNING = "Agents holding an agent-write or publish scope will be able to change this domain's data.";
 // What write mode means for a domain, in its own words (the generic line for any other domain).
 const WRITE_WARNING = {
+    links: 'Agents holding links agent-write can connect and disconnect records of the domains they can read. The records themselves never change.',
     digests: "Agents holding a digests agent-write or publish scope will be able to change digests. Every earlier version is kept.",
     places: 'Agents holding a places suggest scope can file streets into the Needs a name queue, and a places agent-write scope can add and change places and their rules. Every earlier version is kept; deleting and naming the queue stay with you.',
 };

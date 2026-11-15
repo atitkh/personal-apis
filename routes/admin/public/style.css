@@ -1569,3 +1569,10 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 .search-title { font-weight: 600; overflow-wrap: anywhere; }
 .search-snippet { grid-column: 1 / -1; margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 560px) { .search-result { grid-template-columns: minmax(0, 1fr); } }
+
+/* Linked section in drawers */
+.linked-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.linked-item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.linked-note { flex: 1 0 100%; margin: 0; }
+.linked-results { display: grid; gap: 6px; max-height: 220px; overflow: auto; margin: 8px 0; }
+.linked-pick { display: flex; align-items: baseline; gap: 8px; cursor: pointer; }

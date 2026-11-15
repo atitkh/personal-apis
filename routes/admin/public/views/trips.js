@@ -4,6 +4,7 @@
 //   #/trips?new=1            the New trip drawer (the palette uses it)
 // Above the list, suggested trips made from flights that are on no trip: edit the name, Accept or Dismiss. An item's
 // reference (a booking number) is fetched and shown only after Show reference, never in a list. Server text goes in as text.
+import { linkedSection } from './linked.js';
 import {
     h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, fact, hidden, actorName, dayLabel, pageHeader, formActions } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
@@ -514,6 +515,7 @@ function tripDrawer(ctx, id, fromList, mark) {
             flightsSection(),
             deadlinesSection(),
             itemsSection(),
+            linkedSection(ctx, 'trips', id),
             historySection(),
             h('section', { class: 'drawer-section danger-zone' },
                 h('p', { class: 'note', text: 'Delete permanently removes the trip, its items and its history. Flights and deadlines stay, without the link.' }),

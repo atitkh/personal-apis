@@ -65,6 +65,14 @@ const REGISTRY = {
         defaultEnabled: true,
         stats: (db) => require('./preferences').stats(db),
     },
+    // Links between records of any two domains (services/links.js). Agent tool services/mcp/domains/links.js; no briefing hook.
+    links: {
+        title: 'Links',
+        sensitivity: 'private',
+        storage: 'db',
+        defaultEnabled: true,
+        stats: (db) => require('./links').stats(db),
+    },
     // The most private domain: what Atit does, as text from cameras, glasses, sensors and notes. "*" keys do not reach
     // it (services/apiKeys.js SENSITIVE_DOMAINS). No briefing hook; agent tool services/mcp/domains/lifelog.js.
     lifelog: {

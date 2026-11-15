@@ -7,6 +7,7 @@
 // The most private page: raw lines can describe people and places. Server text only ever goes in as text. Nothing
 // here is kept in browser storage. Episodes are never deleted here (the API has no such call);
 // "Forget a time range" under Manage is the one way anything goes.
+import { linkedSection } from './linked.js';
 import {
     h, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, formDialog, deleteDialog, openDrawer, fact, hidden,
     actorName, dayLabel, pageHeader, formActions, bytes } from '../ui.js';
@@ -591,6 +592,7 @@ function episodeDrawer(ctx, id, date, fromList, mark) {
                 details(),
                 h('dl', { class: 'facts' }, fact('Last changed', `${ago(ep.updated_at)} by ${actorName(ep.updated_by)}`))),
             linksSection(),
+            linkedSection(ctx, 'lifelog', id),
             historySection(),
             h('section', { class: 'drawer-section' },
                 h('p', { class: 'note', text: 'Episodes are never deleted here: cancel one instead. To remove a whole span of lines and episodes, use Manage, Forget a time range.' })),

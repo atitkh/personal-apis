@@ -6,6 +6,7 @@
 // Only plain facts live here: the hub refuses anything that looks like a password, a long number or a key, and the
 // reason is shown next to the field. Remove hides a preference and keeps its history; Delete permanently removes it for good.
 // Server text goes in as text.
+import { linkedSection } from './linked.js';
 import {
     h, icon, button, plural, ago, when, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, actorName, pageHeader, formActions } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
@@ -246,6 +247,7 @@ function prefDrawer(ctx, id, fromList, mark) {
                 h('dl', { class: 'facts' },
                     h('dt', { text: 'Added' }), h('dd', { text: when(item.created_at) }),
                     h('dt', { text: 'Last changed' }), h('dd', { text: `${ago(item.updated_at)} by ${actorName(item.updated_by)}` }))),
+            linkedSection(ctx, 'preferences', item.id),
             h('section', { class: 'drawer-section', 'aria-labelledby': 'pd-history' },
                 h('h3', { id: 'pd-history', tabindex: '-1', 'data-key': 'history', text: `History, ${plural(item.history.length, 'revision')}` }),
                 h('p', { class: 'note', text: 'Every change is kept. Restoring adds a new revision, so nothing is lost.' }),

@@ -6,6 +6,7 @@
 //   #/deadlines?new=1                the Add deadline drawer (the palette uses it)
 // The reference (a document or policy number) is masked until you press Show and appears only in the drawer and the
 // forms, never in a table, a toast or the palette. Server text goes in as text. Nothing is ever deleted.
+import { linkedSection } from './linked.js';
 import {
     h, icon, button, plural, when, ago, emptyState, errorState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, fact, hidden, actorName, dayLabel, pageHeader, formActions } from '../ui.js';
 import { href, navigate, parse } from '../router.js';
@@ -559,6 +560,7 @@ function deadlineDrawer(ctx, id, fromList, mark) {
                     fact('Added', when(item.created_at)),
                     item.done_at ? fact('Last done', when(item.done_at)) : null,
                     fact('Last changed', `${ago(item.updated_at)} by ${actorName(item.updated_by)}`))),
+            linkedSection(ctx, 'deadlines', item.id),
             h('section', { class: 'drawer-section', 'aria-labelledby': 'dd-history' },
                 h('h3', { id: 'dd-history', tabindex: '-1', 'data-key': 'history', text: `History, ${plural(item.history.length, 'revision')}` }),
                 h('p', { class: 'note', text: 'Every change is kept. Restoring adds a new revision, so nothing is lost.' }),
