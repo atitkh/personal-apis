@@ -21,6 +21,7 @@ const FLOWS = {
     deadlines: ['run-deadlines.mjs', null, 'deadlines-seed.js'],
     trips: ['run-trips.mjs', null, 'trips-seed.js'],
     entities: ['run-entities.mjs', null, 'entities-seed.js'],
+    graph: ['run-graph.mjs', null, 'graph-seed.js'],
     lifelog: ['run-lifelog.mjs', null, 'lifelog-seed.js'],
     preferences: ['run-preferences.mjs', null, 'preferences-seed.js'],
     briefing: ['run-briefing.mjs', null, 'briefing-seed.js'],

@@ -1,0 +1,20 @@
+// Seeds a SCRATCH hub with invented entities, a trip and links for the Graph browser flow. Never use on real data.
+const db = require('/app/db');
+const entities = require('/app/services/entities');
+const trips = require('/app/services/trips');
+const links = require('/app/services/links');
+const c = db.get();
+const e = (kind, name) => String(entities.create(c, { kind, name }, 'seed').id);
+const mira = e('person', 'Mira Delgado');
+const proj = e('project', 'Hub redesign');
+const org = e('organization', 'Example Foundation');
+const topic = e('topic', 'Tides');
+e('person', 'Loner Vance');
+const trip = String(trips.create(c, { title: 'Spring break', destination: 'Orlando', kind: 'leisure', start_date: '2099-01-20', end_date: '2099-01-27' }, 'seed').id);
+const ent = (id) => ({ domain: 'entities', id });
+links.add(c, { from: ent(mira), to: ent(proj), rel: 'works-on' }, 'seed');
+links.add(c, { from: ent(proj), to: ent(org), rel: 'part-of' }, 'seed');
+links.add(c, { from: ent(org), to: ent(topic), rel: 'about' }, 'seed');
+links.add(c, { from: ent(mira), to: { domain: 'trips', id: trip }, rel: 'about' }, 'seed');
+console.log('graph seeded');
+db.close();

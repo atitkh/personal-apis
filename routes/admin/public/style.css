@@ -1595,3 +1595,22 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 @media (max-width: 560px) {
     .entity-row { align-items: flex-start; flex-direction: column; gap: 6px; }
 }
+
+/* ---------- graph ---------- */
+.section-actions { display: inline-flex; gap: 8px; align-items: center; }
+.graph-canvas { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-panel); overflow: hidden; }
+.graph-svg { display: block; width: 100%; height: auto; max-height: 70vh; }
+.graph-edge { stroke: var(--line-strong); stroke-width: 1.2; opacity: .55; }
+.graph-edge.is-on { stroke: var(--accent); opacity: 1; stroke-width: 2; }
+.graph-node { cursor: pointer; outline: none; }
+.graph-node circle { fill: var(--c, var(--neutral)); stroke: var(--surface); stroke-width: 2; }
+.graph-node text { fill: var(--ink); font-size: 12px; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.graph-node.is-center circle { stroke: var(--ink); stroke-width: 3; }
+.graph-node.is-selected circle, .graph-node:focus-visible circle { stroke: var(--accent); stroke-width: 4; }
+.graph-node:hover circle { stroke: var(--ink); }
+.graph-info { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 18px; }
+.graph-actions { margin-left: auto; display: inline-flex; gap: 8px; }
+.graph-toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+.graph-toggle[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
+.graph-list { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 6px; }
+.graph-results { margin-bottom: 18px; }

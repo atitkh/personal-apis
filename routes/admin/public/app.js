@@ -21,6 +21,7 @@ router.register('lifelog', { title: 'Lifelog', icon: 'lifelog', nav: true, group
 router.register('deadlines', { title: 'Deadlines', icon: 'deadlines', nav: true, group: 'data', load: () => import('./views/deadlines.js') });
 router.register('preferences', { title: 'Preferences', icon: 'preferences', nav: true, group: 'data', load: () => import('./views/preferences.js') });
 router.register('entities', { title: 'Entities', icon: 'user', nav: true, group: 'data', load: () => import('./views/entities.js') });
+router.register('graph', { title: 'Graph', icon: 'graph', nav: true, group: 'data', load: () => import('./views/graph.js') });
 router.register('portfolio', { title: 'Portfolio', icon: 'portfolio', nav: true, group: 'data', load: () => import('./views/portfolio.js') });
 router.register('keys', { title: 'API keys', short: 'Keys', icon: 'keys', nav: true, group: 'access', mobile: true, load: () => import('./views/keys.js') });
 router.register('agents', { title: 'Agent access', short: 'Agents', icon: 'agents', nav: true, group: 'access', mobile: true, load: () => import('./views/agents.js') });

@@ -77,6 +77,7 @@ export function linkedSection(ctx, domain, id) {
 
     load();
     return h('section', { class: 'drawer-section linked-section', 'aria-labelledby': sid },
-        h('div', { class: 'section-head' }, h('h3', { id: sid, text: 'Linked' }), addBtn),
+        h('div', { class: 'section-head' }, h('h3', { id: sid, text: 'Linked' }),
+            h('span', { class: 'section-actions' }, h('a', { class: 'btn quiet small', href: `#/graph?d=${encodeURIComponent(domain)}&i=${encodeURIComponent(id)}`, text: 'Graph', 'data-key': 'open-graph' }), addBtn)),
         list);
 }

@@ -15,6 +15,7 @@ export const GO = [
     ['r', 'deadlines', 'Deadlines'],
     ['e', 'preferences', 'Preferences'],
     ['n', 'entities', 'Entities'],
+    ['v', 'graph', 'Graph'],
     ['k', 'keys', 'API keys'],
     ['a', 'agents', 'Agent access'],
     ['s', 'settings', 'Settings'],
