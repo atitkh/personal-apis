@@ -1,7 +1,10 @@
-// The Graph page's drawing: two deterministic layouts and an interactive SVG canvas (wheel/pinch zoom, drag to pan, drag a
-// node, hover to highlight, click to select, double-click to focus). The view is a viewBox driven by pan/zoom state; node
-// positions live in memory only and nothing is saved. No libraries.
-import { h, svg, domainHue, plural } from '../ui.js';
+// The Graph page's drawing, in the manner of Obsidian's graph view: a borderless dark canvas with small muted dots, hairline
+// links and labels that fade in with the zoom (busiest records first). The layout is a live force simulation: it is seeded the
+// same way every time (spirals around one anchor per domain), drifts into place, reacts when a node is dragged (its neighbours
+// follow along the links) and goes to sleep (no animation frames at all) once it is still. Floating over the canvas: a
+// settings panel (filters, groups, display, forces), zoom buttons and whatever the view hands in (mode switch, details card).
+// Positions live in memory only; the settings are kept in localStorage under `hub-graph`. No libraries.
+import { h, svg, icon, domainHue, plural } from '../ui.js';
 
 const BASE_W = 920;     // world units across the canvas at zoom 1
 const BASE_H = 560;
@@ -9,15 +12,66 @@ const K_MIN = 0.15;
 const K_MAX = 6;
 const DRAG_PX = 5;      // a press that moves less than this is a tap
 const DOUBLE_MS = 350;
+const STORE = 'hub-graph';
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clipText = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 const reduced = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// ---- layouts (positions are written onto the node objects) ----
+// ---- settings (display and forces only; never any record data) ----
 
-// A focused record: rings by depth to start, then repulsion between nodes and springs along links.
-export function layoutFocused(nodes, edges) {
+export const DEFAULTS = { nodeSize: 1, linkThick: 1, textFade: 0.5, arrows: false, center: 0.3, repel: 0.5, link: 0.5, linkDist: 60 };
+const RANGE = { nodeSize: [0.4, 2.5, 0.05], linkThick: [0.3, 3, 0.1], textFade: [0, 1, 0.01], center: [0, 1, 0.01], repel: [0, 1, 0.01], link: [0, 1, 0.01], linkDist: [20, 200, 1] };
+const PART = { nodeSize: 'display', linkThick: 'display', textFade: 'display', arrows: 'display', center: 'forces', repel: 'forces', link: 'forces', linkDist: 'forces' };
+
+export function loadSettings(store) {
+    const out = { ...DEFAULTS };
+    try {
+        const raw = JSON.parse((store || localStorage).getItem(STORE) || 'null');
+        for (const [k, v] of Object.entries(DEFAULTS)) {
+            const given = raw && raw[PART[k]] && raw[PART[k]][k];
+            if (typeof v === 'boolean') { if (typeof given === 'boolean') out[k] = given; } else if (typeof given === 'number' && Number.isFinite(given)) out[k] = clamp(given, RANGE[k][0], RANGE[k][1]);
+        }
+    } catch (e) { /* no storage, or not ours: defaults */ }
+    return out;
+}
+function saveSettings(s) {
+    try {
+        const out = { v: 1, display: {}, forces: {} };
+        for (const k of Object.keys(DEFAULTS)) out[PART[k]][k] = s[k];
+        localStorage.setItem(STORE, JSON.stringify(out));
+    } catch (e) { /* private mode: it just will not be remembered */ }
+}
+
+// ---- seeds: where the nodes start (no randomness, so every visit opens the same way) ----
+
+// The whole graph: every domain gets an anchor on a ring and its nodes start in a spiral around it, busiest in the middle.
+// Returns the anchors, which the simulation pulls each domain towards (gently).
+export function seedOverview(nodes) {
+    const n = nodes.length;
+    const doms = [...new Set(nodes.map((x) => x.domain))].sort();
+    const ring = doms.length > 1 ? 52 * Math.sqrt(Math.max(n, 4)) : 0;
+    const anchors = new Map(doms.map((d, i) => {
+        const a = (i / doms.length) * Math.PI * 2 - Math.PI / 2;
+        return [d, { x: BASE_W / 2 + Math.cos(a) * ring, y: BASE_H / 2 + Math.sin(a) * ring * 0.8 }];
+    }));
+    const order = [...nodes].sort((a, b) => a.domain.localeCompare(b.domain) || (b.degree || 0) - (a.degree || 0) || (a.key < b.key ? -1 : 1));
+    const seen = {};
+    for (const nd of order) {
+        const i = seen[nd.domain] || 0;
+        seen[nd.domain] = i + 1;
+        const a = i * 2.39996;
+        const r = 11 * Math.sqrt(i + 0.5);
+        const p = anchors.get(nd.domain);
+        nd.x = p.x + Math.cos(a) * r;
+        nd.y = p.y + Math.sin(a) * r;
+        nd.vx = 0; nd.vy = 0; nd.sx = nd.x; nd.sy = nd.y;
+    }
+    return doms.length > 1 && ring ? anchors : new Map();
+}
+
+// A focused record: rings by depth. The centre record is pinned in the middle.
+export function seedFocused(nodes, edges) {
     const cx = BASE_W / 2;
     const cy = BASE_H / 2;
     const by = new Map(nodes.map((n) => [n.key, n]));
@@ -37,206 +91,378 @@ export function layoutFocused(nodes, edges) {
         n.angle = a;
     });
     for (const n of nodes) {
-        if (n.depth === 0) { n.x = cx; n.y = cy; } else if (n.depth >= 2) {
+        if (n.depth === 0) { n.x = cx; n.y = cy; n.pinned = true; n.fixed = true; n.fx = cx; n.fy = cy; } else if (n.depth >= 2) {
             const p = by.get(n.parent) || by.get(ring1[0] && ring1[0].key) || { x: cx, y: cy, angle: 0 };
             const sib = kids.get(n.parent) || [n.key];
-            const spread = (sib.indexOf(n.key) - (sib.length - 1) / 2) * 0.28;
-            const a = (p.angle || 0) + spread;
-            n.angle = a;
+            const a = (p.angle || 0) + (sib.indexOf(n.key) - (sib.length - 1) / 2) * 0.28;
             n.x = cx + Math.cos(a) * 270;
             n.y = cy + Math.sin(a) * 215;
         }
-        n.vx = 0;
-        n.vy = 0;
+        n.vx = 0; n.vy = 0; n.sx = n.x; n.sy = n.y;
     }
-    const pairs = edges.map((e) => [by.get(e.from), by.get(e.to)]).filter(([a, b]) => a && b);
-    for (let step = 0; step < 220; step += 1) {
-        const cool = 1 - step / 260;
-        for (let i = 0; i < nodes.length; i += 1) {
-            for (let j = i + 1; j < nodes.length; j += 1) {
-                const a = nodes[i];
-                const b = nodes[j];
-                let dx = a.x - b.x;
-                let dy = a.y - b.y;
-                const d2 = Math.max(dx * dx + dy * dy, 36);
-                const f = 5200 / d2;
-                const d = Math.sqrt(d2);
-                dx /= d; dy /= d;
-                a.vx += dx * f; a.vy += dy * f; b.vx -= dx * f; b.vy -= dy * f;
-            }
-        }
-        for (const [a, b] of pairs) {
-            const dx = b.x - a.x;
-            const dy = b.y - a.y;
-            const d = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-            const f = (d - 120) * 0.035;
-            a.vx += (dx / d) * f; a.vy += (dy / d) * f; b.vx -= (dx / d) * f; b.vy -= (dy / d) * f;
-        }
-        for (const n of nodes) {
-            if (n.depth === 0) { n.x = cx; n.y = cy; continue; }
-            n.vx += (cx - n.x) * 0.004;
-            n.vy += (cy - n.y) * 0.004;
-            n.x += Math.max(-14, Math.min(14, n.vx * cool));
-            n.y += Math.max(-14, Math.min(14, n.vy * cool));
-            n.vx *= 0.55; n.vy *= 0.55;
-        }
-    }
+    return new Map();
 }
 
-// The whole graph: every domain gets an anchor on a ring, its nodes start in a spiral around it (busiest in the middle), and
-// the forces are repulsion, link springs and a pull to the anchor. No randomness, so the picture is the same on every visit.
-// It stops when nothing moves any more, and never runs more than MAX_STEPS (400 nodes: about 100 ms).
-const MAX_STEPS = 220;
-export function layoutOverview(nodes, edges) {
+// ---- the simulation ----
+
+// Repulsion between near nodes (a grid, so 400 nodes cost about 400 x 20 pairs), a spring along every link, a pull to the
+// centre and (overview) a gentle pull of each node towards its domain's anchor. `alpha` is the heat: it cools towards
+// `target` each step and the simulation is asleep when it is cool and nothing holds it up (target 0). A node with `fixed` is held
+// at fx, fy (being dragged, or the pinned centre record).
+const CUT = 300;
+const SPRING = 0.6;
+const ALPHA_MIN = 0.015;
+const DECAY = 0.017;
+export function createSim(nodes, edges, anchors, forces) {
     const n = nodes.length;
-    if (!n) return;
-    const doms = [...new Set(nodes.map((x) => x.domain))].sort();
-    const spread = 38 * Math.sqrt(Math.max(n, 4));
-    const ring = doms.length > 1 ? spread * 0.7 : 0;
-    const anchor = new Map(doms.map((d, i) => {
-        const a = (i / doms.length) * Math.PI * 2 - Math.PI / 2;
-        return [d, { x: BASE_W / 2 + Math.cos(a) * ring, y: BASE_H / 2 + Math.sin(a) * ring * 0.8 }];
-    }));
-    const order = [...nodes].sort((a, b) => a.domain.localeCompare(b.domain) || (b.degree || 0) - (a.degree || 0) || (a.key < b.key ? -1 : 1));
-    const seen = {};
-    for (const nd of order) {
-        const i = seen[nd.domain] || 0;
-        seen[nd.domain] = i + 1;
-        const a = i * 2.39996;
-        const r = 11 * Math.sqrt(i + 0.5);
-        const p = anchor.get(nd.domain);
-        nd.x = p.x + Math.cos(a) * r;
-        nd.y = p.y + Math.sin(a) * r;
-        nd.vx = 0;
-        nd.vy = 0;
-    }
     const idx = new Map(nodes.map((x, i) => [x.key, i]));
     const ends = edges.map((e) => [idx.get(e.from), idx.get(e.to)]).filter(([a, b]) => a != null && b != null);
     const fx = new Float64Array(n);
     const fy = new Float64Array(n);
-    const CUT2 = 190 * 190;
-    for (let step = 0; step < MAX_STEPS; step += 1) {
-        const cool = Math.max(0.08, 1 - step / MAX_STEPS);
+    const next = new Int32Array(n);
+    // Busy records push harder (so hubs keep their groups apart) and tug less per link (one hub is not dragged around by each leaf).
+    const charge = Float64Array.from(nodes, (x) => 1 + 0.5 * Math.sqrt(x.degree || 0));
+    const tug = ends.map(([a, b]) => 1 / Math.sqrt(Math.max(Math.min(nodes[a].degree || 1, nodes[b].degree || 1), 1)));
+    let head = new Int32Array(0);
+    const sim = { alpha: 1, target: 0, forces: { ...forces }, ticks: 0 };
+    sim.asleep = () => sim.target === 0 && sim.alpha < ALPHA_MIN;
+    sim.step = () => {
+        sim.alpha += (sim.target - sim.alpha) * DECAY;
+        sim.ticks += 1;
+        const { center, repel, link, linkDist } = sim.forces;
+        const push = 5200 * repel;
+        const spring = SPRING * link;
+        const pull = 0.0004 + center * 0.004;
         fx.fill(0); fy.fill(0);
+        let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
+        for (const a of nodes) { if (a.x < x0) x0 = a.x; if (a.x > x1) x1 = a.x; if (a.y < y0) y0 = a.y; if (a.y > y1) y1 = a.y; }
+        const cs = Math.max(CUT, (x1 - x0) / 63, (y1 - y0) / 63);
+        const gw = Math.floor((x1 - x0) / cs) + 1;
+        const gh = Math.floor((y1 - y0) / cs) + 1;
+        if (head.length < gw * gh) head = new Int32Array(gw * gh);
+        head.fill(-1, 0, gw * gh);
+        for (let i = 0; i < n; i += 1) {
+            const cell = Math.floor((nodes[i].y - y0) / cs) * gw + Math.floor((nodes[i].x - x0) / cs);
+            next[i] = head[cell];
+            head[cell] = i;
+        }
+        const cut2 = CUT * CUT;
         for (let i = 0; i < n; i += 1) {
             const a = nodes[i];
-            for (let j = i + 1; j < n; j += 1) {
-                const b = nodes[j];
-                const dx = a.x - b.x;
-                const dy = a.y - b.y;
-                const d2 = dx * dx + dy * dy;
-                if (d2 > CUT2) continue;
-                const dd = Math.max(d2, 49);
-                const f = 2600 / dd / Math.sqrt(dd);
-                fx[i] += dx * f; fy[i] += dy * f; fx[j] -= dx * f; fy[j] -= dy * f;
+            const gx = Math.floor((a.x - x0) / cs);
+            const gy = Math.floor((a.y - y0) / cs);
+            for (let cy = Math.max(gy - 1, 0); cy <= Math.min(gy + 1, gh - 1); cy += 1) {
+                for (let cx = Math.max(gx - 1, 0); cx <= Math.min(gx + 1, gw - 1); cx += 1) {
+                    for (let j = head[cy * gw + cx]; j >= 0; j = next[j]) {
+                        if (j <= i) continue;
+                        const b = nodes[j];
+                        let dx = a.x - b.x;
+                        let dy = a.y - b.y;
+                        let d2 = dx * dx + dy * dy;
+                        if (d2 > cut2) continue;
+                        if (d2 < 1e-6) { dx = ((i * 7 + j) % 5 - 2) * 0.3 || 0.3; dy = ((i * 3 + j) % 5 - 2) * 0.3 || -0.3; d2 = dx * dx + dy * dy; }
+                        const dd = Math.max(d2, 49);
+                        const f = (push * charge[i] * charge[j]) / dd / Math.sqrt(dd);
+                        fx[i] += dx * f; fy[i] += dy * f; fx[j] -= dx * f; fy[j] -= dy * f;
+                    }
+                }
             }
         }
-        for (const [i, j] of ends) {
+        for (let e = 0; e < ends.length; e += 1) {
+            const [i, j] = ends[e];
             const a = nodes[i];
             const b = nodes[j];
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const d = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
-            const f = (d - 50) * 0.04 / d;
+            const f = ((d - linkDist) * spring * tug[e]) / d;
             fx[i] += dx * f; fy[i] += dy * f; fx[j] -= dx * f; fy[j] -= dy * f;
         }
-        let moved = 0;
         for (let i = 0; i < n; i += 1) {
             const a = nodes[i];
-            const p = anchor.get(a.domain);
-            fx[i] += (p.x - a.x) * 0.007;
-            fy[i] += (p.y - a.y) * 0.007;
-            a.vx = (a.vx + fx[i]) * 0.55;
-            a.vy = (a.vy + fy[i]) * 0.55;
-            const sx = clamp(a.vx * cool, -16, 16);
-            const sy = clamp(a.vy * cool, -16, 16);
-            a.x += sx; a.y += sy;
-            moved = Math.max(moved, Math.abs(sx) + Math.abs(sy));
+            if (a.fixed) { a.x = a.fx; a.y = a.fy; a.vx = 0; a.vy = 0; continue; }
+            const p = anchors.get(a.domain);
+            fx[i] += (BASE_W / 2 - a.x) * pull;
+            fy[i] += (BASE_H / 2 - a.y) * pull;
+            if (p) { fx[i] += (p.x - a.x) * 0.012; fy[i] += (p.y - a.y) * 0.012; }
+            a.vx = (a.vx + fx[i] * sim.alpha) * 0.6;
+            a.vy = (a.vy + fy[i] * sim.alpha) * 0.6;
+            a.x += clamp(a.vx, -16, 16);
+            a.y += clamp(a.vy, -16, 16);
         }
-        if (step > 30 && moved < 0.15) break;
-    }
+    };
+    // Runs until cool (used for reduced motion and by tests).
+    sim.settle = (max = 600) => { for (let i = 0; i < max && !sim.asleep(); i += 1) sim.step(); };
+    return sim;
 }
 
 // ---- the canvas ----
 
-// o: { nodes (with x, y), edges, centerKey, selected, hidden (Set of domains), dense, label, oneLabel(domain),
-//      onSelect(key), onFocus(key) } -> { el, setSelected, setHidden, fit, zoomBy, destroy }
+// o: { nodes (seeded: x, y), edges, anchors, centerKey, selected, hidden (Set of domains), dense, label, oneLabel(domain),
+//      groups [{ d, text }], hudLeft [elements], card (element), onSelect(key), onFocus(key), onClear(), onHidden(set) }
+//   -> { el, setSelected, setHidden, fit, zoomBy, focusOn, search, replay, sim, destroy }
 export function createCanvas(o) {
     const { nodes, edges } = o;
     const dense = Boolean(o.dense);
     const by = new Map(nodes.map((n) => [n.key, n]));
     const adj = new Map(nodes.map((n) => [n.key, new Set()]));
     const inc = new Map(nodes.map((n) => [n.key, []]));
-    const nodeEls = new Map();
+    const drawn = new Map();
     const edgeEls = [];
     const view = { cx: BASE_W / 2, cy: BASE_H / 2, k: 1 };
+    const settings = loadSettings();
+    const maxDeg = Math.max(1, ...nodes.map((n) => n.degree || 0));
+    const small = nodes.length <= 40;
     let hidden = new Set(o.hidden || []);
     let selected = o.selected || null;
     let hovered = null;
     let tween = 0;
+    let raf = 0;
+    let autoFit = true;
+    let ready = false;
+    let scale = 1;
+    let lastScale = 0;
+    let query = '';
     let last = { key: null, t: 0 };
+    let stepMs = 0;
+    let spentMs = 0;
+    let kRef = 1;           // the zoom that fits the graph: text fades in as you zoom past it, whatever the size of the graph
 
-    const root = svg('svg', { class: `graph-svg${dense ? ' is-dense' : ''}`, viewBox: `0 0 ${BASE_W} ${BASE_H}`, role: 'group', 'aria-label': o.label });
+    const root = svg('svg', { class: `graph-svg${dense ? ' is-dense' : ''}`, viewBox: `0 0 ${BASE_W} ${BASE_H}`, role: 'group', 'aria-label': o.label, 'data-sim': 'asleep', 'data-ticks': '0' });
+    const defs = svg('defs', {}, svg('marker', { id: 'graph-arrow', viewBox: '0 0 8 8', refX: '7', refY: '4', markerWidth: '7', markerHeight: '7', markerUnits: 'userSpaceOnUse', orient: 'auto' }, svg('path', { d: 'M0 0.5 L8 4 L0 7.5 z' })));
     const gEdges = svg('g', { class: 'graph-edges' });
     const gNodes = svg('g', { class: 'graph-nodes' });
     const tip = h('div', { class: 'graph-tip', role: 'presentation' });
     tip.hidden = true;
-    const button = (text, label, key, fn) => h('button', { type: 'button', class: 'btn quiet small', 'aria-label': label, 'data-key': key, onclick: fn }, text);
-    const tools = h('div', { class: 'graph-tools', role: 'group', 'aria-label': 'Zoom' },
-        button('+', 'Zoom in', 'graph-zoom-in', () => zoomBy(1.4)), button('−', 'Zoom out', 'graph-zoom-out', () => zoomBy(1 / 1.4)),
-        button('Reset view', 'Reset the view to fit everything', 'graph-fit', () => fit(true)));
-    const el = h('div', { class: `graph-canvas${dense ? ' is-dense' : ''}` }, root, tip, tools);
 
     for (const e of edges) {
         const a = by.get(e.from);
         const b = by.get(e.to);
         if (!a || !b) continue;
-        const line = svg('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: 'graph-edge' }, dense ? null : svg('title', {}, e.rel));
-        const item = { el: line, a: a.key, b: b.key };
+        const item = { a: a.key, b: b.key, na: a, nb: b, rel: e.rel, off: false, line: null };
         edgeEls.push(item);
         inc.get(a.key).push(item); inc.get(b.key).push(item);
         adj.get(a.key).add(b.key); adj.get(b.key).add(a.key);
-        gEdges.append(line);
     }
+    // All the links are one path (one attribute to update per frame, however many links there are); the links of the hovered and
+    // selected records are drawn again on top as lines, which is what lights them up. With arrows on, every link is its own line.
+    const pathAll = svg('path', { class: 'graph-edge graph-edge-all' });
+    const gLines = svg('g', { class: 'graph-lines' });
+    const gHot = svg('g', { class: 'graph-hot' });
+    gEdges.append(pathAll, gLines);
     const topKeys = new Set([...nodes].sort((a, b) => (b.degree || 0) - (a.degree || 0)).slice(0, dense ? 40 : nodes.length).map((n) => n.key));
-    const radius = (n) => (n.key === o.centerKey ? 17 : dense ? 4 + Math.min(Math.sqrt(n.degree || 0) * 2.4, 13) : 8 + Math.min(n.degree || 0, 8));
+    const baseR = (n) => (n.key === o.centerKey ? 8 : dense ? 2.4 + Math.sqrt(n.degree || 0) * 1.2 : 4.5 + Math.sqrt(n.degree || 0) * 1.4);
     // Drawn from the least to the most connected, so the busy records sit on top of their neighbours.
     for (const n of [...nodes].sort((a, b) => (a.degree || 0) - (b.degree || 0))) {
-        const r = radius(n);
-        const hub = dense && (n.degree || 0) >= 4;
-        const g = svg('g', { class: `graph-node hue-${domainHue(n.domain)}${n.key === o.centerKey ? ' is-center' : ''}${hub ? ' is-hub' : ''}`, transform: `translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})`,
+        const hit = svg('circle', { class: 'hit' });
+        const dot = svg('circle', { class: 'dot' });
+        const text = svg('text', { 'text-anchor': 'middle', dy: '1.2em' }, clipText(n.title, 28));
+        const g = svg('g', { class: `graph-node hue-${domainHue(n.domain)}${n.key === o.centerKey ? ' is-center' : ''}`,
             tabindex: topKeys.has(n.key) ? '0' : '-1', role: 'button', 'data-key': `node:${n.key}`,
-            'aria-label': `${o.oneLabel(n.domain)}: ${n.title}. ${plural(n.degree || 0, 'link')}. Press Enter to select, Shift and Enter to focus on it.` },
-        svg('circle', { r }), svg('text', { y: r + 13, 'text-anchor': 'middle' }, clipText(n.title, 26)));
-        n.r = r;
-        nodeEls.set(n.key, g);
+            'aria-label': `${o.oneLabel(n.domain)}: ${n.title}. ${plural(n.degree || 0, 'link')}. Press Enter to select, Shift and Enter to focus on it.` }, hit, dot, text);
+        drawn.set(n.key, { n, g, hit, dot, text, r: 0, lo: -1 });
         gNodes.append(g);
     }
-    root.append(gEdges, gNodes);
+    root.append(defs, gEdges, gHot, gNodes);
+
+    // -- the floating controls --
+    const button = (text, label, key, fn) => h('button', { type: 'button', class: 'graph-btn', 'aria-label': label, title: label, 'data-key': key, onclick: fn }, text);
+    const gear = h('button', { type: 'button', class: 'graph-btn', 'aria-label': 'Graph settings', title: 'Graph settings', 'aria-expanded': 'false', 'aria-controls': 'graph-panel', 'data-key': 'graph-settings', onclick: () => togglePanel() }, icon('settings'));
+    const tools = h('div', { class: 'graph-hud graph-hud-right' }, gear,
+        h('div', { class: 'graph-zoom', role: 'group', 'aria-label': 'Zoom' },
+            button('+', 'Zoom in', 'graph-zoom-in', () => zoomBy(1.4)), button('−', 'Zoom out', 'graph-zoom-out', () => zoomBy(1 / 1.4)),
+            button(icon('expand'), 'Reset the view to fit everything', 'graph-fit', () => fit(true))));
+    const hint = h('p', { class: 'graph-hint', text: 'Scroll to zoom · drag to pan · double-click a point to see just its neighbours' });
+    const el = h('div', { class: `graph-stage${dense ? ' is-dense' : ''}`, 'data-key': 'graph-stage' }, root, tip, h('div', { class: 'graph-hud graph-hud-left' }, o.hudLeft || []), tools, hint);
+
+    // -- the settings panel: filters, groups, display, forces --
+    const sliders = new Map();
+    const slider = (key, text, fmt = (v) => v.toFixed(2)) => {
+        const [lo, hi, step] = RANGE[key];
+        const out = h('output', { class: 'graph-val' });
+        const input = h('input', { type: 'range', min: lo, max: hi, step, 'data-key': `set:${key}` });
+        const show = () => { input.value = settings[key]; out.textContent = fmt(settings[key]); };
+        input.addEventListener('input', () => { settings[key] = Number(input.value); out.textContent = fmt(settings[key]); changed(key); });
+        sliders.set(key, show);
+        show();
+        return h('label', { class: 'graph-row' }, h('span', { class: 'graph-row-label', text }), input, out);
+    };
+    const arrows = h('input', { type: 'checkbox', 'data-key': 'set:arrows' });
+    arrows.addEventListener('change', () => { settings.arrows = arrows.checked; changed('arrows'); });
+    const searchBox = h('input', { type: 'search', class: 'graph-search', placeholder: 'Search records in the graph', 'aria-label': 'Search records in the graph', autocomplete: 'off', 'data-key': 'graph-search' });
+    const found = h('p', { class: 'graph-found muted', 'aria-live': 'polite' });
+    let searchTimer = 0;
+    searchBox.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => search(searchBox.value, true), 250); });
+    searchBox.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimer); search(searchBox.value, true); } });
+    const toggles = new Map();
+    const paintGroups = () => {
+        for (const [d, b] of toggles) {
+            const on = !hidden.has(d);
+            b.setAttribute('aria-pressed', String(on));
+        }
+    };
+    const groups = h('div', { class: 'graph-groups', role: 'group', 'aria-label': 'Show these domains' }, (o.groups || []).map(({ d, text }) => {
+        const b = h('button', { type: 'button', class: `graph-group hue-${domainHue(d)}`, 'data-key': `hide:${d}`, onclick: () => {
+            const set = new Set(hidden);
+            if (set.has(d)) set.delete(d); else set.add(d);
+            setHidden(set);
+            if (o.onHidden) o.onHidden(set);
+        } }, h('span', { class: 'graph-swatch', 'aria-hidden': 'true' }), h('span', { class: 'graph-group-text', text }));
+        toggles.set(d, b);
+        return b;
+    }));
+    const section = (title, open, ...kids) => h('details', { class: 'graph-sec', open: open ? '' : null }, h('summary', { text: title }), h('div', { class: 'graph-sec-body' }, kids));
+    const panel = h('div', { id: 'graph-panel', class: 'graph-panel', role: 'region', 'aria-label': 'Graph settings', hidden: '' },
+        h('div', { class: 'graph-panel-head' }, h('strong', { text: 'Graph settings' }), button(icon('close'), 'Close the settings', 'graph-settings-close', () => togglePanel(false))),
+        section('Filters', true, searchBox, found),
+        section('Groups', true, groups),
+        section('Display', false, slider('nodeSize', 'Node size'), slider('linkThick', 'Link thickness'), slider('textFade', 'Text fade threshold'), h('label', { class: 'graph-row graph-check' }, arrows, h('span', { text: 'Arrows' }))),
+        section('Forces', false, slider('center', 'Center force'), slider('repel', 'Repel force'), slider('link', 'Link force'), slider('linkDist', 'Link distance', (v) => String(Math.round(v)))),
+        h('div', { class: 'graph-panel-foot' },
+            h('button', { type: 'button', class: 'btn small', 'data-key': 'graph-animate', onclick: () => replay(), text: 'Animate' }),
+            h('button', { type: 'button', class: 'btn quiet small', 'data-key': 'graph-defaults', onclick: () => resetSettings(), text: 'Reset to defaults' })));
+    el.append(panel);
+    if (o.card) el.append(o.card);
+    arrows.checked = settings.arrows;
+
+    const togglePanel = (open = panel.hidden) => {
+        panel.hidden = !open;
+        gear.setAttribute('aria-expanded', String(open));
+        el.classList.toggle('panel-open', open);
+        if (!open && panel.contains(document.activeElement)) gear.focus();
+    };
+    const changed = (key) => {
+        saveSettings(settings);
+        if (PART[key] === 'forces') { sim.forces[key] = settings[key]; wake(0.6); } else paintSizes();
+    };
+    const resetSettings = () => {
+        Object.assign(settings, DEFAULTS);
+        try { localStorage.removeItem(STORE); } catch (e) { /* nothing saved anyway */ }
+        for (const show of sliders.values()) show();
+        arrows.checked = settings.arrows;
+        Object.assign(sim.forces, { center: settings.center, repel: settings.repel, link: settings.link, linkDist: settings.linkDist });
+        paintSizes();
+        wake(0.6);
+    };
+
+    // -- drawing: sizes, positions, zoom-dependent text --
+    const rad = (n) => baseR(n) * settings.nodeSize;
+    const paintSizes = () => {
+        root.style.setProperty('--lt', settings.linkThick.toFixed(2));
+        root.classList.toggle('show-arrows', settings.arrows);
+        for (const d of drawn.values()) d.base = rad(d.n);
+        lastScale = 0;
+        setArrows();
+        paintZoom();
+        place(true);
+    };
+    const r1 = (v) => Math.round(v * 10) / 10;
+    const tail = (it) => {
+        // where a link ends: at the node's edge when it has an arrow head
+        const { x, y } = it.na;
+        const dx = it.nb.x - x; const dy = it.nb.y - y;
+        const len = Math.hypot(dx, dy) || 1;
+        const t = Math.max(len - drawn.get(it.b).r - 2, 0) / len;
+        return [x + dx * t, y + dy * t];
+    };
+    const setLine = (l, it) => {
+        const [x2, y2] = settings.arrows ? tail(it) : [it.nb.x, it.nb.y];
+        l.setAttribute('x1', r1(it.na.x)); l.setAttribute('y1', r1(it.na.y)); l.setAttribute('x2', r1(x2)); l.setAttribute('y2', r1(y2));
+    };
+    const place = (all) => {
+        for (const d of drawn.values()) {
+            const n = d.n;
+            if (!all && Math.abs(n.x - d.px) + Math.abs(n.y - d.py) < 0.05) continue;
+            d.px = n.x; d.py = n.y;
+            d.g.setAttribute('transform', `translate(${r1(n.x)} ${r1(n.y)})`);
+        }
+        if (settings.arrows) { for (const it of edgeEls) if (it.line) setLine(it.line, it); } else {
+            let dstr = '';
+            for (const it of edgeEls) if (!it.off) dstr += `M${r1(it.na.x)} ${r1(it.na.y)}L${r1(it.nb.x)} ${r1(it.nb.y)}`;
+            pathAll.setAttribute('d', dstr);
+        }
+        for (const l of gHot.children) setLine(l, l.__item);
+    };
+    // The links of the hovered and the selected record, as lines drawn over the grey ones.
+    const paintHot = () => {
+        const out = [];
+        const add = (key, cls) => { if (!key || !inc.get(key)) return; for (const it of inc.get(key)) if (!it.off) out.push([it, cls]); };
+        add(selected, 'is-on');
+        add(hovered, 'is-near');
+        const seen = new Map();
+        for (const [it, cls] of out) seen.set(it, seen.get(it) === 'is-near' ? 'is-near' : cls);
+        const kids = [];
+        for (const [it, cls] of seen) {
+            const l = svg('line', { class: `graph-edge ${cls}` }, dense ? null : svg('title', {}, it.rel));
+            l.__item = it;
+            setLine(l, it);
+            kids.push(l);
+        }
+        gHot.replaceChildren(...kids);
+    };
+    const setArrows = () => {
+        if (settings.arrows && !gLines.firstChild) for (const it of edgeEls) { it.line = svg('line', { class: 'graph-edge' }); gLines.append(it.line); }
+        for (const it of edgeEls) if (it.line) it.line.toggleAttribute('hidden', it.off);
+        gLines.toggleAttribute('hidden', !settings.arrows);
+        pathAll.toggleAttribute('hidden', settings.arrows);
+    };
+    // Label opacity by zoom and degree: busy records first, the rest fading in as you zoom (Obsidian's text fade threshold).
+    const paintLabels = () => {
+        const t = (0.15 + settings.textFade * 0.9) * (small ? 0.3 : 1);
+        const rel = view.k / kRef;
+        for (const d of drawn.values()) {
+            const score = rel * (0.4 + 0.6 * Math.sqrt((d.n.degree || 0) / maxDeg));
+            const lo = clamp((score - t) / 0.3, 0, 1);
+            if (Math.abs(lo - d.lo) > 0.03 || (lo !== d.lo && (lo === 0 || lo === 1))) { d.lo = lo; d.text.style.opacity = lo.toFixed(2); }
+        }
+    };
+    // Dots grow a little when you zoom in, not as fast as the picture does (like Obsidian), so a close-up stays readable.
+    const paintZoom = () => {
+        if (Math.abs(scale - lastScale) > lastScale * 0.04) {
+            lastScale = scale;
+            root.style.setProperty('--fs', `${(11 / scale).toFixed(3)}px`);
+            const comp = clamp((view.k / kRef) ** -0.45, 0.3, 2.2);
+            for (const d of drawn.values()) {
+                d.r = d.base * comp;
+                d.dot.setAttribute('r', d.r.toFixed(2));
+                d.text.setAttribute('y', d.r.toFixed(2));
+                d.hit.setAttribute('r', Math.max(d.r + 2, 8 / scale).toFixed(2));
+            }
+        }
+        paintLabels();
+    };
 
     // -- view state --
+    // The size is cached (reading it every frame would force a layout while nodes are moving); `rect()` is the live box, used
+    // where the pointer position has to be turned into a world position.
+    let box = { w: 0, h: 0 };
+    const measure = () => { const r = root.getBoundingClientRect(); box = { w: r.width, h: r.height }; return r.width > 0; };
+    const rect = () => root.getBoundingClientRect();
     const dims = () => {
-        const r = root.getBoundingClientRect();
-        const w = r.width || BASE_W;
-        const hh = r.height || (w * BASE_H) / BASE_W;
+        if (!box.w) measure();
+        const w = box.w || BASE_W;
+        const hh = box.h || (w * BASE_H) / BASE_W;
         const vw = BASE_W / view.k;
-        return { r, w, hh, vw, vh: (vw * hh) / w };
+        return { w, hh, vw, vh: (vw * hh) / w };
     };
     const apply = () => {
         const d = dims();
+        scale = d.w / d.vw;
         root.setAttribute('viewBox', `${(view.cx - d.vw / 2).toFixed(2)} ${(view.cy - d.vh / 2).toFixed(2)} ${d.vw.toFixed(2)} ${d.vh.toFixed(2)}`);
-        root.style.setProperty('--ls', clamp(1 / view.k, 0.7, 1.8).toFixed(2));
         root.dataset.zoom = view.k.toFixed(3);
-        root.classList.toggle('show-labels', view.k >= 1.5);
+        paintZoom();
         if (hovered) placeTip(hovered);
     };
     const toWorld = (px, py) => {
         const d = dims();
-        return { x: view.cx - d.vw / 2 + ((px - d.r.left) / d.w) * d.vw, y: view.cy - d.vh / 2 + ((py - d.r.top) / d.hh) * d.vh };
+        const r = rect();
+        return { x: view.cx - d.vw / 2 + ((px - r.left) / d.w) * d.vw, y: view.cy - d.vh / 2 + ((py - r.top) / d.hh) * d.vh };
     };
+    const used = () => { autoFit = false; el.classList.add('is-used'); };
     const zoomAt = (px, py, factor) => {
         const k = clamp(view.k * factor, K_MIN, K_MAX);
         if (k === view.k) return;
+        used();
         const before = toWorld(px, py);
         view.k = k;
         const after = toWorld(px, py);
@@ -245,6 +471,7 @@ export function createCanvas(o) {
         apply();
     };
     const panBy = (dxPx, dyPx) => {
+        used();
         const d = dims();
         view.cx -= (dxPx / d.w) * d.vw;
         view.cy -= (dyPx / d.hh) * d.vh;
@@ -266,32 +493,36 @@ export function createCanvas(o) {
         };
         tween = requestAnimationFrame(step);
     };
-    const zoomBy = (factor) => goTo({ cx: view.cx, cy: view.cy, k: clamp(view.k * factor, K_MIN, K_MAX) }, true);
-    const fit = (animate) => {
-        const shown = nodes.filter((n) => !isHidden(n));
-        if (!shown.length) { goTo({ cx: BASE_W / 2, cy: BASE_H / 2, k: 1 }, animate); return; }
-        const xs = shown.map((n) => n.x);
-        const ys = shown.map((n) => n.y);
+    const zoomBy = (factor) => { used(); goTo({ cx: view.cx, cy: view.cy, k: clamp(view.k * factor, K_MIN, K_MAX) }, true); };
+    const isHidden = (n) => hidden.has(n.domain) && n.key !== o.centerKey;
+    // The view that shows these nodes (all shown ones by default).
+    const viewFor = (list, minW, minH, maxK) => {
+        const xs = list.map((n) => n.x);
+        const ys = list.map((n) => n.y);
         const x0 = Math.min(...xs); const x1 = Math.max(...xs);
         const y0 = Math.min(...ys); const y1 = Math.max(...ys);
-        const bw = Math.max(x1 - x0 + 150, dense ? 400 : 560);
-        const bh = Math.max(y1 - y0 + 110, dense ? 280 : 340);
+        const bw = Math.max(x1 - x0 + 140, minW);
+        const bh = Math.max(y1 - y0 + 120, minH);
         const d = dims();
-        const k = clamp(Math.min(BASE_W / bw, (BASE_W * d.hh) / (d.w * bh)), K_MIN, K_MAX);
-        goTo({ cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 + 8, k }, animate);
+        return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, k: clamp(Math.min(BASE_W / bw, (BASE_W * d.hh) / (d.w * bh)), K_MIN, maxK) };
     };
-    const isHidden = (n) => hidden.has(n.domain) && n.key !== o.centerKey;
+    const fitView = () => {
+        const shown = nodes.filter((n) => !isHidden(n));
+        const v = shown.length ? viewFor(shown, dense ? 400 : 560, dense ? 280 : 340, K_MAX) : { cx: BASE_W / 2, cy: BASE_H / 2, k: 1 };
+        kRef = v.k;
+        return v;
+    };
+    const fit = (animate) => { autoFit = false; goTo(fitView(), animate); };
 
     // -- highlight --
     let lit = [];
     const placeTip = (key) => {
-        const n = by.get(key);
-        const d = dims();
-        const box = el.getBoundingClientRect();
-        const sx = d.r.left - box.left + ((n.x - (view.cx - d.vw / 2)) / d.vw) * d.w;
-        const sy = d.r.top - box.top + ((n.y - (view.cy - d.vh / 2)) / d.vh) * d.hh;
-        tip.style.left = `${clamp(sx, 8, box.width - 8).toFixed(0)}px`;
-        tip.style.top = `${Math.max(sy - (n.r * d.w) / d.vw - 8, 22).toFixed(0)}px`;
+        const d = drawn.get(key);
+        const dm = dims();
+        const sx = ((d.n.x - (view.cx - dm.vw / 2)) / dm.vw) * dm.w;
+        const sy = ((d.n.y - (view.cy - dm.vh / 2)) / dm.vh) * dm.hh;
+        tip.style.left = `${clamp(sx, 8, dm.w - 8).toFixed(0)}px`;
+        tip.style.top = `${Math.max(sy - d.r * scale - 8, 22).toFixed(0)}px`;
     };
     const hover = (key) => {
         if (key === hovered) return;
@@ -299,37 +530,94 @@ export function createCanvas(o) {
         lit = [];
         hovered = key;
         root.classList.toggle('has-hover', Boolean(key));
+        paintHot();
         if (!key) { tip.hidden = true; return; }
         const add = (x) => { x.classList.add('is-near'); lit.push(x); };
-        nodeEls.get(key).classList.add('is-hover'); lit.push(nodeEls.get(key));
-        for (const k of adj.get(key)) add(nodeEls.get(k));
-        for (const item of inc.get(key)) add(item.el);
+        drawn.get(key).g.classList.add('is-hover'); lit.push(drawn.get(key).g);
+        for (const k of adj.get(key)) add(drawn.get(k).g);
         const n = by.get(key);
         tip.textContent = `${o.oneLabel(n.domain)}: ${n.title}`;
         tip.hidden = false;
         placeTip(key);
     };
     const setSelected = (key) => {
-        if (selected && nodeEls.get(selected)) {
-            nodeEls.get(selected).classList.remove('is-selected');
-            for (const item of inc.get(selected)) item.el.classList.remove('is-on');
-        }
+        if (selected && drawn.get(selected)) drawn.get(selected).g.classList.remove('is-selected');
         selected = key;
-        if (key && nodeEls.get(key)) {
-            nodeEls.get(key).classList.add('is-selected');
-            for (const item of inc.get(key)) item.el.classList.add('is-on');
-        }
+        if (key && drawn.get(key)) drawn.get(key).g.classList.add('is-selected');
+        paintHot();
     };
     const setHidden = (set) => {
         hidden = new Set(set);
-        for (const n of nodes) nodeEls.get(n.key).toggleAttribute('hidden', isHidden(n));
-        for (const item of edgeEls) item.el.toggleAttribute('hidden', isHidden(by.get(item.a)) || isHidden(by.get(item.b)));
+        for (const d of drawn.values()) d.g.toggleAttribute('hidden', isHidden(d.n));
+        for (const item of edgeEls) { item.off = isHidden(item.na) || isHidden(item.nb); if (item.line) item.line.toggleAttribute('hidden', item.off); }
+        root.dataset.edges = String(edgeEls.filter((i) => !i.off).length);
+        paintHot();
+        place();
+        paintGroups();
+        if (query) search(query, false);
+    };
+    const focusOn = (key) => {
+        const n = by.get(key);
+        if (!n) return;
+        used();
+        goTo({ cx: n.x, cy: n.y, k: Math.max(view.k, 1.3) }, true);
+    };
+    // Search: matching titles stay bright (and show their text), the rest dims; `zoom` also moves the view to them.
+    const search = (text, zoom) => {
+        query = String(text || '').trim().toLowerCase();
+        const hits = [];
+        for (const d of drawn.values()) {
+            const on = Boolean(query) && !isHidden(d.n) && d.n.title.toLowerCase().includes(query);
+            d.g.classList.toggle('is-match', on);
+            if (on) hits.push(d.n);
+        }
+        root.classList.toggle('has-search', Boolean(query));
+        found.textContent = query ? plural(hits.length, 'match', 'matches') : '';
+        if (zoom && hits.length) { used(); goTo(viewFor(hits, 300, 200, 2.4), true); }
     };
     const tap = (key) => {
         const now = Date.now();
         if (last.key === key && now - last.t < DOUBLE_MS) { last = { key: null, t: 0 }; o.onFocus(key); return; }
         last = { key, t: now };
         o.onSelect(key);
+    };
+
+    // -- the live part: one animation frame per step while awake, none at all while asleep --
+    const sim = createSim(nodes, edges, o.anchors || new Map(), { center: settings.center, repel: settings.repel, link: settings.link, linkDist: settings.linkDist });
+    const frame = () => {
+        raf = 0;
+        const t0 = performance.now();
+        sim.step();
+        place();
+        if (autoFit && ready) {
+            const to = fitView();
+            view.cx += (to.cx - view.cx) * 0.12;
+            view.cy += (to.cy - view.cy) * 0.12;
+            view.k = Math.exp(Math.log(view.k) + (Math.log(to.k) - Math.log(view.k)) * 0.12);
+            apply();
+        }
+        const spent = performance.now() - t0;
+        stepMs = Math.max(stepMs, spent);
+        spentMs += spent;
+        root.dataset.avgMs = (spentMs / sim.ticks).toFixed(1);
+        root.dataset.ticks = String(sim.ticks);
+        root.dataset.stepMs = stepMs.toFixed(1);
+        if (sim.asleep()) { root.dataset.sim = 'asleep'; if (autoFit && ready) { autoFit = false; goTo(fitView(), true); } } else raf = requestAnimationFrame(frame);
+    };
+    const wake = (heat) => {
+        if (heat) sim.alpha = Math.max(sim.alpha, heat);
+        if (reduced() && !sim.target) { sim.settle(); place(); return; }
+        if (!raf && !sim.asleep()) { root.dataset.sim = 'awake'; raf = requestAnimationFrame(frame); }
+    };
+    // Starts the settle again from the seeds.
+    const replay = () => {
+        for (const n of nodes) { n.x = n.sx; n.y = n.sy; n.vx = 0; n.vy = 0; }
+        sim.alpha = 1; sim.target = 0;
+        autoFit = true; ready = true;
+        stepMs = 0;
+        goTo(fitView(), false);
+        place();
+        wake(1);
     };
 
     // -- pointers: one pointer pans or drags a node, two pinch --
@@ -369,18 +657,17 @@ export function createCanvas(o) {
             return;
         }
         if (!gesture.moved && Math.hypot(e.clientX - gesture.sx, e.clientY - gesture.sy) < DRAG_PX) return;
-        gesture.moved = true;
-        if (gesture.type === 'pan') { panBy(dx, dy); return; }
-        const d = dims();
-        const n = by.get(gesture.key);
-        n.x += (dx / d.w) * d.vw;
-        n.y += (dy / d.hh) * d.vh;
-        nodeEls.get(n.key).setAttribute('transform', `translate(${n.x.toFixed(1)} ${n.y.toFixed(1)})`);
-        for (const item of inc.get(n.key)) {
-            const mine = item.a === n.key;
-            item.el.setAttribute(mine ? 'x1' : 'x2', n.x.toFixed(1));
-            item.el.setAttribute(mine ? 'y1' : 'y2', n.y.toFixed(1));
+        if (!gesture.moved) {
+            gesture.moved = true;
+            used();
+            if (gesture.type === 'node') { const n = by.get(gesture.key); n.fixed = true; n.fx = n.x; n.fy = n.y; sim.target = 0.45; wake(0.45); }
         }
+        if (gesture.type === 'pan') { panBy(dx, dy); return; }
+        const n = by.get(gesture.key);
+        const d = dims();
+        n.fx += (dx / d.w) * d.vw;
+        n.fy += (dy / d.hh) * d.vh;
+        if (!raf) { n.x = n.fx; n.y = n.fy; place(); }
     });
     const release = (e, cancelled) => {
         if (!ptrs.has(e.pointerId)) return;
@@ -392,6 +679,13 @@ export function createCanvas(o) {
             return;
         }
         gesture = null;
+        if (g && g.type === 'node' && g.moved) {
+            const n = by.get(g.key);
+            n.fixed = Boolean(n.pinned);
+            n.fx = n.x; n.fy = n.y;
+            sim.target = 0;
+            wake(0.3);
+        }
         if (g && g.type === 'node' && !g.moved && !cancelled) tap(g.key);
     };
     root.addEventListener('pointerup', (e) => release(e, false));
@@ -410,31 +704,44 @@ export function createCanvas(o) {
         const n = by.get(key);
         const d = dims();
         const inside = Math.abs(n.x - view.cx) < d.vw / 2 - 30 && Math.abs(n.y - view.cy) < d.vh / 2 - 30;
-        if (!inside) { view.cx = n.x; view.cy = n.y; apply(); }
+        // While the picture is still fitting itself (e.g. the page gives focus back to a node after a redraw) the view is left alone.
+        if (!inside && !autoFit) { view.cx = n.x; view.cy = n.y; apply(); }
         hover(key);
     });
     root.addEventListener('focusout', () => hover(null));
 
-    // -- keyboard: Enter selects a node, arrows pan, + and - zoom, 0 resets --
+    // -- keyboard: Enter selects a node, arrows pan, + and - zoom, 0 resets, Escape closes the panel, then the card --
     el.addEventListener('keydown', (e) => {
-        if (e.target.closest && e.target.closest('button')) return;
+        if (e.target.closest && e.target.closest('button, input, summary')) return;
         if (e.altKey || e.ctrlKey || e.metaKey) return;
         const key = nodeAt(e.target);
         if ((e.key === 'Enter' || e.key === ' ') && key) { e.preventDefault(); if (e.shiftKey) o.onFocus(key); else o.onSelect(key); return; }
         const d = dims();
         const move = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-        if (move) { e.preventDefault(); goTo({ cx: view.cx + move[0] * d.vw * 0.15, cy: view.cy + move[1] * d.vh * 0.15, k: view.k }, false); return; }
+        if (move) { e.preventDefault(); used(); goTo({ cx: view.cx + move[0] * d.vw * 0.15, cy: view.cy + move[1] * d.vh * 0.15, k: view.k }, false); return; }
         if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomBy(1.4); } else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomBy(1 / 1.4); } else if (e.key === '0') { e.preventDefault(); fit(true); }
     });
+    const onEsc = (e) => {
+        if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]')) return;
+        if (!panel.hidden) { e.preventDefault(); togglePanel(false); return; }
+        if (selected && o.onClear) { e.preventDefault(); o.onClear(); }
+    };
+    document.addEventListener('keydown', onEsc);
 
     // The size is only known once the canvas is on the page: fit then, and keep the view in step with later resizes.
-    let ready = false;
     const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
-        if (!root.getBoundingClientRect().width) return;
-        if (!ready) { ready = true; fit(false); root.setAttribute('data-ready', '1'); } else apply();
+        if (!measure()) return;
+        if (!ready) {
+            ready = true;
+            goTo(fitView(), false);
+            root.setAttribute('data-ready', '1');
+            if (reduced()) { sim.settle(); place(); fit(false); } else wake();
+        } else apply();
     }) : null;
     if (watch) watch.observe(root);
     setHidden(hidden);
     setSelected(selected);
-    return { el, setSelected, setHidden, fit, zoomBy, destroy: () => { cancelAnimationFrame(tween); if (watch) watch.disconnect(); } };
+    paintSizes();
+    return { el, setSelected, setHidden, fit, zoomBy, focusOn, search, replay, sim, togglePanel,
+        destroy: () => { cancelAnimationFrame(tween); cancelAnimationFrame(raf); clearTimeout(searchTimer); document.removeEventListener('keydown', onEsc); if (watch) watch.disconnect(); } };
 }
