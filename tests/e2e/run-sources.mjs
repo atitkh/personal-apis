@@ -1,5 +1,5 @@
 // Browser flow checks for flight data sources (stage B): Live details, locks, Refresh, Data sources card. SCRATCH hub only.
-// Run: ./reset.sh; seed with sources-seed.js (see FLIGHTS_PROGRESS.md), then node run-sources.mjs. Env: BASE, KEY, SHOTS as in run.mjs.
+// Run: ./reset.sh; seed with sources-seed.js (see internal/progress/FLIGHTS_PROGRESS.md), then node run-sources.mjs. Env: BASE, KEY, SHOTS as in run.mjs.
 import { createRequire } from 'module';
 import { execSync } from 'child_process';
 import fs from 'fs';
