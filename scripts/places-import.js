@@ -12,10 +12,10 @@
 //   - Kind is guessed from the label once, at creation (home, campus, store, family, else other).
 //   - --dry-run shows what would happen and changes nothing.
 //
-// MANUAL STEP. A note that says a street is NOT the place ("... Jackson Heights is NOT this place") cannot
+// MANUAL STEP. A note that says a street is NOT the place ("... Fenwick Heights is NOT this place") cannot
 // be read reliably, so the importer only prints such notes. Turn each into an exclude rule yourself:
-//   --exclude "Kunjal's place (NYC)=Jackson Heights"       (repeatable, also safe to repeat)
-// or later: POST /hub/places/<id>/rules  { "type": "street", "value": "Jackson Heights", "exclude": true }
+//   --exclude "Mira's place (NYC)=Fenwick Heights"       (repeatable, also safe to repeat)
+// or later: POST /hub/places/<id>/rules  { "type": "street", "value": "Fenwick Heights", "exclude": true }
 const fs = require('fs');
 const places = require('../services/places');
 

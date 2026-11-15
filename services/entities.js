@@ -1,9 +1,9 @@
 // Entities: the people, projects, organizations and topics other records can point at through links. A link to
-// "Kunjal" is a link to the entity, so everything about that person is one click away from any record.
+// "Mira" is a link to the entity, so everything about that person is one click away from any record.
 //
 // MODEL (migration 022)
 //   entities          one row per (kind, name), names compared without regard to case. aliases is a JSON array of up to
-//                     10 other names ("KC", "Kunjal K."); notes is free text.
+//                     10 other names ("MD", "Mira D."); notes is free text.
 //   entity_revisions  every change stores kind, name, aliases and notes as a new revision (rev 1 = as first filed, never
 //                     rewritten); restore puts an entity back to an earlier revision as a new revision.
 //
@@ -155,7 +155,7 @@ function get(db, id, { rev } = {}) {
     return { ...shape({ ...row, ...snap, aliases: JSON.stringify(snap.aliases || []), current_rev: r.rev, updated_at: r.at, updated_by: r.actor }, n), revisions: row.current_rev };
 }
 
-// Names and aliases that equal `name` (any case): "Kunjal" resolves to its entity, or to several when kinds differ.
+// Names and aliases that equal `name` (any case): "Mira" resolves to its entity, or to several when kinds differ.
 function find(db, name, { kind } = {}) {
     const n = text(name, 'name', 120, { collapse: true });
     if (!n) throw bad('bad_name', 'name is required.', 400, { field: 'name' });

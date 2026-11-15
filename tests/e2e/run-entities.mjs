@@ -66,21 +66,21 @@ await check('g n opens Entities; nav item present; three seeded entities with ki
     eq(await hashNow(), '#/entities', 'hash');
     ok(await page.locator('.rail-nav a', { hasText: 'Entities' }).count(), 'nav item');
     eq(await page.locator('.entity-row').count(), 3, 'rows');
-    const t = await row('Kunjal Rana').innerText();
-    ok(t.includes('Person') && t.includes('Also: KC, Kunjal') && t.includes('0 links'), `row: ${t}`);
+    const t = await row('Mira Delgado').innerText();
+    ok(t.includes('Person') && t.includes('Also: MD, Mira') && t.includes('0 links'), `row: ${t}`);
 });
 await check('kind chip filters; search finds by alias', async () => {
     await page.locator('[data-key="chip:project"]').click(); await page.waitForSelector('[data-key="chip:project"][aria-current="true"]');
     eq(await page.locator('.entity-row').count(), 1, 'projects');
     await go('entities');
-    await page.fill('[data-key="e-search"]', 'kc'); await page.keyboard.press('Enter');
+    await page.fill('[data-key="e-search"]', 'md'); await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.querySelectorAll('.entity-row').length === 1);
-    ok((await text('.entity-row')).includes('Kunjal Rana'), 'found by alias');
+    ok((await text('.entity-row')).includes('Mira Delgado'), 'found by alias');
 });
 await check('New entity: kind, name, aliases, notes; a duplicate name is refused in plain words', async () => {
     await go('entities');
     await page.locator('[data-key="new-entity"]').click(); await page.waitForSelector('dialog.drawer[open] [data-key="ef-name"]');
-    await page.fill('[data-key="ef-name"]', 'Kunjal Rana');
+    await page.fill('[data-key="ef-name"]', 'Mira Delgado');
     await page.locator('[data-key="ef-save"]').click();
     await page.waitForFunction(() => /already a person/.test(document.querySelector('dialog.drawer[open]').innerText));
     await page.fill('[data-key="ef-name"]', 'E2E Person');

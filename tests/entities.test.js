@@ -13,13 +13,13 @@ beforeEach(() => { conn = db.open(':memory:'); });
 afterEach(() => conn.close());
 
 const code = (fn) => { try { fn(); } catch (err) { return err.code; } return 'no error'; };
-const mk = (extra = {}) => ents.create(conn, { kind: 'person', name: 'Kunjal Rana', aliases: ['KC', 'Kunjal'], notes: 'Met at the lab', ...extra }, 'tester');
+const mk = (extra = {}) => ents.create(conn, { kind: 'person', name: 'Mira Delgado', aliases: ['MD', 'Mira'], notes: 'Met at the lab', ...extra }, 'tester');
 
 describe('create and validation', () => {
     test('files an entity with revision 1 and tidy aliases', () => {
-        const r = mk({ name: '  Kunjal   Rana ', aliases: 'KC, kc, Kunjal Rana,  K  R ,' });
+        const r = mk({ name: '  Mira   Delgado ', aliases: 'MD, md, Mira Delgado,  M  D ,' });
         expect(r).toEqual({ status: 'created', id: 1, kind: 'person', rev: 1 });
-        expect(ents.get(conn, 1)).toMatchObject({ name: 'Kunjal Rana', aliases: ['KC', 'K R'], notes: 'Met at the lab', rev: 1, revisions: 1, link_count: 0 });
+        expect(ents.get(conn, 1)).toMatchObject({ name: 'Mira Delgado', aliases: ['MD', 'M D'], notes: 'Met at the lab', rev: 1, revisions: 1, link_count: 0 });
     });
 
     test('kind, name, aliases and notes are checked', () => {
@@ -36,12 +36,12 @@ describe('create and validation', () => {
     test('one entity per kind and name, ignoring case, without the name in the error', () => {
         mk();
         let err;
-        try { mk({ name: 'KUNJAL rana' }); } catch (e) { err = e; }
+        try { mk({ name: 'MIRA delgado' }); } catch (e) { err = e; }
         expect(err.code).toBe('exists');
         expect(err.status).toBe(409);
         expect(err.extra).toEqual({ id: 1 });
-        expect(err.message).not.toMatch(/kunjal/i);
-        expect(mk({ kind: 'project', name: 'Kunjal Rana' }).status).toBe('created');
+        expect(err.message).not.toMatch(/mira/i);
+        expect(mk({ kind: 'project', name: 'Mira Delgado' }).status).toBe('created');
     });
 });
 
@@ -49,22 +49,22 @@ describe('update, revisions and restore', () => {
     test('partial updates, unchanged detection and null clears', () => {
         mk();
         expect(ents.update(conn, 1, { notes: 'Colleague' }, 'tester')).toMatchObject({ status: 'updated', rev: 2, fields: ['notes'] });
-        expect(ents.update(conn, 1, { notes: 'Colleague', aliases: ['KC', 'Kunjal'] }, 'tester').status).toBe('unchanged');
+        expect(ents.update(conn, 1, { notes: 'Colleague', aliases: ['MD', 'Mira'] }, 'tester').status).toBe('unchanged');
         expect(ents.update(conn, 1, { aliases: null, notes: null }, 'tester')).toMatchObject({ rev: 3, fields: ['aliases', 'notes'] });
         expect(ents.get(conn, 1)).toMatchObject({ aliases: [], notes: null });
         expect(code(() => ents.update(conn, 1, {}, 'tester'))).toBe('bad_request');
         expect(code(() => ents.update(conn, 99, { notes: 'x' }, 'tester'))).toBe('not_found');
         mk({ name: 'Other One' });
-        expect(code(() => ents.update(conn, 2, { name: 'kunjal rana' }, 'tester'))).toBe('exists');
+        expect(code(() => ents.update(conn, 2, { name: 'mira delgado' }, 'tester'))).toBe('exists');
     });
 
     test('history, reading an old revision and restoring it', () => {
         mk();
-        ents.update(conn, 1, { name: 'Kunjal R.', aliases: ['KR'] }, 'tester');
+        ents.update(conn, 1, { name: 'Mira D.', aliases: ['MD2'] }, 'tester');
         expect(ents.history(conn, 1).map((r) => [r.rev, r.source, r.current])).toEqual([[2, 'edit', true], [1, 'create', false]]);
-        expect(ents.get(conn, 1, { rev: 1 })).toMatchObject({ name: 'Kunjal Rana', aliases: ['KC', 'Kunjal'], rev: 1 });
+        expect(ents.get(conn, 1, { rev: 1 })).toMatchObject({ name: 'Mira Delgado', aliases: ['MD', 'Mira'], rev: 1 });
         expect(ents.restore(conn, 1, 1, 'tester')).toMatchObject({ status: 'updated', rev: 3, fields: ['name', 'aliases'] });
-        expect(ents.get(conn, 1)).toMatchObject({ name: 'Kunjal Rana', aliases: ['KC', 'Kunjal'] });
+        expect(ents.get(conn, 1)).toMatchObject({ name: 'Mira Delgado', aliases: ['MD', 'Mira'] });
         expect(ents.restore(conn, 1, 3, 'tester').status).toBe('unchanged');
         expect(code(() => ents.restore(conn, 1, 9, 'tester'))).toBe('no_revision');
     });
@@ -73,10 +73,10 @@ describe('update, revisions and restore', () => {
 describe('find and list', () => {
     test('find matches the name or an alias exactly, any case', () => {
         mk();
-        mk({ kind: 'organization', name: 'Kunjal', aliases: [] });
-        expect(ents.find(conn, 'kc').entities.map((e) => e.id)).toEqual([1]);
-        expect(ents.find(conn, 'KUNJAL').entities.map((e) => e.id)).toEqual([1, 2]);
-        expect(ents.find(conn, 'kunjal', { kind: 'organization' }).entities.map((e) => e.id)).toEqual([2]);
+        mk({ kind: 'organization', name: 'Mira', aliases: [] });
+        expect(ents.find(conn, 'md').entities.map((e) => e.id)).toEqual([1]);
+        expect(ents.find(conn, 'MIRA').entities.map((e) => e.id)).toEqual([1, 2]);
+        expect(ents.find(conn, 'mira', { kind: 'organization' }).entities.map((e) => e.id)).toEqual([2]);
         expect(ents.find(conn, 'Kun').count).toBe(0);
     });
 
@@ -85,7 +85,7 @@ describe('find and list', () => {
         mk({ kind: 'project', name: 'Hub', aliases: ['personal-apis'], notes: null });
         expect(ents.list(conn, { kind: 'project' }).entities.map((e) => e.name)).toEqual(['Hub']);
         expect(ents.list(conn, { q: 'personal-apis' }).total).toBe(1);
-        expect(ents.list(conn, { q: 'lab' }).entities[0].name).toBe('Kunjal Rana');
+        expect(ents.list(conn, { q: 'lab' }).entities[0].name).toBe('Mira Delgado');
         expect(ents.list(conn, { q: '%' }).total).toBe(0);
         expect(code(() => ents.list(conn, { kind: 'x' }))).toBe('bad_kind');
         links.add(conn, { from: { domain: 'entities', id: '1' }, to: { domain: 'entities', id: '2' } }, 't');
@@ -95,8 +95,8 @@ describe('find and list', () => {
 
     test('search finds an entity by alias and shows its name as the title', () => {
         mk();
-        const hit = search.search(conn, 'kc', { domains: ['entities'] });
-        expect(JSON.stringify(hit)).toContain('Kunjal Rana');
+        const hit = search.search(conn, 'md', { domains: ['entities'] });
+        expect(JSON.stringify(hit)).toContain('Mira Delgado');
     });
 });
 
@@ -106,14 +106,14 @@ describe('links and delete', () => {
         const t = trips.create(conn, { title: 'Lab visit', kind: 'work' }, 't').id;
         links.add(conn, { from: { domain: 'trips', id: String(t) }, to: { domain: 'entities', id: '1' }, rel: 'with' }, 't');
         expect(links.listFor(conn, 'entities', '1').links[0].other).toMatchObject({ domain: 'trips', title: 'Lab visit' });
-        expect(links.listFor(conn, 'trips', String(t)).links[0].other).toMatchObject({ domain: 'entities', title: 'Kunjal Rana', kind: 'person' });
+        expect(links.listFor(conn, 'trips', String(t)).links[0].other).toMatchObject({ domain: 'entities', title: 'Mira Delgado', kind: 'person' });
     });
 
     test('delete needs confirm, shows the counts, and takes the links with it', () => {
         mk();
         const t = trips.create(conn, { title: 'Lab visit', kind: 'work' }, 't').id;
         links.add(conn, { from: { domain: 'trips', id: String(t) }, to: { domain: 'entities', id: '1' } }, 't');
-        expect(ents.removalPreview(conn, 1)).toMatchObject({ id: 1, kind: 'person', label: 'Kunjal Rana', counts: { links: 1, revisions: 1 } });
+        expect(ents.removalPreview(conn, 1)).toMatchObject({ id: 1, kind: 'person', label: 'Mira Delgado', counts: { links: 1, revisions: 1 } });
         expect(code(() => ents.remove(conn, 1, {}))).toBe('confirm_required');
         const out = ents.remove(conn, 1, { confirm: true });
         expect(out.status).toBe('deleted');
@@ -125,13 +125,13 @@ describe('links and delete', () => {
 
     test('audit detail never carries names, aliases or notes', () => {
         const r = mk();
-        const u = ents.update(conn, 1, { name: 'Kunjal R.', notes: 'secret note' }, 'tester');
+        const u = ents.update(conn, 1, { name: 'Mira D.', notes: 'secret note' }, 'tester');
         audit.record(conn, 'admin', 'entity_created', ents.auditDetail(r));
         audit.record(conn, 'admin', 'entity_updated', ents.auditDetail(u));
         audit.record(conn, 'admin', 'entity_deleted', ents.removedAuditDetail(ents.remove(conn, 1, { confirm: true })));
         const all = conn.prepare('SELECT action, detail FROM audit_log').all();
         expect(JSON.parse(all.find((a) => a.action === 'entity_updated').detail)).toEqual({ id: 1, kind: 'person', rev: 2, fields: ['name', 'notes'] });
         const rows = JSON.stringify(all);
-        expect(rows).not.toMatch(/kunjal|secret note|Met at/i);
+        expect(rows).not.toMatch(/mira|secret note|Met at/i);
     });
 });

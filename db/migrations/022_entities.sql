@@ -1,5 +1,5 @@
 -- Entities: the people, projects, organizations and topics other records can point at through links (services/entities.js).
--- aliases is a JSON array of up to 10 short names ("Kunjal", "KC"); the service keeps it tidy. One entity per kind and
+-- aliases is a JSON array of up to 10 short names ("Mira", "MD"); the service keeps it tidy. One entity per kind and
 -- name (case-insensitive). Names, aliases and notes are content: they never go into audit rows.
 CREATE TABLE entities (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

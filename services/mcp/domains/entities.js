@@ -18,7 +18,7 @@ module.exports = {
     untrusted: true,
     description: "Atit's entities: the people, projects, organizations and topics his records can point at (links). "
         + `Each has a kind (${entities.KINDS.join(', ')}), a name, optional aliases (other names it goes by) and notes. `
-        + 'Use find to turn a name such as "Kunjal" into an id, then get to see what is linked to it.',
+        + 'Use find to turn a name such as "Mira" into an id, then get to see what is linked to it.',
     actions: {
         list: { scope: 'entities:read', describe: `list: entities by kind then name (optional kind, q = part of the name, an alias or the notes; limit 1-${LIST_MAX})` },
         get: { scope: 'entities:read', describe: 'get: one entity by id, with the records linked to it (only domains you can read)' },

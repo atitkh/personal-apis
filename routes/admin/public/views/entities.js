@@ -45,8 +45,8 @@ function entityForm({ values, mode, submit, onSave, onCancel, onDirty }) {
     const base = clean(values);
     const kind = h('select', { name: 'kind', 'data-key': 'ef-kind' }, KINDS.map(([k, one]) => h('option', { value: k, text: one })));
     kind.value = values.kind;
-    const name = h('input', { type: 'text', name: 'name', maxlength: '120', autocomplete: 'off', placeholder: 'Kunjal', value: values.name, 'data-key': 'ef-name' });
-    const aliases = h('input', { type: 'text', name: 'aliases', autocomplete: 'off', placeholder: 'KC, Kunjal K.', value: values.aliases, 'data-key': 'ef-aliases' });
+    const name = h('input', { type: 'text', name: 'name', maxlength: '120', autocomplete: 'off', placeholder: 'Mira', value: values.name, 'data-key': 'ef-name' });
+    const aliases = h('input', { type: 'text', name: 'aliases', autocomplete: 'off', placeholder: 'MD, Mira D.', value: values.aliases, 'data-key': 'ef-aliases' });
     const notes = h('textarea', { name: 'notes', rows: '4', maxlength: '2000', class: 'plain', 'data-key': 'ef-notes' });
     notes.value = values.notes;
     const inputs = { kind, name, aliases, notes };
