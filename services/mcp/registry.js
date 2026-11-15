@@ -161,17 +161,18 @@ function buildServer(conn, key, report = () => {}) {
 
     if (mayUseGeneral(key, 'hub_search')) server.registerTool('hub_search', {
         title: 'Hub search',
-        description: 'Look up anything across the domains you can read (digests, deadlines, preferences, places, flights, trips, lifelog episodes, portfolio): every word of q must appear. Results are grouped by domain with short snippets and ids; call that domain\'s tool with get for the full record. Raw lifelog lines are not searched here.',
+        description: 'Look up anything across the domains you can read (digests, deadlines, preferences, places, flights, trips, lifelog episodes, portfolio): every word of q must appear. Results are grouped by domain with short snippets and ids; call that domain\'s tool with get for the full record. Raw lifelog lines are not searched here. When semantic search is on, results can also match by meaning (match: keyword, semantic or both).',
         inputSchema: {
             q: z.string().min(1).max(search.MAX_Q).describe('Words to look for (all of them must appear)'),
             domains: z.array(z.string().max(40)).max(20).optional().describe('Only these domains (default: all you can read)'),
+            mode: z.enum(['auto', 'keyword']).optional().describe('auto (default): keywords plus meaning-based matches when the hub has semantic search on; keyword: exact words only'),
             per_domain: z.number().int().min(1).max(search.MAX_PER).optional().describe(`Results per domain (default ${search.DEFAULT_PER}, at most ${search.MAX_PER})`),
         },
         annotations: { readOnlyHint: true, openWorldHint: false },
     }, async (args, extra) => {
         try {
             const live = db.get();
-            const out = search.search(live, args.q, { domains: args.domains, perDomain: args.per_domain, visible: briefing.visibleDomainsFor(live, key) });
+            const out = await search.searchHybrid(live, args.q, { domains: args.domains, perDomain: args.per_domain, mode: args.mode, visible: briefing.visibleDomainsFor(live, key) });
             report(extra.requestId, { ok: true });
             return textResult(out, true);
         } catch (err) {

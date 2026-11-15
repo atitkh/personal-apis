@@ -47,6 +47,7 @@ const ICON = {
     trip_suggestion_accepted: 'calendar', trip_suggestion_dismissed: 'calendar', trip_suggestions_restored: 'calendar',
     flight_candidate_filed: 'calendar', flight_candidate_accepted: 'calendar', flight_candidate_dismissed: 'calendar',
     flight_deleted: 'calendar', trip_deleted: 'calendar', flight_candidate_deleted: 'calendar', deadline_deleted: 'calendar',
+    search_settings_changed: 'settings', search_reindexed: 'settings',
     webhook_created: 'agents', webhook_updated: 'agents', webhook_deleted: 'agents', webhook_tested: 'agents', webhook_run: 'agents',
     preference_set: 'preferences', preference_updated: 'preferences', preference_unset: 'preferences', preference_restored: 'preferences', preference_deleted: 'preferences',
     lifelog_pushed: 'agents', lifelog_observation_added: 'agents', lifelog_episode_created: 'agents', lifelog_episode_updated: 'agents',
@@ -116,6 +117,8 @@ function sentence(e) {
     case 'trip_restored': return [who, ' restored an older version of the trip ', strong(d.title || 'a trip')];
     case 'trip_flight_linked': return [who, d.moved_from ? ' moved the flight ' : ' added the flight ', strong(d.flight || 'a flight'), ' to the trip ', strong(d.title || 'a trip')];
     case 'trip_flight_unlinked': return [who, ' took the flight ', strong(d.flight || 'a flight'), ' off the trip ', strong(d.title || 'a trip')];
+    case 'search_settings_changed': return [who, ` changed the search settings${Array.isArray(d.fields) && d.fields.length ? ` (${d.fields.filter((f) => f !== 'api_key').join(', ')}${d.fields.includes('api_key') ? `${d.fields.length > 1 ? ', ' : ''}key` : ''})` : ''}`];
+    case 'search_reindexed': return [who, ' rebuilt the search index'];
     case 'webhook_created': return [who, ' added the webhook ', strong(d.name || 'a webhook')];
     case 'webhook_updated': return [who, ' changed the webhook ', strong(d.name || 'a webhook')];
     case 'webhook_deleted': return [who, ' deleted the webhook ', strong(d.name || 'a webhook')];

@@ -21,6 +21,7 @@ function resultRow(r) {
         h('a', { class: 'search-title link', href: open, text: r.title }),
         r.date ? h('span', { class: 'search-date note', text: r.date }) : null,
         r.kind ? h('span', { class: 'chip', text: r.kind }) : null,
+        r.match === 'semantic' ? h('span', { class: 'chip', title: 'Found by meaning, not by the exact words', text: 'by meaning' }) : null,
         r.snippet ? h('p', { class: 'search-snippet note', text: r.snippet }) : null);
 }
 
@@ -45,8 +46,9 @@ export async function render(ctx) {
     } else {
         try {
             const out = await ctx.api(`/search?q=${encodeURIComponent(q)}&per_domain=10`);
+            const note = out.semantic_error ? h('p', { class: 'note', text: `Meaning-based search is not available right now (${out.semantic_error}); showing keyword matches only.` }) : null;
             body = out.total
-                ? h('div', { class: 'search-groups' }, out.groups.map((g) => h('section', { class: 'panel search-group', 'aria-labelledby': `sg-${g.domain}` },
+                ? h('div', { class: 'search-groups' }, note, out.groups.map((g) => h('section', { class: 'panel search-group', 'aria-labelledby': `sg-${g.domain}` },
                     h('h2', { id: `sg-${g.domain}`, class: 'section-title', text: `${g.title} (${g.count})` }),
                     h('ul', { class: 'search-list' }, g.results.map(resultRow)))))
                 : emptyState({ title: `Nothing found for "${q}".`, text: 'Try fewer or shorter words. Booking references, document numbers and addresses are never searched.', iconName: 'search' });

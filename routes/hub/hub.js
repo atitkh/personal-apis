@@ -76,9 +76,9 @@ router.get('/briefing', requireScope('briefing:read'), handle((req, res, conn) =
 }));
 
 // Needs search:read; searches only the domains the key can read (same rule as the briefing).
-router.get('/search', requireScope('search:read'), handle((req, res, conn) => {
+router.get('/search', requireScope('search:read'), handle(async (req, res, conn) => {
     const only = typeof req.query.domains === 'string' ? req.query.domains.split(',').map((d) => d.trim()).filter(Boolean) : undefined;
-    res.json(search.search(conn, req.query.q, { domains: only, perDomain: req.query.per_domain, visible: briefing.visibleDomainsFor(conn, req.apiKey) }));
+    res.json(await search.searchHybrid(conn, req.query.q, { domains: only, perDomain: req.query.per_domain, mode: req.query.mode, visible: briefing.visibleDomainsFor(conn, req.apiKey) }));
 }));
 
 // Other domains keep their routes in their own file.

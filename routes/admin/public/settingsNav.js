@@ -5,6 +5,7 @@ export const SETTINGS_SECTIONS = [
     { id: 'appearance', title: 'Appearance', keywords: 'theme dark light' },
     { id: 'account', title: 'Account', keywords: 'session sign out' },
     { id: 'backups', title: 'Backups', keywords: 'backup folder schedule' },
+    { id: 'search', title: 'Search', keywords: 'semantic embeddings meaning index model' },
     { id: 'webhooks', title: 'Webhooks', keywords: 'notifications push' },
     { id: 'shortcuts', title: 'Shortcuts', keywords: 'keyboard keys' },
     { id: 'about', title: 'About', keywords: 'version uptime database' },

@@ -8,6 +8,7 @@ import { shortcutList } from '../shortcuts.js';
 import { THEMES, preference, setPreference, onThemeChange } from '../theme.js';
 import { timezoneSection, backupSection, everyWords } from './settingsForms.js';
 import { webhooksSection } from './webhooksSection.js';
+import { searchSection } from './searchSection.js';
 
 function timeLeft(iso) {
     const ms = Date.parse(iso) - Date.now();
@@ -16,7 +17,7 @@ function timeLeft(iso) {
 }
 
 export async function render(ctx) {
-    const [o, session, conf, hooks] = await Promise.all([ctx.api('/overview'), ctx.api('/session'), ctx.api('/settings'), ctx.api('/webhooks')]);
+    const [o, session, conf, hooks, sem] = await Promise.all([ctx.api('/overview'), ctx.api('/session'), ctx.api('/settings'), ctx.api('/webhooks'), ctx.api('/search/settings')]);
 
     const theme = segmented({
         label: 'Theme',
@@ -44,6 +45,7 @@ export async function render(ctx) {
                 h('p', { class: 'note' }, session.expiresAt ? [`Signed in until ${when(session.expiresAt)} (`, left, '). Sessions last 12 hours; signing in again starts a new one.'] : 'Signed in.')),
             button({ text: 'Sign out', variant: 'quiet', iconName: 'signout', onClick: ctx.signOut }))],
         backups: () => [backupSection(ctx, conf)],
+        search: () => [searchSection(ctx, sem)],
         webhooks: () => [webhooksSection(ctx, hooks)],
         shortcuts: () => [
         h('section', { class: 'panel', 'aria-labelledby': 's-keys' },

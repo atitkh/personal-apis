@@ -204,4 +204,46 @@ function search(db, q, { domains: only, visible = null, perDomain } = {}) {
     return { query: String(q).slice(0, MAX_Q), terms, groups, total };
 }
 
-module.exports = { search, termsOf, snippetOf, where, SearchError, ADAPTERS, DEFAULT_PER, MAX_PER, MAX_Q };
+// Keyword results, plus semantic matches when semantic search is on (embeddings endpoint). The two lists are merged per
+// domain by reciprocal rank; `match` says keyword, semantic or both. If the endpoint fails, keyword results are returned
+// with semantic: false and a short reason. mode 'keyword' skips the endpoint.
+async function searchHybrid(db, q, opts = {}) {
+    const base = search(db, q, opts);
+    const embeddings = require('./embeddings');
+    const cfg = embeddings.config(db);
+    if (opts.mode === 'keyword' || !cfg.enabled) return { ...base, semantic: false };
+    let sem;
+    try {
+        sem = await embeddings.query(db, q, { visible: opts.visible, domains: opts.domains, per: clampPer(opts.perDomain), fetchImpl: opts.fetchImpl });
+    } catch (err) {
+        return { ...base, semantic: false, semantic_error: String(err.message).slice(0, 160) };
+    }
+    const per = clampPer(opts.perDomain);
+    const byDomain = new Map(base.groups.map((g) => [g.domain, g]));
+    for (const [domain, hits] of Object.entries(sem)) {
+        if (!byDomain.has(domain)) byDomain.set(domain, { domain, title: domains.REGISTRY[domain].title, count: 0, results: [] });
+    }
+    const groups = [];
+    let total = 0;
+    for (const name of domains.names()) {
+        const g = byDomain.get(name);
+        if (!g) continue;
+        const scores = new Map();
+        const items = new Map();
+        const bump = (r, rank, via) => {
+            const key = String(r.id);
+            scores.set(key, (scores.get(key) || 0) + 1 / (60 + rank));
+            const have = items.get(key);
+            if (have) { have.match = 'both'; if (!have.snippet && r.snippet) have.snippet = r.snippet; } else { const { score, ...rest } = r; items.set(key, { ...rest, domain: name, match: via }); }
+        };
+        g.results.forEach((r, i) => bump(r, i, 'keyword'));
+        (sem[name] || []).forEach((r, i) => bump(r, i, 'semantic'));
+        const results = [...items.entries()].sort((a, b) => scores.get(b[0]) - scores.get(a[0])).map(([, r]) => r).slice(0, per);
+        if (!results.length) continue;
+        total += results.length;
+        groups.push({ domain: name, title: g.title, count: results.length, results });
+    }
+    return { query: base.query, terms: base.terms, groups, total, semantic: true };
+}
+
+module.exports = { search, searchHybrid, termsOf, snippetOf, where, SearchError, ADAPTERS, DEFAULT_PER, MAX_PER, MAX_Q };
