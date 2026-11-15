@@ -16,3 +16,9 @@ Plan: `~/.openclaw/workspace/memory/projects/personal-hub-search-links-plan.md` 
 
 ## Next
 - Review, deploy, push (not done here).
+
+## Verified
+- Full jest: 63 suites, 793 tests passed (was 59 / 773). New: entities, entitiesHub, mcpEntities, adminEntities.
+- Changed on purpose: tests/admin.test.js, tests/digests.test.js, tests/mcp.test.js (domain and tool lists now include
+  `entities`); route snapshot regenerated (only /admin/api/entities and /hub/entities routes added).
+- e2e: `node tests/e2e/run-all.mjs entities` 11 checks passed.
