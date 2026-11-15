@@ -5,6 +5,7 @@ const db = require('../../db');
 const digests = require('../../services/digests');
 const { hubHandle } = require('../lib/handle');
 const briefing = require('../../services/briefing');
+const search = require('../../services/search');
 const { requireKey, requireScope } = require('../../middleware/apiKey');
 const { requireDomain } = require('../../middleware/domain');
 
@@ -72,6 +73,12 @@ router.post('/digests/:kind/:period/restore', write, handle((req, res, conn) => 
 router.get('/briefing', requireScope('briefing:read'), handle((req, res, conn) => {
     const only = typeof req.query.domains === 'string' ? req.query.domains.split(',').map((d) => d.trim()).filter(Boolean) : undefined;
     res.json(briefing.collect(conn, { days: req.query.days, domains: only, visibleDomains: briefing.visibleDomainsFor(conn, req.apiKey) }));
+}));
+
+// Needs search:read; searches only the domains the key can read (same rule as the briefing).
+router.get('/search', requireScope('search:read'), handle((req, res, conn) => {
+    const only = typeof req.query.domains === 'string' ? req.query.domains.split(',').map((d) => d.trim()).filter(Boolean) : undefined;
+    res.json(search.search(conn, req.query.q, { domains: only, perDomain: req.query.per_domain, visible: briefing.visibleDomainsFor(conn, req.apiKey) }));
 }));
 
 // Other domains keep their routes in their own file.

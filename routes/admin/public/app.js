@@ -23,6 +23,7 @@ router.register('preferences', { title: 'Preferences', icon: 'preferences', nav:
 router.register('portfolio', { title: 'Portfolio', icon: 'portfolio', nav: true, group: 'data', load: () => import('./views/portfolio.js') });
 router.register('keys', { title: 'API keys', short: 'Keys', icon: 'keys', nav: true, group: 'access', mobile: true, load: () => import('./views/keys.js') });
 router.register('agents', { title: 'Agent access', short: 'Agents', icon: 'agents', nav: true, group: 'access', mobile: true, load: () => import('./views/agents.js') });
+router.register('search', { title: 'Search', icon: 'search', group: 'system', nav: false, load: () => import('./views/search.js') });
 router.register('activity', { title: 'Activity', icon: 'activity', nav: true, group: 'system', load: () => import('./views/activity.js') });
 router.register('backups', { title: 'Backups', icon: 'backups', nav: true, group: 'system', load: () => import('./views/backups.js') });
 router.register('settings', { title: 'Settings', icon: 'settings', nav: true, group: 'system', load: () => import('./views/settings.js') });

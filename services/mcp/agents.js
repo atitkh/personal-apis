@@ -18,6 +18,7 @@ function tools() {
     return [
         { tool: 'hub_overview', domain: null, general: true, title: 'Hub overview', scope: registry.GENERAL.hub_overview, actions: [] },
         { tool: 'hub_briefing', domain: null, general: true, title: 'Hub briefing', scope: registry.GENERAL.hub_briefing, actions: [] },
+        { tool: 'hub_search', domain: null, general: true, title: 'Hub search', scope: registry.GENERAL.hub_search, actions: [] },
         ...registry.TOOLS.map((def) => ({
             tool: def.domain,
             domain: def.domain,

@@ -36,7 +36,7 @@ describe('the general tools follow their own scopes', () => {
         expect(await tools('overview')).toEqual(['hub_overview']);
         expect(await tools('briefing')).toEqual(['hub_briefing']);
         expect(await tools('both')).toEqual(['hub_briefing', 'hub_overview']);
-        expect(await tools('all')).toEqual(['hub_briefing', 'hub_overview']);
+        expect(await tools('all')).toEqual(['hub_briefing', 'hub_overview', 'hub_search']);
     });
 
     test('calling a tool the key does not have is refused', async () => {
@@ -65,12 +65,12 @@ describe('the dashboard shows it', () => {
     test('Agent access lists both tools as general (not matrix columns) and each key\'s own', async () => {
         const data = (await agent.get('/admin/api/agents').expect(200)).body;
         const general = data.tools.filter((t) => t.general).map((t) => [t.tool, t.scope]);
-        expect(general).toEqual([['hub_overview', 'overview:read'], ['hub_briefing', 'briefing:read']]);
+        expect(general).toEqual([['hub_overview', 'overview:read'], ['hub_briefing', 'briefing:read'], ['hub_search', 'search:read']]);
         const by = Object.fromEntries(data.keys.map((k) => [k.name, k.general.slice().sort()]));
         expect(by.plain).toEqual([]);
         expect(by.overview).toEqual(['hub_overview']);
         expect(by.both).toEqual(['hub_briefing', 'hub_overview']);
-        expect(by.all).toEqual(['hub_briefing', 'hub_overview']);
+        expect(by.all).toEqual(['hub_briefing', 'hub_overview', 'hub_search']);
     });
 
     test('a key can be edited to drop them', async () => {

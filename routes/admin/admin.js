@@ -147,6 +147,7 @@ function createAdminRouter({ loginMax = 5, loginWindowMs = 15 * 60 * 1000 } = {}
     require('./api/deadlines')(api, ctx);
     require('./api/preferences')(api, ctx);
     require('./api/webhooks')(api, ctx);
+    require('./api/search')(api, ctx);
     require('./api/trips')(api, ctx);
     require('./api/lifelog')(api, ctx);
 

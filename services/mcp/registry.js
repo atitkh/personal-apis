@@ -17,6 +17,7 @@ const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const db = require('../../db');
 const domains = require('../domains');
 const briefing = require('../briefing');
+const search = require('../search');
 const apiKeys = require('../apiKeys');
 const { version } = require('../../package.json');
 const { DATA_NOTE, MAX_RESULT_CHARS, ToolError, truncMarker } = require('./util');
@@ -45,7 +46,7 @@ function visibleActions(conn, def, key) {
 
 // The two general tools have their own scopes, so an agent that already gets the same changes another way can be
 // kept from pulling it. `*` includes both; a domain wildcard such as digests:* does not.
-const GENERAL = { hub_overview: 'overview:read', hub_briefing: 'briefing:read' };
+const GENERAL = { hub_overview: 'overview:read', hub_briefing: 'briefing:read', hub_search: 'search:read' };
 const mayUseGeneral = (key, tool) => apiKeys.hasScope(key.scopes, GENERAL[tool]);
 
 function visibleTools(conn, key) {
@@ -155,6 +156,28 @@ function buildServer(conn, key, report = () => {}) {
         } catch (err) {
             report(extra.requestId, { ok: false, error: 'server_error' });
             return toError(err);
+        }
+    });
+
+    if (mayUseGeneral(key, 'hub_search')) server.registerTool('hub_search', {
+        title: 'Hub search',
+        description: 'Look up anything across the domains you can read (digests, deadlines, preferences, places, flights, trips, lifelog episodes, portfolio): every word of q must appear. Results are grouped by domain with short snippets and ids; call that domain\'s tool with get for the full record. Raw lifelog lines are not searched here.',
+        inputSchema: {
+            q: z.string().min(1).max(search.MAX_Q).describe('Words to look for (all of them must appear)'),
+            domains: z.array(z.string().max(40)).max(20).optional().describe('Only these domains (default: all you can read)'),
+            per_domain: z.number().int().min(1).max(search.MAX_PER).optional().describe(`Results per domain (default ${search.DEFAULT_PER}, at most ${search.MAX_PER})`),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+    }, async (args, extra) => {
+        try {
+            const live = db.get();
+            const out = search.search(live, args.q, { domains: args.domains, perDomain: args.per_domain, visible: briefing.visibleDomainsFor(live, key) });
+            report(extra.requestId, { ok: true });
+            return textResult(out, true);
+        } catch (err) {
+            const result = toError(err);
+            report(extra.requestId, { ok: false, error: JSON.parse(result.content[0].text).error });
+            return result;
         }
     });
 

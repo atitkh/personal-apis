@@ -114,10 +114,11 @@ function openCell(ctx, k, t, d) {
     });
 }
 
-// Which of the two general tools a key has (they have scopes of their own: overview:read, briefing:read).
+// Which of the general tools a key has (each has its own scope: overview:read, briefing:read, search:read).
 const generalWords = (k) => {
     const has = new Set(k.general || []);
-    return has.size === 2 ? 'Both' : has.has('hub_overview') ? 'Overview only' : has.has('hub_briefing') ? 'Briefing only' : 'Neither';
+    const names = [['hub_overview', 'Overview'], ['hub_briefing', 'Briefing'], ['hub_search', 'Search']].filter(([t]) => has.has(t)).map(([, n]) => n);
+    return names.length === 3 ? 'All three' : names.length ? names.join(' + ') : 'None';
 };
 
 export async function render(ctx) {
@@ -142,7 +143,7 @@ export async function render(ctx) {
                         h('span', { class: `th-domain hue-${domainHue(t.domain, i)}` }, h('span', { class: 'swatch', 'aria-hidden': 'true' }), t.title || t.domain),
                         h('span', { class: 'th-sub', text: `Domain: ${state.toLowerCase()}` }));
                 }),
-                h('th', { scope: 'col' }, h('span', { class: 'th-domain' }, 'Overview and briefing'), h('span', { class: 'th-sub', text: 'Set in Keys' })),
+                h('th', { scope: 'col' }, h('span', { class: 'th-domain' }, 'General tools'), h('span', { class: 'th-sub', text: 'Set in Keys' })),
                 h('th', { scope: 'col', class: 'num', text: 'Calls, 30 days' }),
                 h('th', { scope: 'col', text: 'Last call' }))),
             h('tbody', {}, active.map((k) => h('tr', {},
@@ -160,7 +161,7 @@ export async function render(ctx) {
                             onclick: () => openCell(ctx, k, t, domainOf(t.domain)),
                         }, accessCell(verbs), h('span', { class: 'access-edit', 'aria-hidden': 'true' }, icon('edit'))));
                 }),
-                h('td', { 'data-label': 'Overview and briefing', 'data-general': String(k.id), text: generalWords(k) }),
+                h('td', { 'data-label': 'General tools', 'data-general': String(k.id), text: generalWords(k) }),
                 h('td', { class: 'num', 'data-label': 'Calls, 30 days', text: k.calls30d.toLocaleString() }),
                 h('td', { 'data-label': 'Last call', text: k.lastCallAt ? ago(k.lastCallAt) : 'Never' }),
                 h('td', { class: 'cell-side only-narrow' }, h('a', { class: 'btn ghost icon-only', href: href('keys', [String(k.id)]), tabindex: '-1', 'aria-hidden': 'true' }, icon('next'))))))))

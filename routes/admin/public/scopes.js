@@ -12,6 +12,13 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'search',
+        title: 'Search',
+        scopes: [
+            { scope: 'search:read', label: 'Read', text: 'Use the hub search tool and GET /hub/search: look words up across the domains the key can read. Results are short snippets with ids; the key still needs each domain\'s own read scope to see anything from it.' },
+        ],
+    },
+    {
         domain: 'briefing',
         title: 'Briefing',
         scopes: [

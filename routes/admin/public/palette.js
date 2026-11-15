@@ -56,6 +56,13 @@ export async function openPalette() {
         const q = input.value.trim();
         shown = commands.map((c) => [c, score(c, q)]).filter(([, s]) => s > 0)
             .sort((a, b) => b[1] - a[1] || (a[0].order || 0) - (b[0].order || 0)).map(([c]) => c).slice(0, q ? 30 : 14);
+        // Anything typed can also be searched across every domain.
+        if (q.length >= 2) {
+            shown.push({
+                id: 'search:all', group: 'Search', icon: 'search', label: `Search every domain for "${q.length > 40 ? `${q.slice(0, 40)}…` : q}"`,
+                run: () => router.navigate(router.href('search', [], { q })),
+            });
+        }
         active = Math.min(active, Math.max(0, shown.length - 1));
         let lastGroup = null;
         const items = [];
