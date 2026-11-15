@@ -129,6 +129,7 @@
     "POST /admin/api/links",
     "DELETE /admin/api/links/:id",
     "GET /admin/api/graph",
+    "GET /admin/api/graph/overview",
     "GET /admin/api/graph/hubs",
     "GET /admin/api/graph/unlinked",
     "GET /admin/api/trips",

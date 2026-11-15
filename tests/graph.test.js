@@ -7,6 +7,8 @@ const request = require('supertest');
 const db = require('../db');
 const ents = require('../services/entities');
 const links = require('../services/links');
+const deadlines = require('../services/deadlines');
+const domainSvc = require('../services/domains');
 const graph = require('../services/graph');
 const app = require('../app');
 
@@ -71,4 +73,58 @@ test('the dashboard API needs a session and answers the three reads', async () =
     await agent.get('/admin/api/graph?domain=entities&id=9999').expect(404);
     expect((await agent.get('/admin/api/graph/hubs?limit=3').expect(200)).body.hubs.length).toBeLessThanOrEqual(3);
     expect((await agent.get('/admin/api/graph/unlinked?domain=entities').expect(200)).body.counts.entities).toBeDefined();
+});
+
+test('overview: every linked record once, with edges, degree and domain; unlinked records are absent', () => {
+    const o = graph.overview(conn);
+    const total = conn.prepare('SELECT COUNT(*) AS n FROM (SELECT from_domain, from_id FROM links UNION SELECT to_domain, to_id FROM links)').get().n;
+    expect(o.shown + o.leftOut).toBe(total);
+    expect(o.leftOut).toBe(0);
+    expect(o.nodes).toHaveLength(o.shown);
+    expect(new Set(o.nodes.map((n) => n.key)).size).toBe(o.shown);
+    const gh = o.nodes.find((n) => n.title === 'Glasshouse');
+    expect(gh).toMatchObject({ domain: 'entities', degree: 2 });
+    expect(o.nodes.map((n) => n.title)).not.toContain('Loner Vance');
+    expect(o.edges.every((e) => o.nodes.some((n) => n.key === e.from) && o.nodes.some((n) => n.key === e.to))).toBe(true);
+    expect(o.domains.entities.shown).toBe(o.shown);
+});
+
+test('overview: the cap keeps the most connected records and says how many were left out', () => {
+    const all = graph.overview(conn);
+    const o = graph.overview(conn, { cap: 5 });
+    expect(o.nodes).toHaveLength(5);
+    expect(o.cap).toBe(5);
+    expect(o.leftOut).toBe(all.shown - 5);
+    expect(o.nodes[0].title).toBe('Busy');
+    const min = Math.min(...o.nodes.map((n) => n.degree));
+    const kept = new Set(o.nodes.map((n) => n.key));
+    expect(all.nodes.filter((n) => !kept.has(n.key)).every((n) => n.degree <= min)).toBe(true);
+    expect(o.edges.every((e) => kept.has(e.from) && kept.has(e.to))).toBe(true);
+    expect(o.domains.entities).toEqual({ shown: 5, total: all.shown });
+    expect(graph.overview(conn, { cap: 99999 }).cap).toBe(graph.OVERVIEW_CAP);
+    expect(graph.overview(conn, { cap: 'x' }).cap).toBe(graph.OVERVIEW_CAP);
+});
+
+test('overview: a disabled domain is hidden, and no reference or amount text appears', () => {
+    const dl = deadlines.create(conn, { title: 'Studio lease', kind: 'bill', due_date: '2099-02-01', reference: 'SECRET-REF-9', amount_cents: 12345, currency: 'USD' }, 't').id;
+    links.add(conn, { from: { domain: 'deadlines', id: String(dl) }, to: { domain: 'entities', id: String(a) }, rel: 'about' }, 't');
+    const on = graph.overview(conn);
+    expect(on.nodes.find((n) => n.domain === 'deadlines').title).toBe('Studio lease');
+    expect(JSON.stringify(on)).not.toMatch(/SECRET-REF-9|12345/);
+    domainSvc.setEnabled(conn, 'deadlines', false, 't');
+    try {
+        const off = graph.overview(conn);
+        expect(off.nodes.some((n) => n.domain === 'deadlines')).toBe(false);
+        expect(off.domains.deadlines).toBeUndefined();
+        expect(off.edges.some((e) => e.from.startsWith('deadlines:') || e.to.startsWith('deadlines:'))).toBe(false);
+        expect(off.nodes.find((n) => n.title === 'Ines Calder').degree).toBe(on.nodes.find((n) => n.title === 'Ines Calder').degree - 1);
+    } finally { domainSvc.setEnabled(conn, 'deadlines', true, 't'); }
+});
+
+test('overview: the API needs a session and honours cap', async () => {
+    await request(app).get('/admin/api/graph/overview').expect(401);
+    const r = (await agent.get('/admin/api/graph/overview?cap=7').expect(200)).body;
+    expect(r.nodes).toHaveLength(7);
+    expect(r.leftOut).toBeGreaterThan(0);
+    expect(r).toMatchObject({ cap: 7, shown: 7 });
 });

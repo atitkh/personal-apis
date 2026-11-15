@@ -9,6 +9,7 @@ module.exports = (api) => {
     api.get('/graph', handler((req, res, conn) => {
         res.json({ ...graph.neighborhood(conn, { domain: req.query.domain, id: req.query.id, depth: req.query.depth }), domains: links.linkable() });
     }));
+    api.get('/graph/overview', handler((req, res, conn) => res.json(graph.overview(conn, { cap: req.query.cap }))));
     api.get('/graph/hubs', handler((req, res, conn) => res.json({ hubs: graph.hubs(conn, { limit: req.query.limit }) })));
     api.get('/graph/unlinked', handler((req, res, conn) => res.json(graph.unlinked(conn, { domain: req.query.domain, limit: req.query.limit }))));
 };

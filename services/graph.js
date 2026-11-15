@@ -8,6 +8,7 @@ const { HubError } = require('./errors');
 const NODE_CAP = 80;      // the focused view stops growing at this many nodes
 const PER_NODE_CAP = 25;  // one record contributes at most this many neighbours per hop (busy ones are summarised)
 const UNLINKED_MAX = 100;
+const OVERVIEW_CAP = 400; // the whole-graph overview keeps the most connected records up to this many
 
 const bad = (code, message, status = 400) => new HubError(status, code, message);
 const key = (d, i) => `${d}:${i}`;
@@ -72,6 +73,41 @@ function neighborhood(db, { domain, id, depth = 1 } = {}) {
     return { center: key(domain, id), depth: hops, nodes: [...nodes.values()], edges: [...edges.values()], truncated };
 }
 
+// Every record that has at least one link, in the enabled domains, with the links between them. At most `cap` records: the
+// most connected ones are kept and `leftOut` says how many more there are (never silently dropped). `domains` counts what is
+// shown and what exists per domain, for the legend. Records that no longer exist are skipped.
+function overview(db, { cap = OVERVIEW_CAP } = {}) {
+    const limit = Math.min(Math.max(Math.floor(Number(cap)) || OVERVIEW_CAP, 1), OVERVIEW_CAP);
+    const on = new Map();
+    const enabled = (d) => { if (!on.has(d)) on.set(d, Boolean(links.DESCRIBE[d]) && domains.exists(d) && domains.isEnabled(db, d)); return on.get(d); };
+    const deg = new Map();
+    const rows = db.prepare('SELECT id, from_domain, from_id, to_domain, to_id, rel FROM links').all()
+        .filter((r) => enabled(r.from_domain) && enabled(r.to_domain));
+    for (const r of rows) {
+        for (const k of [key(r.from_domain, r.from_id), key(r.to_domain, r.to_id)]) deg.set(k, (deg.get(k) || 0) + 1);
+    }
+    const order = [...deg.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
+    const nodes = new Map();
+    const total = {};
+    let leftOut = 0;
+    for (const [k, n] of order) {
+        const at = k.indexOf(':');
+        const domain = k.slice(0, at);
+        const id = k.slice(at + 1);
+        if (nodes.size >= limit) { leftOut += 1; total[domain] = (total[domain] || 0) + 1; continue; }
+        const d = describe(db, domain, id);
+        if (!d) continue;
+        nodes.set(k, { ...node(domain, id, d), degree: n });
+        total[domain] = (total[domain] || 0) + 1;
+    }
+    const counts = {};
+    for (const n of nodes.values()) (counts[n.domain] || (counts[n.domain] = { shown: 0, total: 0 })).shown += 1;
+    for (const [d, t] of Object.entries(total)) (counts[d] || (counts[d] = { shown: 0, total: 0 })).total = t;
+    const edges = rows.filter((r) => nodes.has(key(r.from_domain, r.from_id)) && nodes.has(key(r.to_domain, r.to_id)))
+        .map((r) => ({ id: r.id, from: key(r.from_domain, r.from_id), to: key(r.to_domain, r.to_id), rel: r.rel }));
+    return { nodes: [...nodes.values()], edges, shown: nodes.size, leftOut, cap: limit, domains: counts };
+}
+
 // The records with the most links: good places to start looking from (digests and episodes are many and thinly linked, so left out).
 function hubs(db, { limit = 12 } = {}) {
     const rows = db.prepare(`SELECT d, i, COUNT(*) AS n FROM (
@@ -120,4 +156,4 @@ function unlinked(db, { domain, limit = 50 } = {}) {
     return { counts, domain: domain || null, records: list };
 }
 
-module.exports = { neighborhood, hubs, unlinked, NODE_CAP, PER_NODE_CAP };
+module.exports = { neighborhood, overview, hubs, unlinked, NODE_CAP, PER_NODE_CAP, OVERVIEW_CAP };

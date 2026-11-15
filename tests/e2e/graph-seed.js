@@ -16,5 +16,18 @@ links.add(c, { from: ent(mira), to: ent(proj), rel: 'works-on' }, 'seed');
 links.add(c, { from: ent(proj), to: ent(org), rel: 'part-of' }, 'seed');
 links.add(c, { from: ent(org), to: ent(topic), rel: 'about' }, 'seed');
 links.add(c, { from: ent(mira), to: { domain: 'trips', id: trip }, rel: 'about' }, 'seed');
+// Six invented clusters (a hub and its members) so the whole-graph overview has something to lay out.
+const trip2 = String(trips.create(c, { title: 'Field week', destination: 'Tampa', kind: 'leisure', start_date: '2099-03-02', end_date: '2099-03-08' }, 'seed').id);
+for (let k = 0; k < 6; k += 1) {
+    const hub = e('topic', `Cluster ${'ABCDEF'[k]}`);
+    const leaves = [];
+    for (let i = 0; i < 14; i += 1) {
+        const leaf = e(i % 3 ? 'person' : 'project', `Member ${'ABCDEF'[k]}${i + 1}`);
+        leaves.push(leaf);
+        links.add(c, { from: ent(hub), to: ent(leaf), rel: 'related' }, 'seed');
+        if (i > 0 && i % 4 === 0) links.add(c, { from: ent(leaves[i - 1]), to: ent(leaf), rel: 'related' }, 'seed');
+    }
+    if (k % 3 === 0) links.add(c, { from: ent(hub), to: { domain: 'trips', id: k ? trip2 : trip }, rel: 'about' }, 'seed');
+}
 console.log('graph seeded');
 db.close();
