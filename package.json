@@ -1,6 +1,6 @@
 {
   "name": "personal-apis",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Personal API collection for various services and integrations",
   "main": "app.js",
   "author": "Atit Kharel",
