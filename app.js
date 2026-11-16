@@ -71,8 +71,10 @@ app.use(requestLogger);
 // Response formatter
 app.use(responseFormatter);
 
-// HTTP request logging
-if (config.isDevelopment()) {
+// HTTP request logging (skipped under test: it floods the test output)
+if (process.env.NODE_ENV === 'test') {
+    // no request log
+} else if (config.isDevelopment()) {
     app.use(morgan('dev'));
 } else {
     app.use(morgan('combined'));
