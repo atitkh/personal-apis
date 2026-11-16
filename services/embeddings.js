@@ -15,7 +15,8 @@ const TICK_MS = 5 * 60 * 1000;
 const FIRST_TICK_MS = 45 * 1000;
 const BATCH = 16;
 const PER_TICK = 160;
-const TIMEOUT_MS = 30 * 1000;
+const TIMEOUT_MS = 30 * 1000;        // indexing batches: a cold model can be slow
+const QUERY_TIMEOUT_MS = 8 * 1000;   // live search: give up early so the keyword results still come back in time
 const TEXT_CHARS = 2000;
 const SNIPPET_CHARS = 180;
 const MIN_SCORE = 0.35;      // cosine below this is noise
@@ -93,7 +94,7 @@ function saveConfig(conn, body) {
 const fetchNow = (...a) => globalThis.fetch(...a);
 
 // Embeds `inputs` (strings). Returns an array of unit-length Float32Arrays. Errors name the host only.
-async function embed(conn, inputs, { fetchImpl = fetchNow } = {}) {
+async function embed(conn, inputs, { fetchImpl = fetchNow, timeoutMs = TIMEOUT_MS } = {}) {
     const c = config(conn);
     if (!c.base_url || !c.model) throw new EmbeddingError('Semantic search is not set up (address and model).', 'not_configured');
     const url = /\/embeddings$/.test(c.base_url) ? c.base_url : `${c.base_url}/embeddings`;
@@ -103,7 +104,7 @@ async function embed(conn, inputs, { fetchImpl = fetchNow } = {}) {
     const where = hostOf(c.base_url);
     let res;
     try {
-        res = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify({ model: c.model, input: inputs }), redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) });
+        res = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify({ model: c.model, input: inputs }), redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) });
     } catch (err) {
         throw new EmbeddingError(`${where} ${err && err.name === 'TimeoutError' ? 'timed out' : 'could not be reached'}.`, 'unreachable', 502);
     }
@@ -265,7 +266,7 @@ async function query(conn, q, { visible = null, domains: only, per = 10, fetchIm
     const asked = Array.isArray(only) && only.length ? new Set(only.map(String)) : null;
     const names = sourceNames(conn).filter((n) => (!visible || visible.includes(n)) && (!asked || asked.has(n)));
     if (!names.length) return {};
-    const [qv] = await embed(conn, [clip(q, 500)], { fetchImpl });
+    const [qv] = await embed(conn, [clip(q, 500)], { fetchImpl, timeoutMs: QUERY_TIMEOUT_MS });
     const rows = conn.prepare(`SELECT domain, record_id, title, snippet, date, kind, dim, vector FROM embeddings WHERE model = ? AND domain IN (${names.map(() => '?').join(',')})`).all(c.model, ...names);
     const scored = [];
     for (const r of rows) {
