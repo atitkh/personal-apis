@@ -3,6 +3,13 @@
 Versioned from 1.1.0 on (earlier history is in the git log). Each release is a `vX.Y.Z` tag; deploys name the tag they ran.
 Rule: minor for a new feature or view, patch for fixes. One entry per release, newest first.
 
+## 1.2.0 - 2026-11-15
+
+### Added
+- Graph timeline (`T` or the clock button): a playhead over dated records or recorded links, play/pause/step/speed, a Records | Links switch, undated records shown next to their first visible neighbour. Records grow in beside their neighbours and fade out when scrubbing back; zoom, pan and dragged positions are kept. `?at=YYYY-MM-DD` keeps the playhead in the URL.
+- Agent access to the graph: the `links` tool gains `neighbors` (a record's surroundings, 1 or 2 steps, with how each is linked), `hubs` and `unlinked`. Read only, limited to the domains the key can read; nothing is reached through a record the key cannot read (hidden ones are counted, not named).
+- Graph payload: nodes carry `t` (one sortable day or null; weekly digest periods resolve to the week's last day), edges carry `created_at`.
+
 ## 1.1.0 - 2026-11-15
 
 ### Added
