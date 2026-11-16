@@ -14,6 +14,7 @@ const DEFAULT_PER = 5;
 const MAX_PER = 20;
 const TITLE_CHARS = 140;
 const SNIPPET_CHARS = 180;
+const SEMANTIC_ONLY_MAX = 5;   // results that matched by meaning only, across all domains; keyword matches are never cut
 
 class SearchError extends HubError {
     constructor(message) {
@@ -247,8 +248,9 @@ async function searchHybrid(db, q, opts = {}) {
     for (const [domain, hits] of Object.entries(sem)) {
         if (!byDomain.has(domain)) byDomain.set(domain, { domain, title: domains.REGISTRY[domain].title, count: 0, results: [] });
     }
-    const groups = [];
+    let groups = [];
     let total = 0;
+    const semScore = new Map(); // `${domain}:${id}` -> cosine, to rank semantic-only hits across domains
     for (const name of domains.names()) {
         const g = byDomain.get(name);
         if (!g) continue;
@@ -261,11 +263,20 @@ async function searchHybrid(db, q, opts = {}) {
             if (have) { have.match = 'both'; if (!have.snippet && r.snippet) have.snippet = r.snippet; } else { const { score, ...rest } = r; items.set(key, { ...rest, domain: name, match: via }); }
         };
         g.results.forEach((r, i) => bump(r, i, 'keyword'));
-        (sem[name] || []).forEach((r, i) => bump(r, i, 'semantic'));
+        (sem[name] || []).forEach((r, i) => { semScore.set(`${name}:${r.id}`, r.score); bump(r, i, 'semantic'); });
         const results = [...items.entries()].sort((a, b) => scores.get(b[0]) - scores.get(a[0])).map(([, r]) => r).slice(0, per);
         if (!results.length) continue;
         total += results.length;
         groups.push({ domain: name, title: g.title, count: results.length, results });
+    }
+    // Keep only the best few semantic-only hits overall; anything that also matched the words stays.
+    const only = [];
+    for (const g of groups) for (const r of g.results) if (r.match === 'semantic') only.push({ r, s: semScore.get(`${g.domain}:${r.id}`) || 0 });
+    if (only.length > SEMANTIC_ONLY_MAX) {
+        const drop = new Set(only.sort((x, y) => y.s - x.s).slice(SEMANTIC_ONLY_MAX).map((x) => x.r));
+        for (const g of groups) { g.results = g.results.filter((r) => !drop.has(r)); g.count = g.results.length; }
+        groups = groups.filter((g) => g.count);
+        total = groups.reduce((n, g) => n + g.count, 0);
     }
     return { query: base.query, terms: base.terms, groups, total, semantic: true };
 }

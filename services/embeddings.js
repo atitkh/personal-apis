@@ -19,8 +19,9 @@ const TIMEOUT_MS = 30 * 1000;        // indexing batches: a cold model can be sl
 const QUERY_TIMEOUT_MS = 8 * 1000;   // live search: give up early so the keyword results still come back in time
 const TEXT_CHARS = 2000;
 const SNIPPET_CHARS = 180;
-const MIN_SCORE = 0.35;      // cosine below this is noise
-const BAND = 0.2;            // keep results within this of the best one
+// Tuned for nomic-embed-text: unrelated records score ~0.48 (p90 0.56, p99 0.65), related ones 0.9+. Other models need other numbers.
+const MIN_SCORE = 0.55;      // cosine below this is noise
+const BAND = 0.10;           // keep results within this of the best one
 
 class EmbeddingError extends HubError {
     constructor(message, code = 'bad_embeddings', status = 400) {
