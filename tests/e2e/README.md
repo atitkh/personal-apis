@@ -37,7 +37,7 @@ node tests/e2e/run-all.mjs --list
 ```
 
 Flows: `flights flights-empty sources passport passport-plain globe keys deadlines preferences briefing briefing-empty
-overview overview-empty delete settings trips lifelog entities domain-off`. Output per flow looks like
+overview overview-empty delete settings trips lifelog entities notes domain-off`. Output per flow looks like
 `PASS keys            27 checks passed, 0 failed`; the per-check output of each flow is in `$E2E_LOGS/<flow>.log`
 and screenshots in `$E2E_LOGS/shots/`. Exit code 1 when any flow fails.
 
