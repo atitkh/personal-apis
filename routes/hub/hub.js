@@ -48,7 +48,7 @@ router.get('/digests/:kind/:period/revisions', read, handle((req, res, conn) => 
 }));
 
 router.get('/digests/:kind/:period', read, handle((req, res, conn) => {
-    res.json(digests.get(conn, req.params.kind, req.params.period, { rev: req.query.rev }));
+    res.json(digests.get(conn, req.params.kind, req.params.period, { rev: req.query.rev, visible: briefing.visibleDomainsFor(conn, req.apiKey) }));
 }));
 
 // The nightly job, the weekly review and the importer write here.
@@ -56,17 +56,17 @@ router.put('/digests/:kind/:period', write, handle((req, res, conn) => {
     const { body, source, model, meta, force, at } = req.body || {};
     const result = digests.put(conn, req.params.kind, req.params.period, {
         body, source, model, meta, at, force: force === true, actor: req.apiKey.name,
-    });
+    }, { visible: briefing.visibleDomainsFor(conn, req.apiKey) });
     res.status(result.status === 'created' ? 201 : 200).json(result);
 }));
 
 router.patch('/digests/:kind/:period', write, handle((req, res, conn) => {
     const { body, note } = req.body || {};
-    res.json(digests.edit(conn, req.params.kind, req.params.period, { body, note, actor: req.apiKey.name }));
+    res.json(digests.edit(conn, req.params.kind, req.params.period, { body, note, actor: req.apiKey.name }, { visible: briefing.visibleDomainsFor(conn, req.apiKey) }));
 }));
 
 router.post('/digests/:kind/:period/restore', write, handle((req, res, conn) => {
-    res.json(digests.restore(conn, req.params.kind, req.params.period, (req.body || {}).rev, req.apiKey.name));
+    res.json(digests.restore(conn, req.params.kind, req.params.period, (req.body || {}).rev, req.apiKey.name, { visible: briefing.visibleDomainsFor(conn, req.apiKey) }));
 }));
 
 // Needs briefing:read; what it shows follows the key's domain scopes and each domain's MCP mode, exactly as hub_overview does.

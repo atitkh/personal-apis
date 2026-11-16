@@ -3,6 +3,7 @@
 const { HubError } = require('./errors');
 const { clampLimit, clampOffset } = require('./lib/listing');
 const { count } = require('./lib/remove');
+const wikiresolve = require('./lib/wikiresolve');
 
 const PERIOD_RE = {
     daily: /^\d{4}-\d{2}-\d{2}$/,   // 2026-11-08, the local (America/Chicago) date
@@ -52,6 +53,11 @@ function index(db, id, body) {
     db.prepare('INSERT INTO digest_search (rowid, body) VALUES (?, ?)').run(id, body);
 }
 
+// [[wikilinks]] in a digest work as in notes: each resolved target gets a link from the digest (domain 'digests', id
+// kind/period) with rel 'mentions'. Only those rows are managed here; other rels (such as 'covers') are never touched.
+const ref = (kind, period) => ({ domain: 'digests', id: `${kind}/${period}` });
+const sync = (db, kind, period, body, actor, visible) => wikiresolve.syncMentions(db, ref(kind, period), body, actor, { visible: visible || null });
+
 function shape(d, r, revisions) {
     return {
         kind: d.kind,
@@ -82,7 +88,7 @@ function addRevision(db, d, { body, source, actor, model, note, meta, at: when }
 // The nightly job and the importer. Safe to repeat. A revision made by a human is never replaced by
 // generated text unless force is set.
 // `at` backdates an imported file to when it was originally written; it is ignored for any other source.
-function put(db, kind, period, { body, source = 'generated', actor, model, meta, force = false, at: given }) {
+function put(db, kind, period, { body, source = 'generated', actor, model, meta, force = false, at: given }, { visible = null } = {}) {
     check(kind, period);
     if (!SOURCES.has(source)) throw new DigestError(400, 'bad_source', 'source must be generated or import.');
     const text = cleanBody(body);
@@ -98,31 +104,35 @@ function put(db, kind, period, { body, source = 'generated', actor, model, meta,
             db.prepare('INSERT INTO digest_revisions (digest_id, rev, body, source, actor, model, note, meta, at) VALUES (?, 1, ?, ?, ?, ?, NULL, ?, ?)')
                 .run(id, text, source, actor, model || null, metaJson, at);
             index(db, id, text);
+            sync(db, kind, period, text, actor, visible);
             return { status: 'created', rev: 1 };
         }
         const current = revision(db, existing.id, existing.current_rev);
-        if (current.body === text) return { status: 'unchanged', rev: current.rev };
+        if (current.body === text) { sync(db, kind, period, text, actor, visible); return { status: 'unchanged', rev: current.rev }; }
         if (HUMAN.has(current.source) && !force) {
             throw new DigestError(409, 'edited', `The ${kind} digest for ${period} has been edited by hand. Send force to replace it.`);
         }
-        return { status: 'updated', rev: addRevision(db, existing, { body: text, source, actor, model, meta: metaJson, at: stamp }) };
+        const rev = addRevision(db, existing, { body: text, source, actor, model, meta: metaJson, at: stamp });
+        sync(db, kind, period, text, actor, visible);
+        return { status: 'updated', rev };
     })();
 }
 
 // A human edit.
-function edit(db, kind, period, { body, actor, note }) {
+function edit(db, kind, period, { body, actor, note }, { visible = null } = {}) {
     check(kind, period);
     const text = cleanBody(body);
     return db.transaction(() => {
         const d = row(db, kind, period);
         if (!d) throw new DigestError(404, 'not_found', `No ${kind} digest for ${period}.`);
         const current = revision(db, d.id, d.current_rev);
+        sync(db, kind, period, text, actor, visible);
         if (current.body === text) return { status: 'unchanged', rev: current.rev };
         return { status: 'updated', rev: addRevision(db, d, { body: text, source: 'edit', actor, note: note ? String(note).slice(0, 200) : null }) };
     })();
 }
 
-function restore(db, kind, period, rev, actor) {
+function restore(db, kind, period, rev, actor, { visible = null } = {}) {
     check(kind, period);
     return db.transaction(() => {
         const d = row(db, kind, period);
@@ -130,19 +140,29 @@ function restore(db, kind, period, rev, actor) {
         const old = revision(db, d.id, Number(rev));
         if (!old) throw new DigestError(404, 'no_revision', `Revision ${rev} does not exist.`);
         const current = revision(db, d.id, d.current_rev);
+        sync(db, kind, period, old.body, actor, visible);
         if (current.body === old.body) return { status: 'unchanged', rev: current.rev };
         return { status: 'updated', rev: addRevision(db, d, { body: old.body, source: 'restore', actor, note: `Restored revision ${old.rev}` }) };
     })();
 }
 
-function get(db, kind, period, { rev } = {}) {
+// One digest. `wikilinks` says how each [[target]] in the shown revision resolves now (left out with wikilinks: false).
+function get(db, kind, period, { rev, visible = null, wikilinks = true } = {}) {
     check(kind, period);
     const d = row(db, kind, period);
     if (!d) throw new DigestError(404, 'not_found', `No ${kind} digest for ${period}.`);
     const wanted = rev == null || rev === '' ? d.current_rev : Number(rev);
     const r = revision(db, d.id, wanted);
     if (!r) throw new DigestError(404, 'no_revision', `Revision ${rev} does not exist.`);
-    return shape(d, r, d.current_rev);
+    const out = shape(d, r, d.current_rev);
+    if (wikilinks) out.wikilinks = wikiresolve.resolveBody(db, r.body, { self: ref(kind, period), visible });
+    return out;
+}
+
+// For the editor: how do these typed targets resolve right now? -> same shape as get().wikilinks.
+function resolveTargets(db, kind, period, targets, { visible = null } = {}) {
+    check(kind, period);
+    return wikiresolve.resolveTargets(db, targets, { self: ref(kind, period), visible });
 }
 
 function latest(db, kind) {
@@ -178,12 +198,12 @@ function list(db, { kind, from, to, limit = 50, offset = 0 } = {}) {
 // The newest `count` digests of a kind with their text, for agents and the weekly review.
 function recent(db, kind, count = 7) {
     const items = list(db, { kind, limit: clampLimit(count, 7, 31) });
-    return items.map((i) => get(db, i.kind, i.period));
+    return items.map((i) => get(db, i.kind, i.period, { wikilinks: false }));
 }
 
 // Every digest of a kind in [from, to] with its text, oldest first.
 function range(db, kind, from, to) {
-    return list(db, { kind, from, to, limit: 500 }).reverse().map((i) => get(db, i.kind, i.period));
+    return list(db, { kind, from, to, limit: 500 }).reverse().map((i) => get(db, i.kind, i.period, { wikilinks: false }));
 }
 
 function search(db, q, { kind, limit = 20 } = {}) {
@@ -227,6 +247,7 @@ function remove(db, kind, period, input) {
         const pre = removalPreview(db, kind, period);
         db.prepare('DELETE FROM digest_search WHERE rowid = ?').run(pre.id);
         db.prepare('DELETE FROM digests WHERE id = ?').run(pre.id);
+        db.prepare("DELETE FROM links WHERE from_domain = 'digests' AND from_id = ? AND rel = 'mentions'").run(`${kind}/${period}`);
         return { status: 'deleted', ...pre };
     })();
 }
@@ -234,4 +255,4 @@ function remove(db, kind, period, input) {
 // kind, period and the revision count: never the text.
 const removedAuditDetail = (r) => ({ kind: r.kind, period: r.period, ...r.counts });
 
-module.exports = { removalPreview, remove, removedAuditDetail, DigestError, put, edit, restore, get, latest, revisions, list, recent, range, search, stats, bounds, PERIOD_RE };
+module.exports = { removalPreview, remove, removedAuditDetail, DigestError, put, edit, restore, get, resolveTargets, latest, revisions, list, recent, range, search, stats, bounds, PERIOD_RE };

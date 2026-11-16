@@ -22,6 +22,11 @@ module.exports = (api, ctx) => {
         res.json({ ...d, history: digests.revisions(conn, req.params.kind, req.params.period) });
     }));
 
+    // How typed [[targets]] resolve right now, for the editor's live preview. Body { targets: [...] }.
+    api.post('/digests/:kind/:period/resolve', digestHandler((req, res, conn) => {
+        res.json(digests.resolveTargets(conn, req.params.kind, req.params.period, (req.body || {}).targets));
+    }));
+
     api.patch('/digests/:kind/:period', digestHandler((req, res, conn) => {
         const { kind, period } = req.params;
         const result = digests.edit(conn, kind, period, { body: (req.body || {}).body, note: (req.body || {}).note, actor: 'admin' });

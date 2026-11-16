@@ -1,6 +1,7 @@
 // MCP tool for the digests domain. Reuses services/digests.js, so revisions, the hand-edit guard and
 // the search index behave exactly as through PUT/PATCH /hub/digests.
 const digests = require('../../digests');
+const briefing = require('../../briefing');
 const { ToolError, clip, MAX_TEXT_CHARS } = require('../util');
 
 const BRIEF_COUNT = 3;
@@ -86,7 +87,7 @@ module.exports = {
         case 'edit':
             return digests.edit(db, kind, need(args.period, 'a period', action), {
                 body: need(args.body, 'a body', action), note: args.note, actor: key.name,
-            });
+            }, { visible: briefing.visibleDomainsFor(db, key) });
         case 'publish':
             return digests.put(db, kind, need(args.period, 'a period', action), {
                 body: need(args.body, 'a body', action),
@@ -95,7 +96,7 @@ module.exports = {
                 model: args.model,
                 meta: args.sources ? { sources: args.sources } : undefined,
                 force: args.force === true,
-            });
+            }, { visible: briefing.visibleDomainsFor(db, key) });
         default:
             throw new ToolError('bad_action', `Unknown action "${action}".`);
         }

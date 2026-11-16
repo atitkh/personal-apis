@@ -5,8 +5,13 @@
 //   #/digests/daily/2026-11-08   reader (serif), previous/next day, edit mode, history drawer
 //   #/digests/weekly/2026-W45    the same for a week
 // History, compare and restore live in a right-hand drawer so the text keeps its place.
+// The text is markdown (markdown.js); [[wikilinks]] open the note, entity or record they name (resolved by the server, as for
+// notes) and a Links list under the text names them, unresolved ones as missing. The editor has the notes' [[ and / menus.
 import {
-    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, dayLabel, hidden, actorName, pageHeader, formActions } from '../ui.js';
+    h, icon, button, when, ago, plural, dot, emptyState, toast, confirmDialog, deleteDialog, openDrawer, chipNav, dayLabel, hidden, actorName, pageHeader, formActions, formDialog } from '../ui.js';
+import { render as renderMarkdown } from '../markdown.js';
+import { recordHref } from './recordHref.js';
+import { createMenus } from './noteMenus.js';
 import { monthCalendar, isoDay, parseDay, addDays, addMonths, monthLabel } from '../charts.js';
 import { href, navigate } from '../router.js';
 
@@ -15,6 +20,9 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const WEEK_RE = /^\d{4}-W\d{2}$/;
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const pad = (n) => String(n).padStart(2, '0');
+const DOMAIN_WORD = { notes: 'Note', entities: 'Entity', trips: 'Trip', places: 'Place', flights: 'Flight', deadlines: 'Deadline', digests: 'Digest', preferences: 'Preference', lifelog: 'Lifelog', portfolio: 'Portfolio' };
+const ENTITY_KINDS = [['person', 'Person'], ['project', 'Project'], ['organization', 'Organization'], ['topic', 'Topic'], ['other', 'Other']];
+const keyOf = (t) => String(t).normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
 
 /* ---------- periods ---------- */
 
@@ -386,6 +394,58 @@ async function deleteDigest(ctx, kind, period) {
     navigate(listHref(kind, period), { replace: true });
 }
 
+
+// The digest text as markdown with its [[wikilinks]] as links (w = the server's { resolved, unresolved }).
+function digestText(body, w) {
+    const known = new Map();
+    for (const r of (w && w.resolved) || []) known.set(keyOf(r.target), r);
+    return renderMarkdown(body, {
+        wikilink: (node) => {
+            const r = known.get(keyOf(node.target));
+            return r ? { href: recordHref(r.domain, r.id, { title: r.title }), title: `${DOMAIN_WORD[r.domain] || r.domain}: ${r.title}` } : null;
+        },
+    });
+}
+
+function linksSection(w) {
+    const res = (w && w.resolved) || [];
+    const miss = (w && w.unresolved) || [];
+    if (!res.length && !miss.length) return null;
+    return h('section', { class: 'reader-sources reader-links', 'aria-labelledby': 'links-title' },
+        h('h3', { id: 'links-title', text: 'Links' }),
+        h('ul', {},
+            res.map((r) => h('li', {}, h('a', { href: recordHref(r.domain, r.id, { title: r.title }), text: r.title }), h('span', { class: 'muted', text: ` ${DOMAIN_WORD[r.domain] || r.domain}` }))),
+            miss.map((t) => h('li', {}, dot('warn'), h('span', { text: `${t}: missing` })))));
+}
+
+// The [[ and / menus of the notes editor, on the digest textarea. Creating a page works as in notes.
+function digestMenus(ctx, area, host) {
+    const makeEntity = async (name, kind) => {
+        try { await ctx.api('/entities', { method: 'POST', body: { kind, name } }); } catch (e) { if (e.status !== 409) throw e; }
+    };
+    return createMenus({
+        textarea: area, host, api: ctx.api, selfId: () => null,
+        createNote: async (title) => { await ctx.api('/notes', { method: 'POST', body: { title, body: '' } }); toast(`Created note ${title}`); },
+        createEntity: async (name, kind) => { await makeEntity(name, kind); toast(`Created ${kind} ${name}`); },
+        newEntity: async () => {
+            const name = h('input', { type: 'text', name: 'name', id: 'dne-name', maxlength: '120', autocomplete: 'off' });
+            const kind = h('select', { name: 'kind', id: 'dne-kind' }, ENTITY_KINDS.map(([k, t]) => h('option', { value: k, text: t })));
+            const out = await formDialog({
+                title: 'New entity', intro: 'A person, project, organization or topic your records can point at. A [[link]] to it goes into the digest.',
+                fields: [h('div', { class: 'field' }, h('label', { for: 'dne-name', text: 'Name' }), name), h('div', { class: 'field' }, h('label', { for: 'dne-kind', text: 'Kind' }), kind)],
+                submit: 'Add entity',
+                onSubmit: async (form) => {
+                    const n = form.elements.name.value.trim().replace(/\s+/g, ' ');
+                    if (!n) throw Object.assign(new Error('Give it a name.'), { field: 'name' });
+                    await makeEntity(n, form.elements.kind.value);
+                    return n;
+                },
+            });
+            return typeof out === 'string' ? out : null;
+        },
+    });
+}
+
 async function reader(ctx, kind, period) {
     const valid = (kind === 'daily' && DAY_RE.test(period)) || (kind === 'weekly' && WEEK_RE.test(period));
     if (!valid) {
@@ -442,6 +502,7 @@ async function reader(ctx, kind, period) {
     if (st.editing) {
         const area = h('textarea', { id: 'd-body', rows: '18', 'aria-label': 'Digest text', class: 'reader-edit', spellcheck: 'true' });
         area.value = d.body;
+        const writeBox = h('div', { class: 'note-write' }, area);
         const note = h('input', { type: 'text', id: 'd-note', placeholder: 'What did you change? (optional)', maxlength: '200' });
         const error = h('p', { class: 'error', role: 'alert' });
         const save = button({ text: 'Save changes', type: 'submit' });
@@ -474,14 +535,17 @@ async function reader(ctx, kind, period) {
             },
         },
         h('p', { class: 'note', text: 'Saving adds a new revision; the current text stays in the history. Ctrl Enter saves, Esc cancels.' }),
-        h('label', { for: 'd-body', class: 'visually-hidden', text: 'Digest text' }), area,
+        h('label', { for: 'd-body', class: 'visually-hidden', text: 'Digest text' }), writeBox,
         h('label', { for: 'd-note' }, 'Note', note),
         error,
         formActions(save, button({ text: 'Cancel', variant: 'quiet', onClick: cancel })));
+        const menus = digestMenus(ctx, area, writeBox);
+        area.addEventListener('input', () => menus.onInput());
+        area.addEventListener('keydown', (e) => { if (menus.onKeydown(e)) e.stopPropagation(); });
+        ctx.onCleanup(() => menus.destroy());
         setTimeout(() => area.focus(), 0);
     } else {
-        main = h('article', { class: 'reading', 'aria-label': periodTitle(kind, period) },
-            d.body.split(/\n{2,}/).map((para) => para.trim()).filter(Boolean).map((para) => h('p', { text: para })));
+        main = h('article', { class: 'reading', 'aria-label': periodTitle(kind, period) }, digestText(d.body, d.wikilinks));
     }
 
     const tools = !st.editing && h('div', { class: 'reader-tools' },
@@ -504,6 +568,7 @@ async function reader(ctx, kind, period) {
             h('span', { text: `You are reading revision ${d.rev}, not the current text.` }),
             button({ text: 'Back to the current text', variant: 'quiet', size: 'small', onClick: () => { st.viewRev = null; ctx.rerender(); } })) : null,
         main,
+        st.editing ? null : linksSection(d.wikilinks),
         sources,
         st.editing ? null : pager(kind, period)));
 }

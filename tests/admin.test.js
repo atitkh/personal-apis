@@ -280,6 +280,9 @@ describe('dashboard: domains and digests', () => {
 
         await agent.post('/admin/api/digests/daily/2026-11-08/restore').set(H).send({ rev: 1 }).expect(200);
         expect((await agent.get('/admin/api/digests/daily/2026-11-08').expect(200)).body.body).toBe('Generated text about the hub.');
+        expect((await agent.get('/admin/api/digests/daily/2026-11-08').expect(200)).body.wikilinks).toEqual({ resolved: [], unresolved: [], ambiguous: [] });
+        await agent.post('/admin/api/digests/daily/2026-11-08/resolve').send({ targets: ['Nope'] }).expect(403);
+        expect((await agent.post('/admin/api/digests/daily/2026-11-08/resolve').set(H).send({ targets: ['Nope'] }).expect(200)).body.unresolved).toEqual(['Nope']);
         await agent.get('/admin/api/digests/daily/2020-01-01').expect(404);
         expect(audit.recent(db.get(), 10).map((e) => e.action)).toEqual(expect.arrayContaining(['digest_edited', 'digest_restored']));
     });

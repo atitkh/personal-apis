@@ -141,7 +141,7 @@ const SOURCES = {
         for (const kind of ['daily', 'weekly']) {
             for (const i of digests.list(db, { kind, limit: 500 })) {
                 let body = '';
-                try { body = digests.get(db, kind, i.period).body || ''; } catch (e) { body = ''; }
+                try { body = digests.get(db, kind, i.period, { wikilinks: false }).body || ''; } catch (e) { body = ''; }
                 out.push({ id: `${kind}/${i.period}`, title: `${kind === 'weekly' ? 'Weekly' : 'Daily'} digest ${i.period}`, text: body, date: kind === 'daily' ? i.period : undefined, kind });
             }
         }

@@ -21,6 +21,7 @@
 const { HubError } = require('./errors');
 const validate = require('./lib/validate');
 const wikilinks = require('./lib/wikilinks');
+const wikiresolve = require('./lib/wikiresolve');
 const { needRow, commitRevision, findRevision } = require('./lib/revisions');
 const { limitOrDefault, clampOffset } = require('./lib/listing');
 const { needConfirm, count } = require('./lib/remove');
@@ -226,86 +227,30 @@ function stats(db) {
 
 /* ---------- wikilinks ---------- */
 
-const canSee = (visible, domain) => !visible || visible.includes(domain);
-
-// How one parsed target resolves: { status: 'resolved' | 'missing' | 'self', domain, id, title, kind, candidates }.
-// A [[domain:id]] needs a readable domain and an existing record. A plain title matches notes (exact, any case, the most
-// recently updated first, not the note itself) and only then entities (name or alias).
-function resolveOne(db, t, { selfId, visible }) {
-    if (t.ref) {
-        const { domain, id } = t.ref;
-        if (!canSee(visible, domain) || !links.DESCRIBE[domain]) return { status: 'missing' };
-        if (domain === 'notes' && String(selfId) === id) return { status: 'self' };
-        let d = null;
-        try { d = links.DESCRIBE[domain](db, id); } catch (e) { d = null; }
-        return d ? { status: 'resolved', domain, id, title: d.title, kind: d.kind, candidates: 1 } : { status: 'missing' };
-    }
-    if (canSee(visible, 'notes')) {
-        const rows = db.prepare(`SELECT id, title, kind FROM notes WHERE title = ? COLLATE NOCASE AND removed_at IS NULL AND id != ?
-            ORDER BY updated_at DESC, id DESC LIMIT 20`).all(t.target, selfId || 0);
-        if (rows.length) return { status: 'resolved', domain: 'notes', id: String(rows[0].id), title: rows[0].title, kind: rows[0].kind, candidates: rows.length };
-    }
-    if (canSee(visible, 'entities')) {
-        const rows = db.prepare(`SELECT id, name, kind FROM entities WHERE name = @n COLLATE NOCASE
-            OR EXISTS (SELECT 1 FROM json_each(aliases) WHERE value = @n COLLATE NOCASE) ORDER BY updated_at DESC, id DESC LIMIT 20`).all({ n: t.target });
-        if (rows.length) return { status: 'resolved', domain: 'entities', id: String(rows[0].id), title: rows[0].name, kind: rows[0].kind, candidates: rows.length };
-    }
-    if (selfId && canSee(visible, 'notes')) {
-        const me = db.prepare('SELECT 1 FROM notes WHERE id = ? AND title = ? COLLATE NOCASE').get(selfId, t.target);
-        if (me) return { status: 'self' };
-    }
-    return { status: 'missing' };
-}
-
-const isDomain = (name) => !!links.DESCRIBE[name] && require('./domains').exists(name);
+// The resolver is shared with digests (services/lib/wikiresolve.js); a note is `self` so it never links to itself.
+const noteRef = (selfId) => ({ domain: 'notes', id: String(selfId) });
+const { isDomain } = wikiresolve;
 
 // Every wikilink of a body, resolved: { resolved: [{ target, label, domain, id, title, kind, ambiguous? }], unresolved: [target],
 // ambiguous: [{ target, candidates, chose }] }. Links to oneself are left out.
 function resolveBody(db, body, { selfId, visible = null } = {}) {
-    const out = { resolved: [], unresolved: [], ambiguous: [] };
-    for (const t of wikilinks.parse(body, isDomain)) {
-        const r = resolveOne(db, t, { selfId, visible });
-        if (r.status === 'self') continue;
-        if (r.status === 'missing') { out.unresolved.push(t.target); continue; }
-        out.resolved.push({ target: t.target, label: t.label, domain: r.domain, id: r.id, title: r.title, kind: r.kind, ...(r.candidates > 1 ? { ambiguous: r.candidates } : {}) });
-        if (r.candidates > 1) out.ambiguous.push({ target: t.target, candidates: r.candidates, chose: `${r.domain}:${r.id}` });
-    }
-    return out;
+    return wikiresolve.resolveBody(db, body, { self: noteRef(selfId), visible });
 }
 
 // For the editor: how do these typed targets resolve right now? (no note saved) -> same shape as resolveBody.
 function resolveTargets(db, targets, { selfId, visible = null } = {}) {
-    const list = (Array.isArray(targets) ? targets : []).slice(0, wikilinks.MAX_TARGETS).filter((t) => typeof t === 'string');
-    return resolveBody(db, list.map((t) => `[[${t.replace(/[\[\]\r\n]/g, ' ')}]]`).join('\n'), { selfId, visible });
+    return wikiresolve.resolveTargets(db, targets, { self: noteRef(selfId), visible });
 }
 
 // Brings the links of a note in line with its text. One transaction (the caller's). Returns what happened.
 function syncLinks(db, row, body, actor, { visible = null } = {}) {
-    const res = resolveBody(db, body, { selfId: row.id, visible });
-    const me = { domain: 'notes', id: String(row.id) };
-    const want = new Set();
-    let added = 0;
-    for (const r of res.resolved) {
-        const k = `${r.domain}:${r.id}`;
-        if (want.has(k)) continue;
-        want.add(k);
-        try {
-            if (links.add(db, { from: me, to: { domain: r.domain, id: r.id }, rel: 'mentions' }, actor).status === 'created') added += 1;
-        } catch (e) { want.delete(k); }     // a target links.js refuses (an odd id) stays plain text
-    }
-    let removed = 0;
-    const own = db.prepare("SELECT id, to_domain, to_id FROM links WHERE from_domain = 'notes' AND from_id = ? AND rel = 'mentions'").all(me.id);
-    for (const l of own) {
-        if (want.has(`${l.to_domain}:${l.to_id}`) || !canSee(visible, l.to_domain)) continue;
-        db.prepare('DELETE FROM links WHERE id = ?').run(l.id);
-        removed += 1;
-    }
+    const { res, added, removed, resolved } = wikiresolve.syncMentions(db, noteRef(row.id), body, actor, { visible });
     // Missing pages: only title-form targets (a [[domain:id]] that does not exist is not a page to create).
     db.prepare('DELETE FROM note_unresolved WHERE note_id = ?').run(row.id);
     const ins = db.prepare('INSERT OR IGNORE INTO note_unresolved (note_id, key, target) VALUES (?, ?, ?)');
     const isRef = new Set(wikilinks.parse(body, isDomain).filter((t) => t.ref).map((t) => t.target));
     for (const u of res.unresolved) if (!isRef.has(u)) ins.run(row.id, u.toLowerCase(), u);
-    return { added, removed, resolved: want.size, unresolved: res.unresolved, ambiguous: res.ambiguous };
+    return { added, removed, resolved, unresolved: res.unresolved, ambiguous: res.ambiguous };
 }
 
 // A note or entity with this title now exists: notes that were waiting for it link to it.
