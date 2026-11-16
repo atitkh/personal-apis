@@ -5,6 +5,7 @@
 // settings panel (filters, groups, display, forces), zoom buttons and whatever the view hands in (mode switch, details card).
 // Positions live in memory only; the settings are kept in localStorage under `hub-graph`. No libraries.
 import { h, svg, icon, domainHue, plural, toast } from '../ui.js';
+import { createTimeline } from './graphTimeline.js';
 
 const BASE_W = 920;     // world units across the canvas at zoom 1
 const BASE_H = 560;
@@ -114,10 +115,13 @@ const CUT = 300;
 const SPRING = 0.6;
 const ALPHA_MIN = 0.015;
 const DECAY = 0.017;
-export function createSim(nodes, edges, anchors, forces) {
+// Records the timeline has taken off the picture (`gone`) are left out of the forces and keep their place.
+export function createSim(all, edges, anchors, forces) {
+    let nodes = all;
     let n; let idx; let ends; let fx; let fy; let next; let charge; let tug;
     // (Re)reads the nodes and edges: called once, and again after a link is added or removed (positions are kept).
     const build = () => {
+        nodes = all.some((x) => x.gone) ? all.filter((x) => !x.gone) : all;
         n = nodes.length;
         idx = new Map(nodes.map((x, i) => [x.key, i]));
         ends = edges.map((e) => [idx.get(e.from), idx.get(e.to)]).filter(([a, b]) => a != null && b != null);
@@ -136,6 +140,7 @@ export function createSim(nodes, edges, anchors, forces) {
     sim.step = () => {
         sim.alpha += (sim.target - sim.alpha) * DECAY;
         sim.ticks += 1;
+        if (!n) return;   // the timeline can take every record off the picture
         const { center, repel, link, linkDist } = sim.forces;
         const push = 5200 * repel;
         const spring = SPRING * link;
@@ -298,7 +303,8 @@ export function createCanvas(o) {
     const button = (text, label, key, fn) => h('button', { type: 'button', class: 'graph-btn', 'aria-label': label, title: label, 'data-key': key, onclick: fn }, text);
     const gear = h('button', { type: 'button', class: 'graph-btn', 'aria-label': 'Graph settings', title: 'Graph settings', 'aria-expanded': 'false', 'aria-controls': 'graph-panel', 'data-key': 'graph-settings', onclick: () => togglePanel() }, icon('settings'));
     const editBtn = h('button', { type: 'button', class: 'graph-btn', 'aria-label': 'Edit links', title: 'Edit links (E)', 'aria-pressed': 'false', 'data-key': 'graph-edit', onclick: () => setEditing(!editing) }, icon('edit'));
-    const tools = h('div', { class: 'graph-hud graph-hud-right' }, gear, editBtn,
+    const tlBtn = h('button', { type: 'button', class: 'graph-btn', 'aria-label': 'Timeline', title: 'Timeline (T)', 'aria-pressed': 'false', 'data-key': 'graph-timeline-btn', onclick: () => tl.toggle() }, icon('timeline'));
+    const tools = h('div', { class: 'graph-hud graph-hud-right' }, gear, editBtn, tlBtn,
         h('div', { class: 'graph-zoom', role: 'group', 'aria-label': 'Zoom' },
             button('+', 'Zoom in', 'graph-zoom-in', () => zoomBy(1.4)), button('−', 'Zoom out', 'graph-zoom-out', () => zoomBy(1 / 1.4)),
             button(icon('expand'), 'Reset the view to fit everything', 'graph-fit', () => fit(true))));
@@ -311,6 +317,9 @@ export function createCanvas(o) {
         h('button', { type: 'button', class: 'graph-badge-btn', 'data-key': 'graph-edit-done', onclick: () => setEditing(false), text: 'Done' }));
     badge.hidden = true; badgeCancel.hidden = true;
     const el = h('div', { class: `graph-stage${dense ? ' is-dense' : ''}`, 'data-key': 'graph-stage' }, root, tip, h('div', { class: 'graph-hud graph-hud-left' }, [...(o.hudLeft || []), badge]), tools, hint);
+    let tl;
+    let timeOn = null;      // while the timeline limits the links: edge => is it recorded yet
+    let newTimer = 0;
 
     // -- the settings panel: filters, groups, display, forces --
     const sliders = new Map();
@@ -597,7 +606,7 @@ export function createCanvas(o) {
         return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, k: clamp(Math.min(BASE_W / bw, (BASE_W * d.hh) / (d.w * bh)), K_MIN, maxK) };
     };
     const fitView = () => {
-        const shown = nodes.filter((n) => !isHidden(n));
+        const shown = nodes.filter((n) => !isHidden(n) && !n.gone);
         const v = shown.length ? viewFor(shown, dense ? 400 : 560, dense ? 280 : 340, K_MAX) : { cx: BASE_W / 2, cy: BASE_H / 2, k: 1 };
         kRef = v.k;
         return v;
@@ -647,7 +656,7 @@ export function createCanvas(o) {
     const setSelected = (key) => applySel(key, null);
     const setSelectedEdge = (id) => { const it = edgeEls.find((x) => x.id === id) || null; applySel(null, it); return it; };
     const selectEdgeItem = (it, opts) => { clearEdgeHover(); applySel(null, it); if (o.onSelectEdge) o.onSelectEdge(it.e, opts || {}); };
-    const refreshOff = (it) => { it.off = isHidden(it.na) || isHidden(it.nb) || hiddenRel.has(it.rel); if (it.line) it.line.toggleAttribute('hidden', it.off); };
+    const refreshOff = (it) => { it.off = isHidden(it.na) || isHidden(it.nb) || hiddenRel.has(it.rel) || Boolean(it.na.gone) || Boolean(it.nb.gone) || Boolean(timeOn && !timeOn(it.e)); if (it.line) it.line.toggleAttribute('hidden', it.off); };
     const refreshEdges = () => {
         for (const item of edgeEls) refreshOff(item);
         root.dataset.edges = String(edgeEls.filter((i) => !i.off).length);
@@ -662,6 +671,65 @@ export function createCanvas(o) {
         if (query) search(query, false);
     };
     const setHiddenRel = (set) => { hiddenRel = new Set(set); refreshEdges(); paintRelTypes(); };
+
+    // -- the timeline: records come and go with the playhead --
+    // `shown` is a Set of keys (null: all), `edgeOn(edge)` limits the links (null: by their ends). New records start beside the
+    // neighbours that are already there and fade in; leaving ones fade out. Zoom, pan, dragged positions and the positions of
+    // everything that stays are untouched, and the simulation only gets a nudge (it goes back to sleep on its own).
+    const setTime = (shown, edgeOn, opts = {}) => {
+        const quiet = Boolean(opts.quiet) || reduced();
+        timeOn = edgeOn || null;
+        const entering = [];
+        let left = 0;
+        for (const n of nodes) {
+            const on = !shown || shown.has(n.key) || n.key === o.centerKey;
+            if (on && n.gone) entering.push(n);
+            else if (!on && !n.gone) { n.gone = true; left += 1; drawn.get(n.key).g.classList.add('is-gone'); }
+        }
+        let j = 0;
+        let pending = entering;
+        for (let pass = 0; pass < 4 && pending.length; pass += 1) {
+            const rest = [];
+            for (const n of pending) {
+                const near = [...adj.get(n.key)].map((k) => by.get(k)).filter((m) => m && !m.gone);
+                if (!near.length && pass < 3) { rest.push(n); continue; }
+                if (near.length && !n.fixed) {
+                    const a = j * 2.399963;
+                    const r = 7 + 3 * Math.sqrt(j);
+                    j += 1;
+                    // beside the busiest neighbour that is already there (one place, so it never lands in empty space between two groups)
+                    const host = near.reduce((b, m) => ((m.degree || 0) > (b.degree || 0) || ((m.degree || 0) === (b.degree || 0) && m.key < b.key) ? m : b));
+                    n.x = host.x + Math.cos(a) * r;
+                    n.y = host.y + Math.sin(a) * r;
+                }
+                n.vx = 0; n.vy = 0;
+                n.gone = false;
+            }
+            pending = rest;
+        }
+        // A record the user dragged stays where it was put while the timeline changes what is around it.
+        for (const n of nodes) if (n.dragged && !n.gone) { n.fixed = true; n.fx = n.x; n.fy = n.y; }
+        clearTimeout(newTimer);
+        for (const n of entering) {
+            const g = drawn.get(n.key).g;
+            g.classList.remove('is-gone');
+            if (!quiet) g.classList.add('is-new');
+        }
+        if (entering.length && !quiet) newTimer = setTimeout(() => { for (const d of drawn.values()) d.g.classList.remove('is-new'); }, 1000);
+        for (const n of nodes) {
+            if (!n.gone) continue;
+            if (n.key === selected && o.onClear) o.onClear();
+            if (n.key === hovered) hover(null);
+            if (n.key === linking?.from) cancelLink(false);
+        }
+        if (ringKey && by.get(ringKey) && by.get(ringKey).gone) { ringKey = null; gRing.setAttribute('hidden', ''); }
+        sim.rebuild();
+        if (opts.first) { root.dataset.time = shown ? String(shown.size) : 'all'; refreshEdges(); return; }
+        autoFit = false;
+        refreshEdges();
+        root.dataset.time = shown ? String(shown.size) : 'all';
+        if (entering.length || left) wake(entering.length ? 0.45 : 0.2);
+    };
 
     // -- link types in the panel: every relation word in use, with how many links carry it; a click hides or shows that type --
     const relCounts = () => {
@@ -753,7 +821,7 @@ export function createCanvas(o) {
         query = String(text || '').trim().toLowerCase();
         const hits = [];
         for (const d of drawn.values()) {
-            const on = Boolean(query) && !isHidden(d.n) && d.n.title.toLowerCase().includes(query);
+            const on = Boolean(query) && !isHidden(d.n) && !d.n.gone && d.n.title.toLowerCase().includes(query);
             d.g.classList.toggle('is-match', on);
             if (on) hits.push(d.n);
         }
@@ -921,6 +989,7 @@ export function createCanvas(o) {
         editBtn.title = on ? 'Stop editing links (E)' : 'Edit links (E)';
         el.classList.toggle('is-editing', on);
         badge.hidden = !on;
+        if (tl) tl.setEditing(on);
         paintRing();
         if (o.onEdit) o.onEdit(on);
     };
@@ -932,6 +1001,7 @@ export function createCanvas(o) {
         for (const n of nodes) drawn.get(n.key).g.setAttribute('aria-label', ariaFor(n));
         sim.rebuild();
         autoFit = false;
+        if (tl) tl.recompute();
         buildRelTypes();
         refreshEdges();
         paintSizes();
@@ -940,6 +1010,8 @@ export function createCanvas(o) {
     };
     const addEdge = (e) => {
         if (edgeEls.some((x) => x.id === e.id)) return edgeEls.find((x) => x.id === e.id);
+        e.created_at = e.created_at || new Date().toISOString();
+        e.fresh = true;   // a link made now stays on the picture whatever the playhead says
         const it = addItem(e);
         if (!it) return null;
         edges.push(e);
@@ -1096,6 +1168,7 @@ export function createCanvas(o) {
             const n = by.get(g.key);
             n.fixed = Boolean(n.pinned);
             n.fx = n.x; n.fy = n.y;
+            n.dragged = true;   // the timeline holds it where it was put
             sim.target = 0;
             wake(0.3);
         }
@@ -1129,6 +1202,7 @@ export function createCanvas(o) {
         if (e.altKey || e.ctrlKey || e.metaKey) return;
         const key = nodeAt(e.target);
         if (editing && key && (e.key === 'l' || e.key === 'L')) { e.preventDefault(); startLink(key); return; }
+        if (e.key === ' ' && !key && tl.isOpen() && e.target === root) { e.preventDefault(); tl.playToggle(); return; }
         if ((e.key === 'Enter' || e.key === ' ') && key) {
             e.preventDefault();
             if (linking) pickTarget(key, screenOf(by.get(key))); else if (e.shiftKey) o.onFocus(key); else o.onSelect(key);
@@ -1174,6 +1248,15 @@ export function createCanvas(o) {
         setEditing(!editing);
     };
     document.addEventListener('keydown', onEdit);
+    // T opens and closes the timeline (not while typing in a field).
+    const onTime = (e) => {
+        if ((e.key !== 't' && e.key !== 'T') || e.altKey || e.ctrlKey || e.metaKey || e.defaultPrevented) return;
+        if (e.target && e.target.closest && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (document.querySelector('dialog[open]')) return;
+        e.preventDefault();
+        tl.toggle();
+    };
+    document.addEventListener('keydown', onTime);
 
     // The size is only known once the canvas is on the page: fit then, and keep the view in step with later resizes.
     const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
@@ -1187,9 +1270,17 @@ export function createCanvas(o) {
     }) : null;
     if (watch) watch.observe(root);
     buildRelTypes();
+    // The timeline bar (docked at the bottom of the canvas); the details card and the hint make room for it.
+    tl = createTimeline({ nodes, edges, centerKey: o.centerKey, at: o.at, countable: (n) => !isHidden(n), reduced, apply: (shown, edgeOn, opts) => setTime(shown, edgeOn, { ...opts, first: !ready }), onAt: (v) => { if (o.onAt) o.onAt(v); },
+        onOpen: (on) => { el.classList.toggle('has-timeline', on); tlBtn.setAttribute('aria-pressed', String(on)); tlBtn.title = on ? 'Close the timeline (T)' : 'Timeline (T)'; barHeight(); } });
+    el.append(tl.el);
+    const barHeight = () => el.style.setProperty('--tl-h', `${tl.el.hidden ? 0 : Math.ceil(tl.el.getBoundingClientRect().height)}px`);
+    const barWatch = typeof ResizeObserver === 'function' ? new ResizeObserver(barHeight) : null;
+    if (barWatch) barWatch.observe(tl.el);
     setHidden(hidden);
     setSelected(selected);
     paintSizes();
-    return { el, setSelected, setSelectedEdge, setHidden, setHiddenRel, setEditing, isEditing: () => editing, startLink, removeLink, fit, zoomBy, focusOn, search, replay, sim, togglePanel,
-        destroy: () => { cancelAnimationFrame(tween); cancelAnimationFrame(raf); clearTimeout(searchTimer); clearTimeout(moveTimer); document.removeEventListener('keydown', onEsc); document.removeEventListener('keydown', onEdit); if (watch) watch.disconnect(); } };
+    if (o.at) tl.open();
+    return { el, timeline: tl, setTime, setSelected, setSelectedEdge, setHidden, setHiddenRel, setEditing, isEditing: () => editing, startLink, removeLink, fit, zoomBy, focusOn, search, replay, sim, togglePanel,
+        destroy: () => { cancelAnimationFrame(tween); cancelAnimationFrame(raf); clearTimeout(searchTimer); clearTimeout(moveTimer); document.removeEventListener('keydown', onEsc); document.removeEventListener('keydown', onEdit); document.removeEventListener('keydown', onTime); clearTimeout(newTimer); if (tl) tl.destroy(); if (barWatch) barWatch.disconnect(); if (watch) watch.disconnect(); } };
 }

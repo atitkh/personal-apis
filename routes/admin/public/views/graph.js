@@ -6,6 +6,7 @@
 //   #/graph?d=entities&i=9           that record's neighbourhood (?depth=1|2)
 //   ?hide=lifelog,digests            hides those domains in either picture
 //   ?hiderel=related,about           hides the links with those relation words (a soft hide: nothing moves)
+//   ?at=2026-03-14                   the timeline's playhead: only what exists on that day shows (T opens the bar); absent = everything
 // Links can be added and removed here, but only after turning on "Edit links" (pencil button, or E; it is off on every visit):
 // drag from the ring around a record to another record, or press L on a record and pick another, or tap "Link from here" and
 // then another record. Those use the same audited endpoints as the Linked panel on a record.
@@ -18,8 +19,8 @@ import { createCanvas, seedFocused, seedOverview } from './graphCanvas.js';
 
 const TITLE = { digests: 'Digests', deadlines: 'Deadlines', preferences: 'Preferences', places: 'Places', flights: 'Flights', trips: 'Trips', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entities' };
 const ONE = { digests: 'Digest', deadlines: 'Deadline', preferences: 'Preference', places: 'Place', flights: 'Flight', trips: 'Trip', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entity' };
-// `keep` carries the hidden domains and link types over to the next page: { hide, hiderel } (comma lists or null).
-const nodeHref = (n, keep) => href('graph', [], { d: n.domain, i: n.id, hide: (keep && keep.hide) || null, hiderel: (keep && keep.hiderel) || null });
+// `keep` carries the hidden domains and link types over to the next page: { hide, hiderel, at } (comma lists, and the timeline's playhead, or null).
+const nodeHref = (n, keep) => href('graph', [], { d: n.domain, i: n.id, hide: (keep && keep.hide) || null, hiderel: (keep && keep.hiderel) || null, at: (keep && keep.at) || null });
 
 const oneLabel = (d) => ONE[d] || d;
 const hiddenFrom = (q) => new Set((q.get('hide') || '').split(',').filter(Boolean));
@@ -123,7 +124,8 @@ function focused(ctx, g) {
     const depth = g.depth;
     const hidden = hiddenFrom(q);
     const hiddenRel = hiddenRelFrom(q);
-    const keep = () => ({ hide: hideText(hidden), hiderel: hideText(hiddenRel) });
+    let canvas;
+    const keep = () => ({ hide: hideText(hidden), hiderel: hideText(hiddenRel), at: canvas && canvas.timeline ? canvas.timeline.at() : (ctx.route.query.get('at') || null) });
     const center = g.nodes.find((n) => n.key === g.center);
     const nodes = g.nodes.map((n) => ({ ...n }));
     const anchors = seedFocused(nodes, g.edges);
@@ -140,14 +142,13 @@ function focused(ctx, g) {
         rowsEmpty.hidden = rows.length > 0;
     };
     paintRows();
-    let canvas;
     const select = (k) => { canvas.setSelected(k); card.show(k); };
     const edgeOf = (id) => g.edges.find((e) => e.id === id);
     const card = details({ by, edges: g.edges, centerKey: g.center, keep, jump: (k) => { select(k); canvas.focusOn(k); }, close: () => { canvas.setSelected(null); card.show(null); },
         editing: () => canvas.isEditing(), selectEdge: (id) => { canvas.setSelectedEdge(id); card.showLink(edgeOf(id)); }, linkFrom: (k) => canvas.startLink(k), removeLink: (id) => canvas.removeLink(id) });
     const sw = modes({ local: true, depth, center, keep });
     const present = [...new Set(nodes.map((n) => n.domain))].sort().filter((d) => d !== center.domain || nodes.some((n) => n.domain === d && n.depth > 0));
-    canvas = createCanvas({ nodes, edges: g.edges, anchors, centerKey: g.center, selected: g.center, hidden, hiddenRel, oneLabel, hudLeft: [sw.el], card: card.el, api: linkApi(ctx),
+    canvas = createCanvas({ nodes, edges: g.edges, anchors, centerKey: g.center, selected: g.center, hidden, hiddenRel, at: ctx.route.query.get('at'), onAt: (v) => setQuery({ at: v }), oneLabel, hudLeft: [sw.el], card: card.el, api: linkApi(ctx),
         groups: present.map((d) => ({ d, text: `${TITLE[d] || d} ${nodes.filter((n) => n.domain === d).length}` })),
         label: `Graph of ${plural(nodes.length, 'record')} and ${plural(g.edges.length, 'link')}. The same records are listed below.`,
         onSelect: select, onClear: () => { canvas.setSelected(null); card.show(null); },
@@ -169,18 +170,18 @@ function everything(ctx, ov) {
     if (!ov.nodes.length) return { el: emptyState({ title: 'No links yet.', text: 'Link records from their pages and the whole picture shows up here.', iconName: 'info' }), note: null };
     const hidden = hiddenFrom(ctx.route.query);
     const hiddenRel = hiddenRelFrom(ctx.route.query);
-    const keep = () => ({ hide: hideText(hidden), hiderel: hideText(hiddenRel) });
+    let canvas;
+    const keep = () => ({ hide: hideText(hidden), hiderel: hideText(hiddenRel), at: canvas && canvas.timeline ? canvas.timeline.at() : (ctx.route.query.get('at') || null) });
     const nodes = ov.nodes.map((n) => ({ ...n }));
     const anchors = seedOverview(nodes);
     const by = new Map(nodes.map((n) => [n.key, n]));
-    let canvas;
     let picked = null;
     const sw = modes({ local: false, depth: 1, center: null, keep, goLocal: () => { if (picked) navigate(nodeHref(by.get(picked), keep())); } });
     const select = (k) => { picked = k; canvas.setSelected(k); card.show(k); sw.setLocal(Boolean(k)); };
     const edgeOf = (id) => ov.edges.find((e) => e.id === id);
     const card = details({ by, edges: ov.edges, centerKey: null, keep, jump: (k) => { select(k); canvas.focusOn(k); }, close: () => select(null),
         editing: () => canvas.isEditing(), selectEdge: (id) => { picked = null; sw.setLocal(false); canvas.setSelectedEdge(id); card.showLink(edgeOf(id)); }, linkFrom: (k) => canvas.startLink(k), removeLink: (id) => canvas.removeLink(id) });
-    canvas = createCanvas({ nodes, edges: ov.edges, anchors, centerKey: null, selected: null, hidden, hiddenRel, oneLabel, dense: nodes.length > 60, hudLeft: [sw.el], card: card.el, api: linkApi(ctx),
+    canvas = createCanvas({ nodes, edges: ov.edges, anchors, centerKey: null, selected: null, hidden, hiddenRel, at: ctx.route.query.get('at'), onAt: (v) => setQuery({ at: v }), oneLabel, dense: nodes.length > 60, hudLeft: [sw.el], card: card.el, api: linkApi(ctx),
         groups: Object.keys(ov.domains).sort().map((d) => ({ d, text: `${TITLE[d] || d} ${ov.domains[d].shown}${ov.domains[d].total > ov.domains[d].shown ? `/${ov.domains[d].total}` : ''}` })),
         label: `Graph of ${plural(nodes.length, 'linked record')} and ${plural(ov.edges.length, 'link')}, grouped by domain. The most connected records are listed below.`,
         onSelect: select, onClear: () => select(null),
