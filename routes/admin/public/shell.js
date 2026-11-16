@@ -3,6 +3,7 @@
 import { h, icon, button, segmented, when, span, isMac, openSheet } from './ui.js';
 import * as router from './router.js';
 import { THEMES, preference, setPreference, onThemeChange } from './theme.js';
+import * as domainState from './domainState.js';
 
 const THEME_ICONS = { system: 'system', light: 'sun', dark: 'moon' };
 const RAIL_KEY = 'hub-rail';
@@ -34,6 +35,21 @@ export function createShell({ session, onSignOut, openPalette, api }) {
         if (!n) return;
         a.append(h('span', { class: 'nav-badge', 'aria-hidden': 'true', text: String(n) }), h('span', { class: 'visually-hidden nav-badge-text', text: `, ${n} ${name === 'deadlines' ? 'overdue or urgent' : 'waiting'}` }));
     };
+    // A switched-off domain's entry: dimmed, struck through, with a power glyph and "switched off" in its name.
+    // Nothing is marked while the hub's list is unknown. The link still opens the page.
+    const paintOff = (a, name) => {
+        for (const old of a.querySelectorAll('.nav-off, .nav-off-text')) old.remove();
+        const off = domainState.isOff(domainState.domainOfRoute(name));
+        a.classList.toggle('is-off', off);
+        const base = a.dataset.title;
+        if (base) a.title = off ? `${base} (switched off)` : base;
+        if (!off) return;
+        const label = a.querySelector(':scope > span:not(.nav-badge):not(.nav-badge-text)');
+        // The spoken name is "Flights, switched off": the extra words sit inside the label so no space splits them.
+        if (label) label.append(h('span', { class: 'nav-off-text', text: ', switched off' }));
+        const mark = h('span', { class: 'nav-off', 'aria-hidden': 'true', title: 'Switched off' }, icon('power'));
+        if (label) label.after(mark); else a.append(mark);
+    };
     const routes = router.all().filter((r) => r.nav);
 
     const rail = h('aside', { class: 'rail', 'aria-label': 'Main' },
@@ -41,7 +57,7 @@ export function createShell({ session, onSignOut, openPalette, api }) {
         h('nav', { class: 'rail-nav', 'aria-label': 'Sections' },
             groupRoutes(routes).map(({ id, label, items }) => {
                 const lists = h('ul', { 'aria-labelledby': label ? `rail-group-${id}` : null }, items.map((r) => {
-                    const a = h('a', { href: router.href(r.name), class: 'rail-link', title: r.title }, icon(r.icon), h('span', { class: 'rail-label', text: r.title }));
+                    const a = h('a', { href: router.href(r.name), class: 'rail-link', title: r.title, 'data-title': r.title }, icon(r.icon), h('span', { class: 'rail-label', text: r.title }));
                     navLinks.set(r.name, [a]);
                     return h('li', {}, a);
                 }));
@@ -153,6 +169,7 @@ export function createShell({ session, onSignOut, openPalette, api }) {
                     h('p', { class: 'sheet-group-label', id: `sheet-group-${id}`, text: label || 'Sections' }),
                     h('ul', { 'aria-labelledby': `sheet-group-${id}` }, items.map((r) => {
                         const a = h('a', { class: 'sheet-link', href: router.href(r.name), 'aria-current': r.name === currentName ? 'page' : null }, icon(r.icon), h('span', { text: r.title }));
+                        paintOff(a, r.name);
                         paintBadge(a, badges.get(r.name), r.name);
                         return h('li', {}, a);
                     })))),
@@ -176,9 +193,15 @@ export function createShell({ session, onSignOut, openPalette, api }) {
         h('div', { class: 'main-col' }, topbar, content),
         tabbar);
 
+    // Every menu entry follows the shared domain list: switching a domain off or on anywhere repaints it.
+    const repaintOff = () => { for (const [n, links] of navLinks) for (const a of links) paintOff(a, n); };
+    repaintOff();
+    const stopOff = domainState.subscribe(repaintOff);
+
     return {
         el: frame,
         content,
+        destroy: stopOff,
         title,
         // `[` shows or hides the rail; phones have no rail.
         toggleRail() {

@@ -30,6 +30,7 @@ const FLOWS = {
     'overview-empty': ['run-overview.mjs', 'empty', null, { backupToday: true }],
     delete: ['run-delete.mjs', null, 'delete-seed.js'],
     settings: ['run-settings.mjs', null, null],
+    'domain-off': ['run-domain-off.mjs', null, null],
 };
 
 const args = process.argv.slice(2);

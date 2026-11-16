@@ -7,6 +7,7 @@ import {
 } from '../ui.js';
 import { dayBars, coverageStrip, legend } from '../charts.js';
 import { href } from '../router.js';
+import * as domainState from '../domainState.js';
 
 export const MCP_LABEL = { off: 'Off', read: 'Read', write: 'Read and write' };
 export const MCP_WRITE_WARNING = "Agents holding an agent-write or publish scope will be able to change this domain's data.";
@@ -22,7 +23,7 @@ WRITE_WARNING.trips = 'Agents holding a trips agent-write scope can add trips an
 WRITE_WARNING.preferences = 'Agents holding a preferences agent-write scope can set preferences (create or change them by area and key) and unset them. Unset only hides a preference; every earlier version is kept and you can restore it here. Text that looks like a password, a long number or a key is refused.';
 WRITE_WARNING.entities = 'Agents holding an entities agent-write scope can add people, projects, organizations and topics and change them (name, aliases, notes). Every earlier version is kept and you can restore it; they cannot delete an entity.';
 WRITE_WARNING.lifelog = 'Agents holding a lifelog agent-write scope can add and change episodes, log single observations (always under their own key name as the source) and link or unlink observations. Every earlier version of an episode is kept; forgetting a time range and restoring an older version stay with you.';
-const writeWarning = (name) => WRITE_WARNING[name] || MCP_WRITE_WARNING;
+export const writeWarning = (name) => WRITE_WARNING[name] || MCP_WRITE_WARNING;
 const REFRESH_MS = 60 * 1000;
 const UPCOMING = [{ name: 'flights', title: 'Flights', text: 'Next domain. Past and upcoming trips.' }];
 
@@ -120,6 +121,7 @@ function board(api) {
         row.update({ ...before, ...patch, pending: true });
         try {
             await request();
+            domainState.patch(d.name, patch); // the rail, palette and the domain's page follow at once
             row.update({ ...row.get(), pending: false });
             toast(done);
         } catch (err) {
@@ -399,6 +401,7 @@ export async function render(ctx) {
     const { api } = ctx;
     const load = () => Promise.all([api('/overview'), api('/series?days=14')]);
     let [o, s] = await load();
+    domainState.replace(o.domains);
 
     const lead = h('span', { class: 'headline' });
     const sub = h('span', { class: 'updated', 'aria-live': 'polite' });
@@ -426,6 +429,7 @@ export async function render(ctx) {
         busy = true;
         try {
             [o, s] = await load();
+            domainState.replace(o.domains);
             fetchedAt = Date.now();
             if (ctx.isCurrent()) { paint(); today.reload(); }
         } catch (err) {

@@ -1815,3 +1815,42 @@ button.chip-link { font: inherit; font-weight: 500; cursor: pointer; }
 }
 .graph-list { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 6px; }
 .graph-results { margin-bottom: 18px; }
+
+/* A switched-off domain: dimmed and struck through in the menus (rail, collapsed rail, phone tab bar and More sheet),
+   with a small power glyph. The link still opens the page. No motion. */
+.rail-link.is-off, .sheet-link.is-off, .tab.is-off { color: var(--muted); }
+.rail-link.is-off > .icon, .sheet-link.is-off > .icon, .tab.is-off > .icon { opacity: .55; }
+.rail-link.is-off > .rail-label, .sheet-link.is-off > span:not(.nav-off):not(.nav-badge), .tab.is-off > span:not(.nav-off) {
+    text-decoration: line-through; text-decoration-thickness: 1px; opacity: .75;
+}
+.nav-off { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; margin-left: auto; color: var(--muted); }
+.nav-off .icon { width: 14px; height: 14px; }
+.nav-off ~ .nav-badge { margin-left: 6px; }
+.rail-collapsed .rail-link { position: relative; }
+.rail-collapsed .nav-off { position: absolute; top: 2px; right: 6px; width: 15px; height: 15px; margin: 0; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.rail-collapsed .nav-off .icon { width: 9px; height: 9px; }
+.tab { position: relative; }
+.tab .nav-off { position: absolute; top: 4px; left: calc(50% + 6px); width: 15px; height: 15px; margin: 0; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.tab .nav-off .icon { width: 9px; height: 9px; }
+
+/* The notice at the top of a switched-off domain's page. */
+.domain-notice {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 14px; align-items: center; padding: 12px 14px;
+    border-radius: var(--r-panel); background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+}
+.domain-notice-icon { display: inline-flex; color: var(--warn); }
+.domain-notice-text p { margin: 0; max-width: 70ch; }
+.domain-notice-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.domain-notice-select { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-sm); font-weight: 600; }
+.domain-notice-select select { width: auto; min-width: 130px; }
+.domain-notice-error { grid-column: 1 / -1; margin: 0; }
+.domain-off-btn[hidden] { display: none; }
+@media (max-width: 760px) {
+    .domain-notice { grid-template-columns: auto minmax(0, 1fr); }
+    .domain-notice-actions { grid-column: 1 / -1; }
+    .domain-notice-actions > .btn { flex: 1 1 100%; }
+    .domain-notice-select { flex: 1 1 100%; justify-content: space-between; }
+    .domain-notice-select select { flex: 1 1 60%; }
+    .page-header-actions > .domain-off-btn { width: auto; }
+}
+.nav-off-text { font-size: 0; line-height: 0; }

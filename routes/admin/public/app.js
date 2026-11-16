@@ -11,6 +11,8 @@ import { installShortcuts, showShortcuts, GO } from './shortcuts.js';
 import { renderSignIn } from './views/signin.js';
 import { pageSkeleton } from './skeletons.js';
 import { SETTINGS_SECTIONS } from './settingsNav.js';
+import * as domainState from './domainState.js';
+import { decorate as decorateDomainPage } from './domainNotice.js';
 
 router.register('overview', { title: 'Overview', icon: 'overview', nav: true, group: 'overview', mobile: true, load: () => import('./views/overview.js') });
 router.register('digests', { title: 'Digests', icon: 'digests', nav: true, group: 'data', mobile: true, load: () => import('./views/digests.js') });
@@ -36,6 +38,7 @@ let shell = null;
 let renderToken = 0;
 let cleanups = [];
 let current = null;
+let domainsReady = Promise.resolve(); // the domain list for the rail and the domain pages' notice
 
 function runCleanups() {
     for (const fn of cleanups) { try { fn(); } catch (e) { /* ignore */ } }
@@ -53,7 +56,9 @@ async function signOut() {
 function endSession({ ended = false } = {}) {
     const returnTo = location.hash;
     session = null;
+    if (shell) shell.destroy();
     shell = null;
+    domainState.reset();
     current = null;
     renderToken++;
     runCleanups();
@@ -133,6 +138,9 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
             retry: () => renderRoute(router.parse(), { soft: true }),
         });
     }
+    // A domain's page waits for the switch state, so a switched-off domain's notice is there with the page, not after it.
+    if (def && domainState.domainOfRoute(route.name)) await domainsReady;
+    if (token === renderToken && shell && def && node && node.nodeType) decorateDomainPage(node, route.name, { onCleanup: (fn) => mine.push(fn) });
     if (token !== renderToken || !shell) {
         for (const fn of mine) { try { fn(); } catch (e) { /* ignore */ } }
         return;
@@ -148,6 +156,7 @@ async function renderRoute(route, { soft = false, focus = false } = {}) {
     } else shell.content.replaceChildren(node);
     if (focus) shell.title.focus({ preventScroll: true });
     if (!soft) window.scrollTo(0, 0);
+    if (!soft && def && domainState.domainOfRoute(route.name)) domainState.refresh(); // another tab or key may have changed it
     refreshBadges();
 }
 
@@ -176,6 +185,7 @@ function onRoute(route, { initial }) {
 let routerStarted = false;
 function startApp() {
     shell = createShell({ session, onSignOut: signOut, openPalette, api });
+    domainsReady = domainState.refresh();
     root.replaceChildren(shell.el);
     if (!routerStarted) {
         routerStarted = true;
@@ -190,7 +200,7 @@ function startApp() {
 addSource(() => router.all().map((r, i) => {
     const go = GO.find(([, name]) => name === r.name);
     return {
-        id: `view:${r.name}`, group: 'Go to', icon: r.icon, label: r.title, keywords: `${r.short || ''} page view`, order: i,
+        id: `view:${r.name}`, group: 'Go to', icon: r.icon, label: domainState.isOff(domainState.domainOfRoute(r.name)) ? `${r.title} (off)` : r.title, keywords: `${r.short || ''} page view`, order: i,
         keys: go ? ['G', go[0].toUpperCase()] : null,
         run: () => router.navigate(router.href(r.name)),
     };

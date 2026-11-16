@@ -130,6 +130,7 @@ const ICONS = {
     deadlines: ['M4 6h16v14H4z', 'M4 10h16', 'M8 3v4', 'M16 3v4', 'M12 13v3l2 1.5'],
     preferences: ['M4 7h9', 'M17 7h3', 'M4 17h3', 'M11 17h9', 'c15 7 2', 'c9 17 2'],
     lock: ['M6 11h12v9H6z', 'M8.5 11V8a3.5 3.5 0 0 1 7 0v3'],
+    power: ['M12 3.5v8', 'M7 6.4a7.5 7.5 0 1 0 10 0'],
     trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13'],
 };
 
