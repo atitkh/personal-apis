@@ -131,6 +131,8 @@ const ICONS = {
     preferences: ['M4 7h9', 'M17 7h3', 'M4 17h3', 'M11 17h9', 'c15 7 2', 'c9 17 2'],
     lock: ['M6 11h12v9H6z', 'M8.5 11V8a3.5 3.5 0 0 1 7 0v3'],
     power: ['M12 3.5v8', 'M7 6.4a7.5 7.5 0 1 0 10 0'],
+    pin: ['M9 3.5h6l-.8 6.2 3.3 3.3H6.5l3.3-3.3z', 'M12 13v7.5'],
+    notes: ['M6 3h9l4 4v14H6z', 'M15 3v4h4', 'M9 11h7', 'M9 14.5h7', 'M9 18h4'],
     trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13'],
 };
 
@@ -579,7 +581,7 @@ export const ADMIN_NAME = 'Atit';
 export const actorName = (actor) => (actor === 'admin' ? ADMIN_NAME : actor);
 
 // Domain colour slots. Known domains have fixed colours; new ones take the spare slots in order.
-const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal', places: 'plum', deadlines: 'rose', preferences: 'brick', trips: 'indigo', lifelog: 'moss', entities: 'sky', links: 'neutral' };
+const DOMAIN_HUES = { digests: 'amber', portfolio: 'cobalt', flights: 'teal', places: 'plum', deadlines: 'rose', preferences: 'brick', trips: 'indigo', lifelog: 'moss', entities: 'sky', notes: 'lime', links: 'neutral' };
 const SPARE = ['neutral', 'muted'];
 export function domainHue(name, index = 0) {
     return DOMAIN_HUES[name] || SPARE[index % SPARE.length];

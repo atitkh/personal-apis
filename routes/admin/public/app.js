@@ -23,6 +23,7 @@ router.register('lifelog', { title: 'Lifelog', icon: 'lifelog', nav: true, group
 router.register('deadlines', { title: 'Deadlines', icon: 'deadlines', nav: true, group: 'data', load: () => import('./views/deadlines.js') });
 router.register('preferences', { title: 'Preferences', icon: 'preferences', nav: true, group: 'data', load: () => import('./views/preferences.js') });
 router.register('entities', { title: 'Entities', icon: 'user', nav: true, group: 'data', load: () => import('./views/entities.js') });
+router.register('notes', { title: 'Notes', icon: 'notes', nav: true, group: 'data', load: () => import('./views/notes.js') });
 router.register('graph', { title: 'Graph', icon: 'graph', nav: true, group: 'data', load: () => import('./views/graph.js') });
 router.register('portfolio', { title: 'Portfolio', icon: 'portfolio', nav: true, group: 'data', load: () => import('./views/portfolio.js') });
 router.register('keys', { title: 'API keys', short: 'Keys', icon: 'keys', nav: true, group: 'access', mobile: true, load: () => import('./views/keys.js') });
@@ -277,6 +278,14 @@ addSource(() => [
         run: () => router.navigate(router.href('entities', [], { new: '1' })),
     },
     {
+        id: 'act:notes', group: 'Actions', icon: 'notes', label: 'Open Notes', keywords: 'notes wiki pages markdown write', order: 9.3,
+        run: () => router.navigate(router.href('notes')),
+    },
+    {
+        id: 'act:note', group: 'Actions', icon: 'plus', label: 'New note', keywords: 'add note write page wiki markdown', order: 9.4,
+        run: () => router.navigate(router.href('notes', ['new'])),
+    },
+    {
         id: 'act:due-soon', group: 'Actions', icon: 'deadlines', label: 'Deadlines due soon', keywords: 'deadlines upcoming overdue urgent renewals expiring', order: 8,
         run: () => router.navigate(router.href('deadlines')),
     },
@@ -295,7 +304,7 @@ addSource(() => [
 ]);
 
 addSource(async () => {
-    const [daily, weekly, keys, places, flights, due, tripList, entityList] = await Promise.all([
+    const [daily, weekly, keys, places, flights, due, tripList, entityList, noteList] = await Promise.all([
         api('/digests?kind=daily&limit=200').catch(() => ({ digests: [] })),
         api('/digests?kind=weekly&limit=60').catch(() => ({ digests: [] })),
         api('/keys').catch(() => ({ keys: [] })),
@@ -304,6 +313,7 @@ addSource(async () => {
         api('/deadlines?status=active&limit=200').catch(() => ({ deadlines: [] })),
         api('/trips?limit=200').catch(() => ({ trips: [] })),
         api('/entities?limit=200').catch(() => ({ entities: [] })),
+        api('/notes?limit=100').catch(() => ({ notes: [] })),
     ]);
     return [
         ...daily.digests.map((d, i) => digestCommand(d, 100 + i)),
@@ -334,6 +344,12 @@ addSource(async () => {
             id: `entity:${e.id}`, group: 'Entities', icon: 'user', label: e.name, hint: e.kind,
             keywords: `entity ${e.kind} ${e.aliases.join(' ')}`, order: 2000 + i,
             run: () => router.navigate(router.href('entities', [String(e.id)])),
+        })),
+        // Title and kind only: never the text of a note.
+        ...noteList.notes.map((n, i) => ({
+            id: `note:${n.id}`, group: 'Notes', icon: 'notes', label: n.title, hint: n.kind,
+            keywords: `note ${n.kind} ${n.tags.join(' ')}`, order: 2200 + i,
+            run: () => router.navigate(router.href('notes', [String(n.id)])),
         })),
         // Title, kind and date only: never the reference, amount, issuer or notes.
         ...due.deadlines.map((d, i) => ({

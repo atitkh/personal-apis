@@ -14,6 +14,7 @@ export const ROUTE_DOMAIN = {
     deadlines: 'deadlines',
     preferences: 'preferences',
     entities: 'entities',
+    notes: 'notes',
     portfolio: 'portfolio',
 };
 export const domainOfRoute = (routeName) => ROUTE_DOMAIN[routeName] || null;

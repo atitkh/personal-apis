@@ -3,7 +3,7 @@
 import { h, button, chip, toast, formDialog, domainHue, emptyState } from '../ui.js';
 import { recordHref } from './recordHref.js';
 
-const DOMAIN_TITLE = { digests: 'Digest', deadlines: 'Deadline', preferences: 'Preference', places: 'Place', flights: 'Flight', trips: 'Trip', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entity' };
+const DOMAIN_TITLE = { digests: 'Digest', deadlines: 'Deadline', preferences: 'Preference', places: 'Place', flights: 'Flight', trips: 'Trip', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entity', notes: 'Note' };
 
 export function linkedSection(ctx, domain, id) {
     const sid = `linked-${domain}-${id}`.replace(/[^a-z0-9-]/gi, '-');

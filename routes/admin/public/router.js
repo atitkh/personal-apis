@@ -28,11 +28,21 @@ export function href(name, parts = [], query = null) {
     return `#/${path}${qs ? `?${qs}` : ''}`;
 }
 
+// A page with unsaved work (the notes editor) can hold navigation back: guard(route) -> boolean | Promise<boolean>. When it says
+// no, the address goes back to where it was and nothing renders. `settle()` tells the router the address changed by the page itself.
+let guard = null;
+let settled = location.hash;
+export function setGuard(fn) { guard = fn; }
+// Only the page that set a guard may take it down (a page re-rendering itself sets its new guard before the old one's cleanup runs).
+export function clearGuard(fn) { if (guard === fn) guard = null; }
+export function settle() { settled = location.hash; }
+
 export function navigate(target, { replace = false } = {}) {
     const next = target.startsWith('#') ? target : `#/${target}`;
     if (next === location.hash) return;
     if (replace) {
         history.replaceState(null, '', next);
+        settled = location.hash;
         if (listener) listener(parse(), { replaced: true });
     } else {
         location.hash = next;
@@ -46,11 +56,22 @@ export function setQuery(query) {
     const merged = Object.fromEntries(cur.query.entries());
     Object.assign(merged, query);
     history.replaceState(null, '', href(cur.name, cur.parts, merged));
+    settled = location.hash;
 }
 
 export function start(onRoute) {
     listener = onRoute;
-    window.addEventListener('hashchange', () => onRoute(parse(), {}));
+    window.addEventListener('hashchange', async () => {
+        const next = location.hash;
+        if (guard && next !== settled) {
+            let ok = true;
+            try { ok = await guard(parse(next)); } catch (e) { ok = true; }
+            if (!ok) { history.replaceState(null, '', settled); return; }
+        }
+        settled = location.hash;
+        onRoute(parse(), {});
+    });
     if (!location.hash) history.replaceState(null, '', href(DEFAULT));
+    settled = location.hash;
     onRoute(parse(), { initial: true });
 }

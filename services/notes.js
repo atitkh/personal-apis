@@ -355,7 +355,7 @@ function create(db, input, actor, opts = {}) {
     })();
 }
 
-// opts.autosave: the admin editor's debounced save (a revision only when the title or body changed and the last revision is
+// opts.sync: also re-sync the links when nothing changed. opts.autosave: the admin editor's debounced save (a revision only when the title or body changed and the last revision is
 // at least 5 minutes old); anything else files a revision whenever something changed. opts.source names the revision.
 function update(db, id, input, actor, opts = {}) {
     const given = input || {};
@@ -368,7 +368,11 @@ function update(db, id, input, actor, opts = {}) {
         const last = db.prepare('SELECT snapshot, at FROM note_revisions WHERE note_id = ? AND rev = ?').get(row.id, row.current_rev);
         const snap = last ? snapshotOf(last) : was;
         const dirty = diff(was, snap).length > 0;     // autosaved changes no revision holds yet
-        if (!changed.length && (opts.autosave || !dirty)) return { status: 'unchanged', id: row.id, kind: row.kind, rev: row.current_rev };
+        if (!changed.length && (opts.autosave || !dirty)) {
+            // opts.sync (the dashboard): bring the links in line with the text anyway, e.g. after a missing page was created
+            const s = opts.sync ? syncLinks(db, row, row.body, actor, { visible: opts.visible || null }) : null;
+            return { status: 'unchanged', id: row.id, kind: row.kind, rev: row.current_rev, ...(s ? syncResult(s) : {}) };
+        }
         if (changed.length) write(db, row.id, f, actor);
         let rev = row.current_rev;
         let revised = false;

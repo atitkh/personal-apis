@@ -26,7 +26,7 @@ export async function render(ctx) {
 
     const header = pageHeader({
         title: 'Search',
-        lede: 'Look up anything across digests, deadlines, preferences, places, flights, trips, lifelog episodes, entities and the portfolio. Every word must appear. Raw lifelog lines are not searched here.',
+        lede: 'Look up anything across digests, deadlines, preferences, places, flights, trips, lifelog episodes, entities, notes and the portfolio. Every word must appear. Raw lifelog lines are not searched here.',
     });
 
     let body;

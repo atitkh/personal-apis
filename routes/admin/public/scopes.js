@@ -100,6 +100,15 @@ export const CATALOGUE = [
         ],
     },
     {
+        domain: 'notes',
+        title: 'Notes',
+        scopes: [
+            { scope: 'notes:read', label: 'Read', text: 'Read your notes (title, kind, tags and the markdown text, with the records they link to) through the agent endpoint and /hub, and find them in search.' },
+            { scope: 'notes:agent-write', label: 'Agent write', text: 'Write through the agent tool (the domain must also be switched to Read and write on the Overview board). Lets an agent add notes, append text to a note and change a note. Every earlier version is kept; it cannot delete or restore.' },
+            { scope: 'notes:api-write', label: 'API write', text: 'Write through the API (jobs and scripts). Add and change notes and restore older versions, through the /hub REST API. It cannot delete a note; that is done at the dashboard.' },
+        ],
+    },
+    {
         domain: 'entities',
         title: 'Entities',
         scopes: [

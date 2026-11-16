@@ -17,8 +17,8 @@ import { href, navigate, setQuery } from '../router.js';
 import { recordHref } from './recordHref.js';
 import { createCanvas, seedFocused, seedOverview } from './graphCanvas.js';
 
-const TITLE = { digests: 'Digests', deadlines: 'Deadlines', preferences: 'Preferences', places: 'Places', flights: 'Flights', trips: 'Trips', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entities' };
-const ONE = { digests: 'Digest', deadlines: 'Deadline', preferences: 'Preference', places: 'Place', flights: 'Flight', trips: 'Trip', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entity' };
+const TITLE = { digests: 'Digests', deadlines: 'Deadlines', preferences: 'Preferences', places: 'Places', flights: 'Flights', trips: 'Trips', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entities', notes: 'Notes' };
+const ONE = { digests: 'Digest', deadlines: 'Deadline', preferences: 'Preference', places: 'Place', flights: 'Flight', trips: 'Trip', lifelog: 'Lifelog', portfolio: 'Portfolio', entities: 'Entity', notes: 'Note' };
 // `keep` carries the hidden domains and link types over to the next page: { hide, hiderel, at } (comma lists, and the timeline's playhead, or null).
 const nodeHref = (n, keep) => href('graph', [], { d: n.domain, i: n.id, hide: (keep && keep.hide) || null, hiderel: (keep && keep.hiderel) || null, at: (keep && keep.at) || null });
 

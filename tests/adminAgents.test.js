@@ -60,14 +60,14 @@ describe('PUT /admin/api/domains/:name/mcp', () => {
     });
 
     test('a domain without an agent tool is 400, and the domain list says it has none', async () => {
-        domains.REGISTRY.notes = { title: 'Notes', sensitivity: 'private', storage: 'db', defaultEnabled: true, stats: () => ({}) };
+        domains.REGISTRY.scratchpad = { title: 'Scratchpad', sensitivity: 'private', storage: 'db', defaultEnabled: true, stats: () => ({}) };
         try {
-            await agent.put('/admin/api/domains/notes/mcp').set(H).send({ mode: 'read' }).expect(400);
+            await agent.put('/admin/api/domains/scratchpad/mcp').set(H).send({ mode: 'read' }).expect(400);
             const o = (await agent.get('/admin/api/overview').expect(200)).body;
-            expect(o.domains.find((x) => x.name === 'notes').mcpTool).toBe(false);
+            expect(o.domains.find((x) => x.name === 'scratchpad').mcpTool).toBe(false);
             expect(o.domains.find((x) => x.name === 'digests').mcpTool).toBe(true);
         } finally {
-            delete domains.REGISTRY.notes;
+            delete domains.REGISTRY.scratchpad;
         }
     });
 

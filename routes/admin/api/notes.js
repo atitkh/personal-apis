@@ -42,7 +42,7 @@ module.exports = (api) => {
 
     api.patch('/notes/:id', noteHandler((req, res, conn) => {
         const { autosave, ...input } = req.body || {};
-        noteChanged(req, res, conn, 'note_updated', notes.update(conn, req.params.id, input, 'admin', { autosave: autosave === true, source: 'save' }));
+        noteChanged(req, res, conn, 'note_updated', notes.update(conn, req.params.id, input, 'admin', { autosave: autosave === true, source: 'save', sync: true }));
     }));
 
     api.post('/notes/:id/restore', noteHandler((req, res, conn) => {

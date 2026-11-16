@@ -11,6 +11,7 @@ const MAP = {
     lifelog: (id, date) => href('lifelog', ['episode', String(id)], date ? { date } : null),
     portfolio: (id, date, title) => href('portfolio', [], { q: title || String(id) }),
     entities: (id) => href('entities', [String(id)]),
+    notes: (id) => href('notes', [String(id)]),
 };
 
 export const recordHref = (domain, id, extra = {}) => (MAP[domain] || (() => href(domain)))(id, extra.date, extra.title);
