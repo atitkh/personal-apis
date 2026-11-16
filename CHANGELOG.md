@@ -3,6 +3,13 @@
 Versioned from 1.1.0 on (earlier history is in the git log). Each release is a `vX.Y.Z` tag; deploys name the tag they ran.
 Rule: minor for a new feature or view, patch for fixes. One entry per release, newest first.
 
+## 1.3.0 - 2026-11-16
+
+### Added
+- Switched-off domains show in the admin: the rail link is dimmed, struck through, with a power glyph and the accessible name "<Domain>, switched off"; the collapsed rail, phone tab bar, More sheet and command palette mark them too.
+- A domain page that is off shows a notice above the page header with Turn on and an Agent access select (off / read / write). A domain that is on has a quiet Switch off button (with confirm) in the page header.
+- The Overview board, the notice and the rail share one live state, so a change shows everywhere without a reload.
+
 ## 1.2.0 - 2026-11-15
 
 ### Added
