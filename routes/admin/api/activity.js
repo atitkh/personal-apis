@@ -22,6 +22,7 @@ const ACTIVITY_TYPES = {
         'trip_item_added', 'trip_item_updated', 'trip_item_removed', 'trip_suggestion_accepted', 'trip_suggestion_dismissed', 'trip_suggestions_restored'],
     preferences: ['preference_set', 'preference_updated', 'preference_unset', 'preference_restored', 'preference_deleted'],
     entities: ['entity_created', 'entity_updated', 'entity_restored', 'entity_deleted'],
+    notes: ['note_created', 'note_updated', 'note_restored', 'note_trashed', 'note_untrashed', 'note_deleted'],
     lifelog: ['lifelog_pushed', 'lifelog_observation_added', 'lifelog_episode_created', 'lifelog_episode_updated', 'lifelog_episode_restored',
         'lifelog_episode_linked', 'lifelog_episode_unlinked', 'lifelog_forgotten'],
     signins: ['login', 'logout', 'login_failed'],

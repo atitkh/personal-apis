@@ -153,6 +153,7 @@ function hubs(db, { limit = 12 } = {}) {
 // Listers for the domains that live in the database (portfolio is a file, digests are linked by the nightly job).
 const LISTERS = {
     entities: (db) => db.prepare('SELECT id, name AS title, kind FROM entities ORDER BY kind, name').all(),
+    notes: (db) => db.prepare('SELECT id, title, kind, substr(updated_at, 1, 10) AS date FROM notes WHERE removed_at IS NULL ORDER BY updated_at DESC').all(),
     trips: (db) => db.prepare('SELECT id, title, kind, start_date AS date FROM trips ORDER BY start_date DESC').all(),
     places: (db) => db.prepare('SELECT id, label AS title, kind FROM places ORDER BY label').all(),
     deadlines: (db) => db.prepare('SELECT id, title, kind, due_date AS date FROM deadlines ORDER BY due_date').all(),

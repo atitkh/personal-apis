@@ -99,6 +99,19 @@ const ADAPTERS = {
             });
     },
 
+    // Title, kind, tags and body; the snippet is the part of the body around the match (digests do the same).
+    notes(db, terms, limit) {
+        const w = where(['title', 'kind', 'tags', 'body'], terms);
+        return db.prepare(`SELECT id, title, kind, body, updated_at FROM notes WHERE removed_at IS NULL AND ${w.sql}
+            ORDER BY pinned DESC, updated_at DESC LIMIT ?`).all(...w.args, limit).map((r) => ({
+            id: r.id,
+            title: clip(r.title, TITLE_CHARS),
+            snippet: snippetOf(r.body, terms) || clip(r.kind, 40),
+            date: r.updated_at.slice(0, 10),
+            kind: r.kind,
+        }));
+    },
+
     preferences(db, terms, limit) {
         const w = where(['area', '"key"', 'value', 'notes'], terms);
         return db.prepare(`SELECT id, area, "key", value, notes FROM preferences WHERE removed_at IS NULL AND ${w.sql}

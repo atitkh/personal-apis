@@ -152,6 +152,9 @@ const SOURCES = {
         try { al = JSON.parse(r.aliases); } catch (e) { al = []; }
         return { id: r.id, title: r.name, text: [r.name, r.kind, al.join(', '), r.notes].filter(Boolean).join('. '), snippet: r.notes || al.join(', ') || r.kind, kind: r.kind };
     }),
+    // The body is clipped to TEXT_CHARS when indexed, like every other source.
+    notes: (db) => db.prepare('SELECT id, title, kind, body FROM notes WHERE removed_at IS NULL').all()
+        .map((r) => ({ id: r.id, title: r.title, text: [r.kind, r.body].filter(Boolean).join('. '), snippet: clip(r.body, 160) || r.kind, kind: r.kind })),
     preferences: (db) => db.prepare('SELECT id, area, "key", value, notes FROM preferences WHERE removed_at IS NULL').all()
         .map((r) => ({ id: r.id, title: `${r.area}: ${r.key}`, text: `${r.area} ${r.key}: ${r.value}. ${r.notes || ''}`, snippet: r.value, kind: r.area })),
     places: (db) => db.prepare('SELECT id, label, kind, notes FROM places').all()

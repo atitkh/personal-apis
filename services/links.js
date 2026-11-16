@@ -27,6 +27,8 @@ const DESCRIBE = {
     trips: (db, id) => { const r = db.prepare('SELECT title, start_date, kind FROM trips WHERE id = ?').get(id); return r && { title: r.title, date: r.start_date || undefined, kind: r.kind }; },
     lifelog: (db, id) => { const r = db.prepare('SELECT title, local_date, kind FROM lifelog_episodes WHERE id = ?').get(id); return r && { title: r.title, date: r.local_date, kind: r.kind }; },
     entities: (db, id) => { const r = db.prepare('SELECT name, kind FROM entities WHERE id = ?').get(id); return r && { title: r.name, kind: r.kind }; },
+    // Titles only, never the body. A note in the trash does not exist for links.
+    notes: (db, id) => { const r = db.prepare('SELECT title, kind, updated_at FROM notes WHERE id = ? AND removed_at IS NULL').get(id); return r && { title: r.title, kind: r.kind, date: r.updated_at.slice(0, 10) }; },
     portfolio(db, id) {
         const path = require('path');
         const { readJson } = require('../routes/portfolio/freshJson');

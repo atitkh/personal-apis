@@ -83,6 +83,14 @@ const REGISTRY = {
         stats: (db) => require('./entities').stats(db),
         briefing: (db, o) => require('./briefingHooks').entities(db, o),
     },
+    // Markdown notes with [[wikilinks]] that become links (services/notes.js). Agent tool services/mcp/domains/notes.js; no briefing hook.
+    notes: {
+        title: 'Notes',
+        sensitivity: 'private',   // whatever Atit writes down
+        storage: 'db',
+        defaultEnabled: true,
+        stats: (db) => require('./notes').stats(db),
+    },
     // The most private domain: what Atit does, as text from cameras, glasses, sensors and notes. "*" keys do not reach
     // it (services/apiKeys.js SENSITIVE_DOMAINS). No briefing hook; agent tool services/mcp/domains/lifelog.js.
     lifelog: {
