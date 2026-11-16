@@ -20,8 +20,34 @@ function describe(db, domain, id) {
 }
 
 // A link as the picture needs it: its row id (to remove it), the two ends, the relation word and the short note, if any.
-const edge = (r) => ({ id: r.id, from: key(r.from_domain, r.from_id), to: key(r.to_domain, r.to_id), rel: r.rel, ...(r.note ? { note: clip(r.note, 200) } : {}) });
-const node = (domain, id, d) => ({ key: key(domain, id), domain, id: String(id), title: clip(d.title, 80), kind: d.kind || null, date: d.date || null });
+const edge = (r) => ({ id: r.id, from: key(r.from_domain, r.from_id), to: key(r.to_domain, r.to_id), rel: r.rel, ...(r.note ? { note: clip(r.note, 200) } : {}), created_at: r.created_at || null });
+
+// One sortable day for the timeline: 'YYYY-MM-DD', or null when the record has no usable date. Accepts a day, a month or a year,
+// an ISO time (its UTC day) and an ISO week period such as 2026-W45 (the week's last day, when a weekly digest is complete).
+function normTime(value) {
+    const s = String(value == null ? '' : value).trim();
+    const valid = (y, m, d) => { const t = new Date(Date.UTC(y, m - 1, d)); return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d; };
+    const day = (y, m, d) => (y >= 1000 && valid(y, m, d) ? `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null);
+    let m = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/.exec(s);
+    if (m) return day(+m[1], +m[2], +m[3]);
+    m = /^(\d{4})-W(\d{2})$/.exec(s);
+    if (m) {
+        const y = +m[1];
+        const w = +m[2];
+        if (w < 1 || w > 53) return null;
+        const jan4 = Date.UTC(y, 0, 4);
+        const monday1 = jan4 - ((new Date(jan4).getUTCDay() + 6) % 7) * 86400000;
+        const sunday = new Date(monday1 + ((w - 1) * 7 + 6) * 86400000);
+        return day(sunday.getUTCFullYear(), sunday.getUTCMonth() + 1, sunday.getUTCDate());
+    }
+    m = /^(\d{4})-(\d{2})$/.exec(s);
+    if (m) return day(+m[1], +m[2], 1);
+    m = /^(\d{4})$/.exec(s);
+    return m ? day(+m[1], 1, 1) : null;
+}
+// Weekly digests have no date of their own; their id carries the period.
+const timeOf = (domain, id, d) => normTime(d.date) || (domain === 'digests' ? normTime(String(id).split('/')[1]) : null);
+const node = (domain, id, d) => ({ key: key(domain, id), domain, id: String(id), title: clip(d.title, 80), kind: d.kind || null, date: d.date || null, t: timeOf(domain, id, d) });
 
 // The records within `depth` hops of one record. Busy records show PER_NODE_CAP neighbours and say how many they hid.
 function neighborhood(db, { domain, id, depth = 1 } = {}) {
@@ -83,7 +109,7 @@ function overview(db, { cap = OVERVIEW_CAP } = {}) {
     const on = new Map();
     const enabled = (d) => { if (!on.has(d)) on.set(d, Boolean(links.DESCRIBE[d]) && domains.exists(d) && domains.isEnabled(db, d)); return on.get(d); };
     const deg = new Map();
-    const rows = db.prepare('SELECT id, from_domain, from_id, to_domain, to_id, rel, note FROM links').all()
+    const rows = db.prepare('SELECT id, from_domain, from_id, to_domain, to_id, rel, note, created_at FROM links').all()
         .filter((r) => enabled(r.from_domain) && enabled(r.to_domain));
     for (const r of rows) {
         for (const k of [key(r.from_domain, r.from_id), key(r.to_domain, r.to_id)]) deg.set(k, (deg.get(k) || 0) + 1);
@@ -158,4 +184,4 @@ function unlinked(db, { domain, limit = 50 } = {}) {
     return { counts, domain: domain || null, records: list };
 }
 
-module.exports = { neighborhood, overview, hubs, unlinked, NODE_CAP, PER_NODE_CAP, OVERVIEW_CAP };
+module.exports = { neighborhood, overview, hubs, unlinked, normTime, NODE_CAP, PER_NODE_CAP, OVERVIEW_CAP };

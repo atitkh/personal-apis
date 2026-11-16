@@ -9,6 +9,8 @@ const ents = require('../services/entities');
 const links = require('../services/links');
 const deadlines = require('../services/deadlines');
 const domainSvc = require('../services/domains');
+const digests = require('../services/digests');
+const trips = require('../services/trips');
 const graph = require('../services/graph');
 const app = require('../app');
 
@@ -134,7 +136,7 @@ test('edges carry their row id, relation and the short note (when there is one),
     const made = links.add(conn, { from: ref(d), to: ref(a), rel: 'for', note: 'seen at the harbour' }, 't');
     const o = graph.overview(conn);
     const e = o.edges.find((x) => x.id === made.id);
-    expect(e).toEqual({ id: made.id, from: `entities:${d}`, to: `entities:${a}`, rel: 'for', note: 'seen at the harbour' });
+    expect(e).toEqual({ id: made.id, from: `entities:${d}`, to: `entities:${a}`, rel: 'for', note: 'seen at the harbour', created_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) });
     expect(o.edges.find((x) => x.rel === 'works-on')).not.toHaveProperty('note');
     const n = graph.neighborhood(conn, { domain: 'entities', id: a, depth: 1 });
     expect(n.edges.find((x) => x.id === made.id)).toMatchObject({ rel: 'for', note: 'seen at the harbour' });
@@ -159,4 +161,56 @@ test('link edits from the graph go through the audited admin API: created, alrea
     expect(after).toHaveLength(before + 2);
     expect(after.slice(-2).map((r) => [r.actor, r.action])).toEqual([['admin', 'link_created'], ['admin', 'link_removed']]);
     expect(graph.overview(conn).edges.some((e) => e.id === made.id)).toBe(false);
+});
+
+test('timeline: normTime turns days, months, years, ISO times and week periods into one sortable day, and anything else into null', () => {
+    const n = graph.normTime;
+    expect(n('2026-11-08')).toBe('2026-11-08');
+    expect(n('2026-11-08T03:04:05Z')).toBe('2026-11-08');
+    expect(n('2026-11')).toBe('2026-11-01');
+    expect(n('2024')).toBe('2024-01-01');
+    expect(n('2026-W45')).toBe('2026-11-08'); // the Sunday that closes ISO week 45 of 2026
+    expect(n('2026-W01')).toBe('2026-01-04');
+    expect(n('2020-W53')).toBe('2021-01-03');
+    for (const bad of [null, undefined, '', 'soon', '2026-13-01', '2026-02-30', '2026-W00', '2026-W54', 'x2026-01-01']) expect(n(bad)).toBeNull();
+});
+
+test('timeline: nodes carry t (a day or null) in the overview and a neighbourhood; links carry created_at', () => {
+    const ref = (dom, id) => ({ domain: dom, id: String(id) });
+    const dl = deadlines.create(conn, { title: 'Harbour pass', kind: 'document', due_date: '2026-03-15' }, 't').id;
+    const trip = trips.create(conn, { title: 'Dated trip', destination: 'Tampa', kind: 'leisure', start_date: '2026-05-02', end_date: '2026-05-04' }, 't').id;
+    const undatedTrip = trips.create(conn, { title: 'Someday trip', kind: 'leisure' }, 't').id;
+    digests.put(conn, 'weekly', '2026-W45', { body: 'A week.', actor: 't' });
+    digests.put(conn, 'daily', '2026-11-08', { body: 'A day.', actor: 't' });
+    const made = [
+        links.add(conn, { from: ref('deadlines', dl), to: ref('entities', a), rel: 'for' }, 't'),
+        links.add(conn, { from: ref('trips', trip), to: ref('entities', a), rel: 'during' }, 't'),
+        links.add(conn, { from: ref('trips', undatedTrip), to: ref('entities', a), rel: 'during' }, 't'),
+        links.add(conn, { from: ref('digests', 'weekly/2026-W45'), to: ref('entities', a), rel: 'about' }, 't'),
+        links.add(conn, { from: ref('digests', 'daily/2026-11-08'), to: ref('entities', a), rel: 'about' }, 't'),
+    ];
+    conn.prepare('UPDATE links SET created_at = ? WHERE id = ?').run('2026-04-10T12:00:00.000Z', made[0].id);
+    try {
+        const t = (g, title) => g.nodes.find((x) => x.title === title).t;
+        for (const g of [graph.overview(conn), graph.neighborhood(conn, { domain: 'entities', id: a, depth: 1 })]) {
+            expect(t(g, 'Harbour pass')).toBe('2026-03-15');
+            expect(t(g, 'Dated trip')).toBe('2026-05-02');
+            expect(t(g, 'Someday trip')).toBeNull();
+            expect(t(g, 'Weekly digest 2026-W45')).toBe('2026-11-08');
+            expect(t(g, 'Daily digest 2026-11-08')).toBe('2026-11-08');
+            expect(t(g, 'Ines Calder')).toBeNull(); // entities have no date
+            expect(g.nodes.every((x) => x.t === null || /^\d{4}-\d{2}-\d{2}$/.test(x.t))).toBe(true);
+            expect(g.edges.every((x) => /^\d{4}-\d{2}-\d{2}T/.test(x.created_at))).toBe(true);
+            expect(g.edges.find((x) => x.id === made[0].id).created_at).toBe('2026-04-10T12:00:00.000Z');
+            expect(g.nodes).toHaveLength(new Set(g.nodes.map((x) => x.key)).size);
+        }
+    } finally {
+        for (const m of made) links.remove(conn, m.id);
+    }
+});
+
+test('timeline: the node cap is unchanged and the time fields add no reference or amount text', () => {
+    expect(graph.OVERVIEW_CAP).toBe(400);
+    expect(graph.overview(conn, { cap: 99999 }).cap).toBe(400);
+    expect(JSON.stringify(graph.overview(conn))).not.toMatch(/SECRET-REF-9|12345/);
 });
