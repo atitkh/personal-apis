@@ -3,6 +3,18 @@
 Versioned from 1.1.0 on (earlier history is in the git log). Each release is a `vX.Y.Z` tag; deploys name the tag they ran.
 Rule: minor for a new feature or view, patch for fixes. One entry per release, newest first.
 
+## 1.4.0 - 2026-11-16
+
+### Added
+- Notes domain: free-form markdown notes with title, tags, pinned, trash (restore or delete forever) and revisions you can restore.
+- Hub editor: a Notes page with live preview, toolbar, autosave indicator and phone Write/Preview tabs. The preview is built from DOM nodes, never innerHTML.
+- `[[wikilinks]]` link to any record and create a missing target from the popup; a `/` menu inserts links to trips, flights, places and other records. Links are synced into the record links (`mentions`), appear in Linked, and unresolved ones show as missing.
+- Notes appear in the graph, search, embeddings, Activity and the Overview board; shortcut `g w`.
+- Agent tool `notes` (list, get, search; add, append, edit) and REST `/hub/notes` (no remote delete).
+
+### Changed
+- Test runs no longer print the request log, and `scripts/capped.sh` runs a command to a log file and prints only the summary.
+
 ## 1.3.0 - 2026-11-16
 
 ### Added
