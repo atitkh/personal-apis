@@ -15,6 +15,7 @@ import * as domainState from './domainState.js';
 import { decorate as decorateDomainPage } from './domainNotice.js';
 
 router.register('overview', { title: 'Overview', icon: 'overview', nav: true, group: 'overview', mobile: true, load: () => import('./views/overview.js') });
+router.register('stats', { title: 'Stats', icon: 'stats', nav: true, group: 'overview', load: () => import('./views/stats.js') });
 router.register('digests', { title: 'Digests', icon: 'digests', nav: true, group: 'data', mobile: true, load: () => import('./views/digests.js') });
 router.register('places', { title: 'Places', icon: 'places', nav: true, group: 'data', load: () => import('./views/places.js') });
 router.register('flights', { title: 'Flights', icon: 'flights', nav: true, group: 'data', load: () => import('./views/flights.js') });

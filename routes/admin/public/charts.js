@@ -139,3 +139,116 @@ function clampDay(day) {
 export function legend(items) {
     return h('ul', { class: 'legend' }, items.map((i) => h('li', {}, h('span', { class: `swatch hue-${i.hue}`, 'aria-hidden': 'true' }), i.label)));
 }
+
+/* ---------- Stats page charts (reusable; colours from hue-* classes, tooltips from <title>) ---------- */
+
+export const SERIES_HUES = ['cobalt', 'teal', 'amber', 'plum', 'rose', 'moss', 'sky', 'brick', 'lime', 'indigo'];
+export const hueAt = (i) => SERIES_HUES[i % SERIES_HUES.length];
+const fmtNum = (n) => Number(n || 0).toLocaleString();
+
+// Vertical stacked bars, one per label. series: [{ name, hue, values }] (values line up with labels).
+// labelText(label) words a label for tooltips and the axis; unit names the counted thing.
+export function stackedBars({ labels, series, ariaLabel, height = 120, unit = 'item', labelText = (l) => l }) {
+    const slot = 12;
+    const bar = labels.length > 60 ? 10 : 8;
+    const totals = labels.map((_, i) => series.reduce((s, x) => s + (x.values[i] || 0), 0));
+    const max = Math.max(1, ...totals);
+    const width = Math.max(1, labels.length) * slot;
+    const cols = labels.map((label, i) => {
+        const x = i * slot + (slot - bar) / 2;
+        let y = height;
+        const rects = [];
+        for (const s of series) {
+            const v = s.values[i] || 0;
+            if (!v) continue;
+            const hgt = Math.max(2, (v / max) * (height - 4));
+            y -= hgt;
+            rects.push(svg('rect', { class: `bar hue-${s.hue}`, x, y, width: bar, height: hgt, rx: 1.5 }));
+        }
+        if (!rects.length) rects.push(svg('rect', { class: 'bar empty', x, y: height - 2, width: bar, height: 2, rx: 1 }));
+        const detail = series.filter((s) => s.values[i]).map((s) => `${s.name} ${fmtNum(s.values[i])}`).join(', ');
+        // A full-height transparent rect so the whole column answers hover, not just the bar.
+        rects.unshift(svg('rect', { class: 'hit', x: i * slot, y: 0, width: slot, height }));
+        return svg('g', { class: 'col' }, svg('title', { text: `${labelText(label)}: ${plural(totals[i], unit)}${detail ? ` (${detail})` : ''}` }), rects);
+    });
+    return h('figure', { class: 'chart' },
+        svg('svg', { class: 'bars grow', viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'none', role: 'img', 'aria-label': ariaLabel, style: `height:${height}px` }, cols),
+        h('figcaption', { class: 'chart-axis', 'aria-hidden': 'true' },
+            h('span', { text: labels.length ? labelText(labels[0]) : '' }),
+            h('span', { text: labels.length ? labelText(labels[labels.length - 1]) : '' })));
+}
+
+// Horizontal bars as HTML rows (they wrap their labels and fit any width).
+// items: [{ label, value, hue?, href?, sub? }]; format(value) words the number.
+export function hBars({ items, ariaLabel, format = fmtNum, hue = 'cobalt' }) {
+    const max = Math.max(1, ...items.map((i) => i.value || 0));
+    return h('ol', { class: 'hbars', 'aria-label': ariaLabel }, items.map((i) => {
+        const text = `${i.label}: ${format(i.value)}${i.sub ? `, ${i.sub}` : ''}`;
+        const name = i.href ? h('a', { href: i.href, text: i.label }) : h('span', { text: i.label });
+        return h('li', { class: 'hbar', title: text },
+            h('span', { class: 'hbar-label' }, name, i.sub ? h('span', { class: 'hbar-sub', text: ` ${i.sub}` }) : null),
+            h('span', { class: 'hbar-track', 'aria-hidden': 'true' },
+                h('span', { class: `hbar-fill hue-${i.hue || hue}`, style: `width:${Math.max(1.5, ((i.value || 0) / max) * 100)}%` })),
+            h('span', { class: 'hbar-value', text: format(i.value) }));
+    }));
+}
+
+// A donut with a legend. items: [{ label, value, hue }]; center: the big word in the middle.
+export function donut({ items, ariaLabel, center = '', size = 132 }) {
+    const total = items.reduce((s, i) => s + (i.value || 0), 0);
+    const r = 15.9155; // circumference 100
+    let offset = 25; // start at 12 o'clock
+    const arcs = items.filter((i) => i.value > 0).map((i) => {
+        const pct = (i.value / total) * 100;
+        const el = svg('circle', { class: `arc hue-${i.hue}`, cx: 21, cy: 21, r, 'stroke-dasharray': `${pct} ${100 - pct}`, 'stroke-dashoffset': offset },
+            svg('title', { text: `${i.label}: ${fmtNum(i.value)} (${Math.round(pct)}%)` }));
+        offset -= pct;
+        return el;
+    });
+    return h('figure', { class: 'chart donut-wrap' },
+        svg('svg', { class: 'donut', viewBox: '0 0 42 42', width: size, height: size, role: 'img', 'aria-label': ariaLabel },
+            svg('circle', { class: 'arc-bg', cx: 21, cy: 21, r }), arcs,
+            svg('text', { class: 'donut-center', x: 21, y: 21, 'text-anchor': 'middle', 'dominant-baseline': 'central', text: String(center) })),
+        h('ul', { class: 'legend legend-col' }, items.map((i) => h('li', {},
+            h('span', { class: `swatch hue-${i.hue}`, 'aria-hidden': 'true' }), `${i.label} `, h('b', { text: fmtNum(i.value) })))));
+}
+
+// A grid of shaded cells. values[r][c] is a number, or null for a blank slot. title(r, c, v) words a cell.
+// colLabels: sparse labels under the grid ({ index: text }). One colour (hue), stronger for bigger numbers.
+export function heatmap({ values, rowLabels, colLabels = {}, ariaLabel, title, hue = 'cobalt', cls = '' }) {
+    const flat = values.flat().filter((v) => v != null);
+    const max = Math.max(1, ...flat);
+    const cols = Math.max(0, ...values.map((r) => r.length));
+    const grid = h('div', { class: `heatmap ${cls}`.trim(), role: 'img', 'aria-label': ariaLabel, style: `--cols:${cols}` },
+        values.map((row, r) => [
+            h('span', { class: 'hm-row', 'aria-hidden': 'true', text: rowLabels[r] || '' }),
+            ...row.map((v, c) => (v == null
+                ? h('span', { class: 'hm-cell blank', 'aria-hidden': 'true' })
+                : h('span', { class: `hm-cell hue-${hue}${v ? '' : ' zero'}`, style: `--a:${v ? (0.18 + 0.82 * (v / max)).toFixed(2) : 0}`, title: title(r, c, v), 'aria-hidden': 'true' }))),
+        ]),
+        h('span', { class: 'hm-row', 'aria-hidden': 'true' }),
+        Array.from({ length: cols }, (_, c) => h('span', { class: 'hm-col', 'aria-hidden': 'true', text: colLabels[c] || '' })));
+    return h('figure', { class: 'chart heatmap-wrap' }, grid);
+}
+
+// Lines over shared labels. series: [{ name, hue, values }]. Hovering a column shows every series' value there.
+export function lineChart({ labels, series, ariaLabel, height = 120, labelText = (l) => l, unit = '' }) {
+    const W = 600;
+    const n = labels.length;
+    const max = Math.max(1, ...series.flatMap((s) => s.values));
+    const x = (i) => (n <= 1 ? W / 2 : (i / (n - 1)) * W);
+    const y = (v) => height - 3 - (v / max) * (height - 8);
+    const lines = series.map((s) => svg('polyline', {
+        class: `line hue-${s.hue}`, fill: 'none', 'vector-effect': 'non-scaling-stroke',
+        points: s.values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' '),
+    }));
+    const step = n > 1 ? W / (n - 1) : W;
+    const hits = labels.map((l, i) => svg('rect', { class: 'hit', x: Math.max(0, x(i) - step / 2), y: 0, width: step, height },
+        svg('title', { text: `${labelText(l)}: ${series.map((s) => `${s.name} ${fmtNum(s.values[i])}${unit ? ` ${unit}` : ''}`).join(', ')}` })));
+    return h('figure', { class: 'chart' },
+        svg('svg', { class: 'lines', viewBox: `0 0 ${W} ${height}`, preserveAspectRatio: 'none', role: 'img', 'aria-label': ariaLabel, style: `height:${height}px` },
+            svg('line', { class: 'baseline', x1: 0, x2: W, y1: height - 1, y2: height - 1, 'vector-effect': 'non-scaling-stroke' }), lines, hits),
+        h('figcaption', { class: 'chart-axis', 'aria-hidden': 'true' },
+            h('span', { text: n ? labelText(labels[0]) : '' }),
+            h('span', { text: n ? labelText(labels[n - 1]) : '' })));
+}

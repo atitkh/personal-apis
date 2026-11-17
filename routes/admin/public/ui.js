@@ -111,6 +111,7 @@ const ICONS = {
     copy: ['M9 9h11v11H9z', 'M5 15H4V4h11v1'],
     edit: ['M4 20h4L19 9l-4-4L4 16z', 'M13.5 6.5l4 4'],
     timeline: ['c12 12 8.5', 'M12 7v5.2l3.2 2'],
+    stats: ['M4 20h16', 'M7 16v-4', 'M12 16V6', 'M17 16v-7'],
     play: ['M8 5.5v13l11-6.5z'],
     pause: ['M8 5h3v14H8z', 'M13 5h3v14h-3z'],
     skipBack: ['M7 5v14', 'M19 5.5v13L9 12z'],

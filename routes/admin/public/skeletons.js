@@ -138,6 +138,11 @@ const SHAPES = {
         h('section', { class: 'skel-stack' }, bar('sk-title w-20'), h('div', { class: 'panel skel-stack' }, bar('sk-line w-60'), bar('sk-line w-50'), bar('sk-line w-70'), bar('sk-line w-40'), bar('sk-line w-50'))),
         h('section', {}, bar('sk-title w-20'), tableRows(5, 5))),
 
+    stats: () => wrap('view stats', lede(),
+        h('div', { class: 'row' }, rows(4, () => bar('sk-chip'))),
+        h('div', { class: 'stat-grid stats-tiles' }, rows(6, () => h('div', { class: 'stat-tile' }, bar('sk-xs w-60'), bar('sk-title w-40'), bar('sk-xs w-80')))),
+        h('div', { class: 'stats-grid' }, rows(6, (i) => h('section', { class: `panel stat-card${i === 0 ? ' wide' : ''}` }, bar('sk-title w-40'), bar('sk-line w-70'), bar('sk-block'))))),
+
     activity: () => wrap('view activity', lede(),
         h('div', { class: 'row' }, rows(6, () => bar('sk-chip'))),
         h('div', { class: 'days' }, h('div', { class: 'day' }, bar('sk-line w-20'),

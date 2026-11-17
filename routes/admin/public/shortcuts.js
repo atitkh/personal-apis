@@ -7,6 +7,7 @@ const MOD = isMac ? '⌘' : 'Ctrl';
 // `g` then a letter: [letter, route, page name]
 export const GO = [
     ['o', 'overview', 'Overview'],
+    ['c', 'stats', 'Stats'],
     ['d', 'digests', 'Digests'],
     ['p', 'places', 'Places'],
     ['f', 'flights', 'Flights'],
