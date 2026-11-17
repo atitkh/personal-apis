@@ -1998,8 +1998,17 @@ textarea.note-text { display: block; width: 100%; height: 100%; min-height: 62vh
 
 /* Stats page: a responsive card grid of charts (1 column on phones, 2 on tablets, 3 on wide screens). */
 .stats-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
-@media (min-width: 760px) { .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat-card.wide { grid-column: span 2; } }
-@media (min-width: 1360px) { .stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Regular cards flow into balanced columns, so uneven heights never leave holes. Wide cards are full rows in .stats-grid. */
+.stats-masonry { column-count: 1; column-gap: 16px; }
+@media (min-width: 760px) { .stats-masonry { column-count: 2; } }
+@media (min-width: 1360px) { .stats-masonry { column-count: 3; } }
+.stats-masonry > .stat-card { break-inside: avoid; margin: 0 0 16px; }
+.stats-masonry > .stat-card:last-child { margin-bottom: 0; }
+.stats-masonry.is-packed { column-count: auto; display: grid; grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.stats-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.stats-col > .stat-card { margin: 0; }
+.stats-col > .stat-card:last-child { flex: 1 1 auto; }
+.stats-masonry.measuring .stats-col > .stat-card:last-child { flex: none; }
 .stat-card { display: grid; gap: 14px; align-content: start; min-width: 0; }
 .stat-card-head { display: grid; gap: 2px; }
 .stat-card-head h2 { font-size: var(--fs-md); margin: 0; }

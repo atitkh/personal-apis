@@ -318,6 +318,63 @@ function agentsCard(s, bt, rangeWords) {
 
 /* ---------- the page ---------- */
 
+// Wide cards get a full row. The regular cards between them form a group (.stats-masonry) that starts as balanced CSS columns
+// and, once the page is on screen, is packed by measured height: tallest cards first into the shortest column, every column
+// keeps the cards' reading order, and the last card of each column stretches so all columns end on the same line.
+function packed(cards) {
+    const out = [];
+    let group = null;
+    for (const c of cards.flat().filter(Boolean)) {
+        if (c.classList && c.classList.contains('wide')) { group = null; out.push(c); continue; }
+        if (!group) { group = h('div', { class: 'stats-masonry' }); group.cards = []; out.push(group); }
+        group.cards.push(c);
+        group.append(c);
+    }
+    return out;
+}
+
+const GAP = 16;
+const columnCount = () => (window.matchMedia('(min-width: 1360px)').matches ? 3 : window.matchMedia('(min-width: 760px)').matches ? 2 : 1);
+
+function packGroup(group) {
+    const n = columnCount();
+    const key = `${n}:${Math.round(group.clientWidth)}`;
+    if (group.packedFor === key) return;
+    group.packedFor = key;
+    const cards = group.cards;
+    group.classList.add('is-packed', 'measuring');
+    group.style.setProperty('--n', String(n));
+    const cols = Array.from({ length: n }, () => h('div', { class: 'stats-col' }));
+    group.replaceChildren(...cols);
+    cols[0].append(...cards); // all in one column first, so each card is measured at the real column width
+    const heights = cards.map((c) => c.offsetHeight);
+    group.classList.remove('measuring');
+    if (n === 1) return;
+    const load = Array(n).fill(0);
+    const mine = Array.from({ length: n }, () => []);
+    for (const i of cards.map((_, k) => k).sort((a, b) => heights[b] - heights[a])) {
+        const k = load.indexOf(Math.min(...load));
+        mine[k].push(i);
+        load[k] += heights[i] + GAP;
+    }
+    mine.forEach((idx, k) => cols[k].replaceChildren(...idx.sort((a, b) => a - b).map((i) => cards[i])));
+}
+
+// Packs every group once the view is attached, and again whenever its width or the column count changes.
+function keepPacked(root) {
+    const groups = () => [...root.querySelectorAll('.stats-masonry')];
+    let tries = 0;
+    const start = () => {
+        if (!root.isConnected) { if (tries++ < 60) requestAnimationFrame(start); return; }
+        groups().forEach(packGroup);
+        if (typeof ResizeObserver === 'function') {
+            const ro = new ResizeObserver(() => { if (!root.isConnected) { ro.disconnect(); return; } groups().forEach(packGroup); });
+            ro.observe(root);
+        }
+    };
+    requestAnimationFrame(start);
+}
+
 export async function render(ctx) {
     const asked = ctx.route.query.get('range') || '90';
     const range = RANGES.some(([id]) => id === asked) ? asked : '90';
@@ -326,14 +383,14 @@ export async function render(ctx) {
     const bt = bucketText(data.bucket);
     const rangeWords = range === 'all' ? 'in all' : `in the last ${RANGES.find(([id]) => id === range)[1]}`;
     const nothing = Object.values(s).every((x) => !x || x.skipped || x.error);
-    return h('div', { class: 'view stats' },
+    const view = h('div', { class: 'view stats' },
         pageHeader({ lede: `Your data as pictures. ${data.from && data.to ? `${dayLabel(data.from, { month: 'short', day: 'numeric', year: 'numeric' })} to ${dayLabel(data.to, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}; flights and trips count all years.` }),
         h('div', { class: 'toolbar' }, chipNav({ label: 'Range', current: range, items: RANGES.map(([id, label]) => ({ id, label, href: href('stats', [], { range: id === '90' ? null : id }) })) })),
         nothing
             ? emptyState({ title: 'Nothing to chart yet.', text: 'Turn on a domain in the Overview, or add some data.', iconName: 'stats' })
             : [
                 tiles(s, rangeWords),
-                h('div', { class: 'stats-grid' },
+                h('div', { class: 'stats-grid' }, ...packed([
                     ...lifelogCards(s, bt, rangeWords),
                     ...flightCards(s),
                     tripCard(s),
@@ -341,6 +398,8 @@ export async function render(ctx) {
                     digestCard(s),
                     ...graphCards(s, rangeWords),
                     searchCard(s),
-                    agentsCard(s, bt, rangeWords)),
+                    agentsCard(s, bt, rangeWords)])),
             ]);
+    keepPacked(view);
+    return view;
 }
