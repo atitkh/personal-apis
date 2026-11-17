@@ -25,7 +25,17 @@ function setProps(el, props) {
         if (key === 'class') el.setAttribute('class', value);
         else if (key === 'text') el.textContent = value;
         else if (key.startsWith('on') && typeof value === 'function') el.addEventListener(key.slice(2), value);
+        else if (key === 'style' && typeof value === 'string') applyStyle(el, value);
         else el.setAttribute(key, value === true ? '' : value);
+    }
+}
+
+// The admin pages are served with style-src 'self', which drops inline style="..." attributes (setAttribute and HTML alike) but
+// allows the CSSOM. So a style string such as 'width:40%;--cols:24' is applied declaration by declaration with setProperty.
+function applyStyle(el, text) {
+    for (const decl of text.split(';')) {
+        const i = decl.indexOf(':');
+        if (i > 0) el.style.setProperty(decl.slice(0, i).trim(), decl.slice(i + 1).trim());
     }
 }
 

@@ -34,4 +34,10 @@ describe('Stats page', () => {
             expect({ fn, labelled: labelled >= calls }).toEqual({ fn, labelled: true });
         }
     });
+
+    test('inline styles go through the CSSOM: the admin CSP (style-src \'self\') drops style attributes', () => {
+        expect(read('ui.js')).toMatch(/key === 'style' && typeof value === 'string'\) applyStyle\(el, value\)/);
+        expect(read('ui.js')).toContain('el.style.setProperty(');
+        for (const f of ['ui.js', 'charts.js', 'views/stats.js']) expect(read(f)).not.toMatch(/setAttribute\(\s*'style'/);
+    });
 });
